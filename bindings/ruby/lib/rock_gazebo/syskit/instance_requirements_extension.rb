@@ -7,7 +7,7 @@ module RockGazebo
                 transformer.dynamic_transform model_device,
                     model_device.name => 'world'
                 model_device.robot.each_master_device do |master_dev|
-                    if master_dev.model.fullfills?(Rock::Devices::Gazebo::Link)
+                    if master_dev.model.fullfills?(CommonModels::Devices::Gazebo::Link)
                         if transform = master_dev.frame_transform
                             transformer.dynamic_transform master_dev,
                                 transform.from => transform.to

@@ -14,19 +14,19 @@ module RockGazebo
                 case sensor.type
                 when 'ray'
                     require 'rock/models/devices/gazebo/ray'
-                    device(Rock::Devices::Gazebo::Ray, as: device_name, using: OroGen::RockGazebo::LaserScanTask).
+                    device(CommonModels::Devices::Gazebo::Ray, as: device_name, using: OroGen::RockGazebo::LaserScanTask).
                         frame(frame_name)
                 when 'imu'
                     require 'rock/models/devices/gazebo/imu'
-                    device(Rock::Devices::Gazebo::Imu, as: device_name, using: OroGen::RockGazebo::ImuTask).
+                    device(CommonModels::Devices::Gazebo::Imu, as: device_name, using: OroGen::RockGazebo::ImuTask).
                         frame_transform(frame_name => 'world')
                 when 'camera'
                     require 'rock/models/devices/gazebo/camera'
-                    device(Rock::Devices::Gazebo::Camera, as: device_name, using: OroGen::RockGazebo::CameraTask).
+                    device(CommonModels::Devices::Gazebo::Camera, as: device_name, using: OroGen::RockGazebo::CameraTask).
                         frame(frame_name)
                 when 'gps'
                     require 'rock/models/devices/gazebo/gps'
-                    device(Rock::Devices::Gazebo::GPS, as: device_name, using: OroGen::RockGazebo::GPSTask).
+                    device(CommonModels::Devices::Gazebo::GPS, as: device_name, using: OroGen::RockGazebo::GPSTask).
                         frame_transform(frame_name => 'world')
                 end
             end
@@ -41,7 +41,7 @@ module RockGazebo
             # @param [String] to_frame the 'to' frame of the exported link,
             #   which must match a link, model or frame name on the SDF model
             # @return [Syskit::Robot::MasterDeviceInstance] the exported link as
-            #   a device instance of type Rock::Devices::Gazebo::Link
+            #   a device instance of type CommonModels::Devices::Gazebo::Link
             def sdf_export_link(model_dev, as: nil, from_frame: nil, to_frame: nil, cov_position: nil, cov_orientation: nil, cov_velocity: nil)
                 if !as
                     raise ArgumentError, "provide a name for the device and port through the 'as' option"
@@ -64,7 +64,7 @@ module RockGazebo
                                "#{as}_target" => to_frame).
                                select_service(link_driver_srv)
 
-                dev = device(Rock::Devices::Gazebo::Link, as: as, using: link_driver)
+                dev = device(CommonModels::Devices::Gazebo::Link, as: as, using: link_driver)
                 if from_frame != to_frame
                     dev.frame_transform(from_frame => to_frame)
                 end
@@ -106,7 +106,7 @@ module RockGazebo
             # @param [Array<SDF::Model>] models the SDF representation of the models
             def expose_gazebo_models(models, deployment_prefix)
                 models.each do |m|
-                    device(Rock::Devices::Gazebo::Model, as: m.name,
+                    device(CommonModels::Devices::Gazebo::Model, as: m.name,
                            using: OroGen::RockGazebo::ModelTask).
                            prefer_deployed_tasks("#{deployment_prefix}:#{m.name}").
                            advanced.
@@ -131,7 +131,7 @@ module RockGazebo
                         use_frames("#{frame_basename}_source" => l.full_name,
                                    "#{frame_basename}_target" => 'world').
                         select_service(driver_srv)
-                    device(Rock::Devices::Gazebo::Link, as: "#{l.name}_link", using: link_driver_m).
+                    device(CommonModels::Devices::Gazebo::Link, as: "#{l.name}_link", using: link_driver_m).
                         advanced
                 end
                 model.each_sensor do |s|

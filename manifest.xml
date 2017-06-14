@@ -12,4 +12,5 @@
   <depend_optional package="tools/logger" />
   <depend_optional package="simulation/orogen/rock_gazebo" />
   <depend_optional package="control/ruby_sdformat" />
+  <depend_optional package="bundles/common_models" />
 </package>

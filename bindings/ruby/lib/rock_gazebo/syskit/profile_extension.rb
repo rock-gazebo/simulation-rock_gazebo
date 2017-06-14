@@ -89,7 +89,7 @@ module RockGazebo
                     if dev = robot.find_device("#{link.name}_link")
                         dev.frame_transform link.full_name => 'world'
                     else
-                        raise ArgumentError, "expected to have a device called #{link.name}_link providing Rock::Devices::Gazebo::Link, but it does not exist. Got #{robot.each_master_device.map(&:name).sort.join(", ")}"
+                        raise ArgumentError, "expected to have a device called #{link.name}_link providing CommonModels::Devices::Gazebo::Link, but it does not exist. Got #{robot.each_master_device.map(&:name).sort.join(", ")}"
                     end
                 end
             end
