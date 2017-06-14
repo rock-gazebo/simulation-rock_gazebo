@@ -12,6 +12,11 @@ module RockGazebo
                 Conf.gazebo.use_sim_time = false
             end
 
+            ::Robot.clear_models do
+                Conf.sdf.world_file_path = nil
+                Conf.sdf.has_profile_loaded = false
+            end
+
             # Load a SDF world into the Syskit instance
             def use_sdf_world(*path, world_name: nil)
                 if Conf.sdf.world_file_path
