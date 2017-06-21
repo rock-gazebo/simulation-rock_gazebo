@@ -1,5 +1,78 @@
 #! /usr/bin/env ruby
-require 'rock/gazebo'
-Bundles.setup_search_paths
-Rock::Gazebo.exec('gazebo', *ARGV)
+
+require 'optparse'
+
+NO_GUI=%w{off no}
+GUI_MODES=%w{vizkit gzclient}
+
+gui = 'vizkit'
+gzserver_args = Array.new
+start = false
+options = OptionParser.new do |opt|
+    opt.banner = "rock-gazebo SCENE"
+    opt.on '--start', 'controls in vizkit3d visualization mode if rock-gazebo should configure and start the ModelTask components to ensure the visualization gets updated' do
+        start = true
+    end
+    opt.on '--gui=MODE', String, "controls the GUI that is used.", "'vizkit' (the default) uses Vizkit3D,", "'gzclient' uses Gazebo\'s visualization and", "'no' disables visualization altogether" do |gui_mode|
+        if NO_GUI.include?(gui_mode)
+            gui = false
+        elsif GUI_MODES.include?(gui_mode)
+            gui = gui_mode
+        else
+            STDERR.puts "'#{gui}' is not a valide GUI mode"
+        end
+    end
+    opt.on '--verbose', 'run gzserver in verbose mode' do
+        gzserver_args << '--verbose'
+    end
+end
+
+args = options.parse(ARGV)
+if args.size != 1
+    STDERR.puts "Scene argument missing"
+    puts options
+    exit 1
+end
+scene = args.first
+
+require 'rock/bundles'
+
+# Workaround: default_loader calls Orocos.load unconditionally :(
+Bundles.load
+
+if gui == 'vizkit'
+    require 'Qt'
+    require 'vizkit'
+    require 'rock/gazebo'
+    require 'rock_gazebo/viz'
+else
+    require 'rock/gazebo'
+end
+
+SDF::XML.model_path = Rock::Gazebo.model_path
+
+begin
+    gazebo_pid = Rock::Gazebo.spawn('gzserver', scene, *gzserver_args)
+    if gui == 'vizkit'
+        RockGazebo.viz(scene, start: start)
+        Vizkit.exec
+    elsif gui == 'gzclient'
+        gzclient_pid = Rock::Gazebo.spawn('gzclient')
+        STDERR.puts "Press CTRL+C to quit"
+        sleep
+    else
+        STDERR.puts "Press CTRL+C to quit"
+        sleep
+    end
+ensure
+    pids = [gazebo_pid, gzclient_pid].compact
+    pids.each do |pid|
+        puts "Sending TERM to #{pid}"
+        Process.kill('TERM', pid)
+    end
+    pids.eaach do |pid|
+        puts "Waiting for #{pid} to terminate"
+        Process.kill('TERM', pid)
+    end
+end
 
