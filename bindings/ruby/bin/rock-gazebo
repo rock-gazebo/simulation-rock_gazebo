@@ -38,6 +38,7 @@ scene = args.first
 require 'rock/bundles'
 
 # Workaround: default_loader calls Orocos.load unconditionally :(
+Orocos.disable_sigchld_handler = true
 Bundles.load
 
 if gui == 'vizkit'
@@ -51,28 +52,45 @@ end
 
 SDF::XML.model_path = Rock::Gazebo.model_path
 
+subprocesses = Hash.new
 begin
     gazebo_pid = Rock::Gazebo.spawn('gzserver', scene, *gzserver_args)
+    subprocesses[gazebo_pid] = 'gzserver'
     if gui == 'vizkit'
         RockGazebo.viz(scene, start: start)
+        timer = Qt::Timer.new
+        timer.connect(SIGNAL('timeout()')) do
+            if terminated_pid = Process.waitpid(-1, Process::WNOHANG)
+                puts "#{subprocesses[terminated_pid]} finished (#{terminated_pid})"
+                $qApp.quit
+            end
+        end
+        timer.start(2000)
         Vizkit.exec
     elsif gui == 'gzclient'
         gzclient_pid = Rock::Gazebo.spawn('gzclient')
-        STDERR.puts "Press CTRL+C to quit"
-        sleep
+        subprocesses[gzclient_pid] = 'gzclient'
+        terminated_pid = Process.waitpid
+        puts "#{subprocesses[terminated_pid]} finished (#{terminated_pid})"
     else
         STDERR.puts "Press CTRL+C to quit"
         sleep
     end
 ensure
-    pids = [gazebo_pid, gzclient_pid].compact
-    pids.each do |pid|
-        puts "Sending TERM to #{pid}"
-        Process.kill('TERM', pid)
+    pids = subprocesses.find_all do |pid, name|
+        next if pid == terminated_pid
+        begin
+            Process.kill('TERM', pid)
+            puts "Terminating #{name} (#{pid})"
+            true
+        rescue Errno::ESRCH, Errno::ECHILD
+        end
     end
-    pids.eaach do |pid|
-        puts "Waiting for #{pid} to terminate"
-        Process.kill('TERM', pid)
+    pids.each do |pid, name|
+        puts "Waiting for #{name} (#{pid}) to terminate"
+        begin Process.waitpid(pid)
+        rescue Errno::ESRCH, Errno::ECHILD
+        end
     end
 end
 
