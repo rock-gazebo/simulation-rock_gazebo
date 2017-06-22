@@ -116,30 +116,39 @@ module RockGazebo
 
             # @api private
             #
+            # Normalize a Gazebo name to use in Syskit models
+            def normalize_name(name)
+                name.gsub(/:+/, '_')
+            end
+
+            # @api private
+            #
             # Define devices for all links and sensors in the model
             def load_gazebo_robot_model(model, deployment_prefix, name: model.name)
                 driver_m = OroGen::RockGazebo::ModelTask
                 find_device(model.name).advanced = false
                 model.each_link do |l|
+                    l_name = normalize_name(l.name)
                     link_driver_m = driver_m.specialize
-                    frame_basename = l.name.gsub(/[^\w]+/, '_')
+                    frame_basename = l_name.gsub(/[^\w]+/, '_')
                     driver_srv = link_driver_m.require_dynamic_service(
-                        'link_export', as: "#{l.name}_link", frame_basename: frame_basename)
+                        'link_export', as: "#{l_name}_link", frame_basename: frame_basename)
                     link_driver_m = link_driver_m.to_instance_requirements.
                         prefer_deployed_tasks("#{deployment_prefix}:#{name}").
                         with_arguments(model_dev: find_device(name)).
                         use_frames("#{frame_basename}_source" => l.full_name,
                                    "#{frame_basename}_target" => 'world').
                         select_service(driver_srv)
-                    device(CommonModels::Devices::Gazebo::Link, as: "#{l.name}_link", using: link_driver_m).
+                    device(CommonModels::Devices::Gazebo::Link, as: "#{l_name}_link", using: link_driver_m).
                         advanced
                 end
                 model.each_sensor do |s|
-                    if device = sensors_to_device(s, "#{s.name}_sensor", s.parent.full_name)
+                    s_name = normalize_name(s.name)
+                    if device = sensors_to_device(s, "#{s_name}_sensor", s.parent.full_name)
                         if period = s.update_period
                             device.period(period)
                         end
-                        device.sdf(s).prefer_deployed_tasks("#{deployment_prefix}:#{name}:#{s.name}")
+                        device.sdf(s).prefer_deployed_tasks("#{deployment_prefix}:#{name}:#{s_name}")
                     else
                         RockGazebo.warn "Robot#load_gazebo: don't know how to handle sensor #{s.full_name} of type #{s.type}"
                     end
