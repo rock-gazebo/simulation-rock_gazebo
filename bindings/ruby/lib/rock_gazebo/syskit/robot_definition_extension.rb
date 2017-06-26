@@ -110,7 +110,8 @@ module RockGazebo
                            using: OroGen::RockGazebo::ModelTask).
                            prefer_deployed_tasks("#{deployment_prefix}:#{m.name}").
                            advanced.
-                           sdf(m)
+                           sdf(m).
+                           doc("Gazebo: the #{m.name} model")
                 end
             end
 
@@ -140,6 +141,7 @@ module RockGazebo
                                    "#{frame_basename}_target" => 'world').
                         select_service(driver_srv)
                     device(CommonModels::Devices::Gazebo::Link, as: "#{l_name}_link", using: link_driver_m).
+                        doc("Gazebp: state of the #{l.name} link of #{model.name}").
                         advanced
                 end
                 model.each_sensor do |s|
@@ -148,6 +150,7 @@ module RockGazebo
                         if period = s.update_period
                             device.period(period)
                         end
+                        device.doc "Gazebo: #{s.name} sensor of #{model.name}"
                         device.sdf(s).prefer_deployed_tasks("#{deployment_prefix}:#{name}:#{s_name}")
                     else
                         RockGazebo.warn "Robot#load_gazebo: don't know how to handle sensor #{s.full_name} of type #{s.type}"
