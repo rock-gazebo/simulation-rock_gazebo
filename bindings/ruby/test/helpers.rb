@@ -31,9 +31,10 @@ module Helpers
     end
  
     def gzserver(world_file, expected_task_name, timeout: 10)
-        @gazebo_pid = Rock::Gazebo.spawn('gzserver', expand_fixture_world(world_file), '--verbose',
-                                         out: @gazebo_output,
-                                         err: @gazebo_output)
+        @gazebo_pid = Rock::Gazebo.spawn(
+            'gzserver', expand_fixture_world(world_file), '--verbose', '--model-dir', File.join(__dir__, 'models'),
+            out: @gazebo_output,
+            err: @gazebo_output)
 
         deadline = Time.now + timeout
         begin
