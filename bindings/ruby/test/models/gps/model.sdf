@@ -1,0 +1,7 @@
+<sdf version="1.6">
+    <model name="m">
+        <link name="l">
+            <sensor name="g" type="gps" />
+        </link>
+    </model>
+</sdf>

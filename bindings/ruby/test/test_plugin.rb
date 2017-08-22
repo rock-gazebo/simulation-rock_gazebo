@@ -22,7 +22,7 @@ describe "The Rock/Gazebo plugin" do
         end
 
         describe "the pose export" do
-            it "exports the pose" do
+            it "exports the model's pose" do
                 pose = configure_start_and_read_one_sample 'pose_samples'
                 assert Eigen::Vector3.new(1, 2, 3).approx?(pose.position)
                 assert Eigen::Quaternion.from_angle_axis(0.1, Eigen::Vector3.UnitZ).
@@ -62,6 +62,16 @@ describe "The Rock/Gazebo plugin" do
                 link_pose = configure_start_and_read_one_sample 'test'
                 assert Eigen::Vector3.new(2, 3, 4).approx?(link_pose.position)
                 assert Eigen::Quaternion.from_angle_axis(0.2, Eigen::Vector3.UnitZ).
+                    approx?(link_pose.orientation)
+            end
+
+            it "knows how to export a link in a nested model" do
+                task.exported_links = [Types.rock_gazebo.LinkExport.new(
+                    port_name: 'test', source_link: 'nested::l', target_link: 'root',
+                    port_period: Time.at(0))]
+                link_pose = configure_start_and_read_one_sample 'test'
+                assert Eigen::Vector3.new(3, 2, 1).approx?(link_pose.position)
+                assert Eigen::Quaternion.from_angle_axis(-0.2, Eigen::Vector3.UnitZ).
                     approx?(link_pose.orientation)
             end
 
@@ -178,6 +188,14 @@ describe "The Rock/Gazebo plugin" do
             assert(sample.mag.norm < 1e-6)
         end
 
+        it "properly resolves the topic in a SDF file that uses nested model" do
+            sample = read_imu_sample 'imu-nested.world'
+            assert(sample.time.to_f > 0 && sample.time.to_f < 10)
+            assert(sample.acc.norm < 1e-6)
+            assert(sample.gyro.norm < 1e-6)
+            assert(sample.mag.norm < 1e-6)
+        end
+
         it "stamps raw samples using the realtime instead of the logical time if use_sim_time is false" do
             sample = read_imu_sample 'imu.world' do |task|
                 task.use_sim_time = false
@@ -206,6 +224,16 @@ describe "The Rock/Gazebo plugin" do
 
         it "exports the solution" do
             sample = read_sample 'gps.world', 'gps_solution'
+            # Values in the SDF file are in degrees, convert to radians and
+            # give a good precision (1e-9 is around 1mm)
+            assert_in_epsilon -22.9068, sample.latitude, 1e-9
+            assert_in_epsilon -43.1729, sample.longitude, 1e-9
+            assert_equal :AUTONOMOUS, sample.positionType;
+            assert_in_delta 10, sample.altitude, 0.01;
+        end
+
+        it "properly resolves the topic in a SDF file that uses nested model" do
+            sample = read_sample 'gps-nested.world', 'gps_solution'
             # Values in the SDF file are in degrees, convert to radians and
             # give a good precision (1e-9 is around 1mm)
             assert_in_epsilon -22.9068, sample.latitude, 1e-9

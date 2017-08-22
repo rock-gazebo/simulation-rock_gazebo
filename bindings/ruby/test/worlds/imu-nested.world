@@ -1,0 +1,11 @@
+<sdf version="1.4">
+<world name="w">
+    <model name="m">
+        <include>
+            <name>nested</name>
+            <uri>model://imu</uri>
+        </include>
+    </model>
+</world>
+</sdf>
+

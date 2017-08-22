@@ -8,12 +8,6 @@
             <pose>2 3 4 0 0 0.2</pose>
         </link>
         <static>true</static>
-
-        <include>
-        <name>nested</name>
-        <uri>model://model</uri>
-        <pose>3 2 1 0 0 -0.2</pose>
-        </include>
     </model>
 </world>
 </sdf>
