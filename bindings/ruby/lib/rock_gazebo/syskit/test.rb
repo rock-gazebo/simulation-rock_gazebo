@@ -1,10 +1,11 @@
 require 'rock/bundles'
-rock_bundle = Rock::Bundles.each_bundle.find { |b| b.name == 'rock' }
+rock_bundle = Rock::Bundles.each_bundle.find { |b| b.name == 'common_models' }
 if !rock_bundle
-    raise LoadError, "cannot find the rock bundle"
+    raise LoadError, "cannot find the common_models bundle"
 end
 $LOAD_PATH.unshift File.dirname(rock_bundle.path)
 $LOAD_PATH.unshift rock_bundle.path
+Roby.app.search_path << rock_bundle.path
 
 # simplecov must be loaded FIRST. Only the files required after it gets loaded
 # will be profiled !!!
