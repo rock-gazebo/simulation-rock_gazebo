@@ -21,6 +21,14 @@ if ENV['TEST_ENABLE_COVERAGE'] == '1'
     end
 end
 
+if ENV['TEST_ENABLE_PRY'] != '0'
+    begin
+        require 'pry'
+    rescue Exception
+        RockGazebo.warn "debugging is disabled because the 'pry' gem cannot be loaded"
+    end
+end
+
 require 'flexmock/minitest'
 require 'minitest/spec'
 require 'minitest/autorun'
@@ -29,14 +37,6 @@ require 'syskit'
 require 'syskit/roby_app/plugin'
 Syskit::RobyApp::Plugin.enable
 require 'rock_gazebo/syskit'
-
-if ENV['TEST_ENABLE_PRY'] != '0'
-    begin
-        require 'pry'
-    rescue Exception
-        RockGazebo.warn "debugging is disabled because the 'pry' gem cannot be loaded"
-    end
-end
 
 module RockGazebo
     # This module is the common setup for all tests
