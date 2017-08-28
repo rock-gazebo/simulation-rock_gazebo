@@ -1,0 +1,16 @@
+<sdf version="1.5">
+    <world name="test">
+        <model name="attachment">
+            <link name="in_attachment" />
+            <include>
+                <name>included_model</name>
+                <uri>model://simple_model</uri>
+            </include>
+            <joint name="attach_to_world" type="fixed">
+                <parent>world</parent>
+                <child>included_model::link</child>
+            </joint>
+        </model>
+    </world>
+</sdf>
+

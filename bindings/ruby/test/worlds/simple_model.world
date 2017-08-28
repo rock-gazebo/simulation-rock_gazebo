@@ -1,0 +1,9 @@
+<sdf version="1.5">
+    <world name="test">
+        <include>
+            <name>included_model</name>
+            <uri>model://simple_model</uri>
+        </include>
+    </world>
+</sdf>
+

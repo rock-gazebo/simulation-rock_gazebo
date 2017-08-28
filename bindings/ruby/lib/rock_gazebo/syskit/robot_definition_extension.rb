@@ -13,19 +13,19 @@ module RockGazebo
             def sensors_to_device(sensor, device_name, frame_name)
                 case sensor.type
                 when 'ray'
-                    require 'rock/models/devices/gazebo/ray'
+                    require 'common_models/models/devices/gazebo/ray'
                     device(CommonModels::Devices::Gazebo::Ray, as: device_name, using: OroGen::RockGazebo::LaserScanTask).
                         frame(frame_name)
                 when 'imu'
-                    require 'rock/models/devices/gazebo/imu'
+                    require 'common_models/models/devices/gazebo/imu'
                     device(CommonModels::Devices::Gazebo::Imu, as: device_name, using: OroGen::RockGazebo::ImuTask).
                         frame_transform(frame_name => 'world')
                 when 'camera'
-                    require 'rock/models/devices/gazebo/camera'
+                    require 'common_models/models/devices/gazebo/camera'
                     device(CommonModels::Devices::Gazebo::Camera, as: device_name, using: OroGen::RockGazebo::CameraTask).
                         frame(frame_name)
                 when 'gps'
-                    require 'rock/models/devices/gazebo/gps'
+                    require 'common_models/models/devices/gazebo/gps'
                     device(CommonModels::Devices::Gazebo::GPS, as: device_name, using: OroGen::RockGazebo::GPSTask).
                         frame_transform(frame_name => 'world')
                 end
@@ -71,6 +71,36 @@ module RockGazebo
                 dev
             end
 
+            def find_actual_model(name, candidates)
+                candidates = candidates.dup
+                while !candidates.empty?
+                    m, root = candidates.shift
+                    if m.name == name
+                        return m, root
+                    end
+
+                    children = m.each_model.map { |child_m| [child_m, root || m] }
+                    candidates.concat(children)
+                end
+                nil
+            end
+
+            def define_submodel_device(name, enclosing_device, actual_sdf_model)
+                normalized_name = normalize_name(name)
+                submodel_driver_m = OroGen::RockGazebo::ModelTask.specialize
+                driver_srv = submodel_driver_m.require_dynamic_service(
+                    'submodel_export', as: normalized_name, frame_basename: normalized_name)
+                submodel_driver_m = submodel_driver_m.to_instance_requirements.
+                    prefer_deployed_tasks(*enclosing_device.to_instance_requirements.deployment_hints).
+                    with_arguments(model_dev: enclosing_device).
+                    use_frames("#{normalized_name}_source" => "#{actual_sdf_model.full_name}",
+                               "#{normalized_name}_target" => 'world').
+                    select_service(driver_srv)
+                device(CommonModels::Devices::Gazebo::Model, as: normalized_name, using: submodel_driver_m).
+                    doc("Gazebo: model #{name} inside #{enclosing_device.sdf.full_name}").
+                    advanced
+            end
+
             # Create device information that models how the rock-gazebo plugin
             # will handle this SDF model
             #
@@ -88,15 +118,38 @@ module RockGazebo
             #   exposed as devices on this robot model. Note that sensors and
             #   links are only exposed for the robot_model. It must contain
             #   robot_model
+            # @param [Boolean] prefix_device_with_name if true, the name of
+            #   the created devices are prefixed with the 'name' argument and an
+            #   underscore. This will become the new default, and using false
+            #   generates a deprecation warning. Setting it to true ensures that
+            #   the device names stay the same regardless of the SDF world it's
+            #   built in.
             # @return [void]
             # @raise [ArgumentError] if models does not contain robot_model
-            def load_gazebo(robot_model, deployment_prefix, name: robot_model.name, models: [robot_model])
-                if !models.any? { |m| m.name == name }
-                    raise ArgumentError, "the set of models given to #load_gazebo has no model named #{name}"
+            def load_gazebo(model, deployment_prefix, name: model.name, prefix_device_with_name: false)
+                enclosing_model = model
+                while enclosing_model.parent.kind_of?(::SDF::Model)
+                    enclosing_model = enclosing_model.parent
                 end
 
-                expose_gazebo_models(models, deployment_prefix)
-                load_gazebo_robot_model(robot_model, deployment_prefix, name: name)
+                if enclosing_model != model
+                    enclosing_device = expose_gazebo_model(enclosing_model, deployment_prefix, device_name: enclosing_model.name)
+                    define_submodel_device(name, enclosing_device, model)
+                    prefix_device_with_name = true
+                else
+                    enclosing_device = expose_gazebo_model(enclosing_model, deployment_prefix, device_name: name)
+                    enclosing_device.advanced = false
+                end
+                if !prefix_device_with_name
+                    Roby.warn_deprecated <<-EOMSG
+The link naming scheme in #use_sdf_model will change from using the link name as device name
+                         to prefixing it with the name given to #use_sdf_model (which defaults to the model name itself)
+                         set the prefix_device_with_name: option to true to enable the new behavior and remove this warning
+                         This warning will become an error before the functionality completely disappears
+                    EOMSG
+                end
+                load_gazebo_robot_model(model, enclosing_device, name: name,
+                    prefix_device_with_name: prefix_device_with_name)
             end
 
             # @api private
@@ -104,15 +157,14 @@ module RockGazebo
             # Define devices for each model in the world
             #
             # @param [Array<SDF::Model>] models the SDF representation of the models
-            def expose_gazebo_models(models, deployment_prefix)
-                models.each do |m|
-                    device(CommonModels::Devices::Gazebo::Model, as: m.name,
-                           using: OroGen::RockGazebo::ModelTask).
-                           prefer_deployed_tasks("#{deployment_prefix}:#{m.name}").
-                           advanced.
-                           sdf(m).
-                           doc("Gazebo: the #{m.name} model")
-                end
+            def expose_gazebo_model(sdf, deployment_prefix, device_name: normalize_name(sdf.name))
+                device(CommonModels::Devices::Gazebo::Model, as: device_name,
+                       using: OroGen::RockGazebo::ModelTask).
+                       prefer_deployed_tasks("#{deployment_prefix}:#{normalize_name(sdf.name)}").
+                       frame_transform(sdf.full_name => 'world').
+                       advanced.
+                       sdf(sdf).
+                       doc("Gazebo: the #{sdf.name} model")
             end
 
             # @api private
@@ -125,33 +177,44 @@ module RockGazebo
             # @api private
             #
             # Define devices for all links and sensors in the model
-            def load_gazebo_robot_model(model, deployment_prefix, name: model.name)
-                driver_m = OroGen::RockGazebo::ModelTask
-                find_device(model.name).advanced = false
-                model.each_link do |l|
-                    l_name = normalize_name(l.name)
-                    link_driver_m = driver_m.specialize
-                    frame_basename = l_name.gsub(/[^\w]+/, '_')
+            def load_gazebo_robot_model(sdf_model, root_device, name: sdf_model.name, prefix_device_with_name: true)
+                if prefix = sdf_model.full_name(root: root_device.sdf)
+                    frame_prefix = "#{normalize_name(prefix)}_"
+                end
+                sdf_model.each_link do |l|
+                    device_name    = "#{normalize_name(l.name)}_link"
+                    if prefix_device_with_name
+                        device_name = "#{normalize_name(name)}_#{device_name}"
+                    end
+                    frame_basename = "#{frame_prefix}#{normalize_name(l.name)}"
+
+                    link_driver_m = OroGen::RockGazebo::ModelTask.specialize
                     driver_srv = link_driver_m.require_dynamic_service(
-                        'link_export', as: "#{l_name}_link", frame_basename: frame_basename)
+                        'link_export', as: device_name, frame_basename: frame_basename)
                     link_driver_m = link_driver_m.to_instance_requirements.
-                        prefer_deployed_tasks("#{deployment_prefix}:#{name}").
-                        with_arguments(model_dev: find_device(name)).
+                        prefer_deployed_tasks(*root_device.to_instance_requirements.deployment_hints).
+                        with_arguments(model_dev: root_device).
                         use_frames("#{frame_basename}_source" => l.full_name,
                                    "#{frame_basename}_target" => 'world').
                         select_service(driver_srv)
-                    device(CommonModels::Devices::Gazebo::Link, as: "#{l_name}_link", using: link_driver_m).
-                        doc("Gazebp: state of the #{l.name} link of #{model.name}").
+                    device(CommonModels::Devices::Gazebo::Link, as: device_name, using: link_driver_m).
+                        doc("Gazebo: state of the #{l.name} link of #{sdf_model.name}").
                         advanced
                 end
-                model.each_sensor do |s|
-                    s_name = normalize_name(s.name)
-                    if device = sensors_to_device(s, "#{s_name}_sensor", s.parent.full_name)
+                sdf_model.each_sensor do |s|
+                    device_name = "#{normalize_name(s.name)}_sensor"
+                    if prefix_device_with_name
+                        device_name = "#{normalize_name(name)}_#{device_name}"
+                    end
+                    if device = sensors_to_device(s, device_name, s.parent.full_name)
                         if period = s.update_period
                             device.period(period)
                         end
-                        device.doc "Gazebo: #{s.name} sensor of #{model.name}"
-                        device.sdf(s).prefer_deployed_tasks("#{deployment_prefix}:#{name}:#{s_name}")
+                        device.doc "Gazebo: #{s.name} sensor of #{sdf_model.full_name}"
+
+                        deployment_name = root_device.to_instance_requirements.deployment_hints.first
+                        device.sdf(s).
+                            prefer_deployed_tasks("#{deployment_name}:#{normalize_name(s.name)}")
                     else
                         RockGazebo.warn "Robot#load_gazebo: don't know how to handle sensor #{s.full_name} of type #{s.type}"
                     end

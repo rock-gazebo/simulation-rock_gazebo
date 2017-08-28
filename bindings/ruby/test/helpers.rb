@@ -7,6 +7,7 @@ module Helpers
     def setup
         Orocos.initialize if !Orocos.initialized?
         @gazebo_output = Tempfile.open 'rock_gazebo'
+        SDF::XML.model_path = [File.expand_path('models', __dir__)]
     end
 
     def teardown
@@ -72,4 +73,6 @@ module Helpers
 end
 
 
-
+class Minitest::Test
+    include Helpers
+end

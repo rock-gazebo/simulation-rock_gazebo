@@ -1,0 +1,8 @@
+<?xml version="1.0" ?>
+<sdf version="1.5">
+  <model name="simple test model">
+      <link name="link">
+          <sensor name="g" type="gps" />
+      </link>
+  </model>
+</sdf>

@@ -66,7 +66,7 @@ module RockGazebo
             end
 
             def self.world_from_path(path, world_name: nil)
-                worlds = ::SDF::Root.load(path).each_world.to_a
+                worlds = ::SDF::Root.load(path, flatten: false).each_world.to_a
                 if world_name
                     world = worlds.find { |w| w.name == world_name }
                     if !world
