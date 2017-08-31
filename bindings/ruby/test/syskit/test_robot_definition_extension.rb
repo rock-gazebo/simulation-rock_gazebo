@@ -55,7 +55,7 @@ module RockGazebo
                     assert_equal "included_model_source", transform.from
                     assert_equal "included_model_target", transform.to
 
-                    assert_equal "test::attachment::included_model",
+                    assert_equal "attachment::included_model",
                         submodel_driver_m.frame_mappings['included_model_source']
                     assert_equal "world",
                         submodel_driver_m.frame_mappings['included_model_target']
@@ -90,7 +90,7 @@ module RockGazebo
                     end
 
                     it "sets up the transforms" do
-                        assert_equal "test::included_model",
+                        assert_equal "included_model",
                             @device.frame_transform.from
                         assert_equal "world",
                             @device.frame_transform.to
@@ -117,7 +117,7 @@ module RockGazebo
                         assert_equal "link_source", transform.from
                         assert_equal "link_target", transform.to
 
-                        assert_equal "test::included_model::link",
+                        assert_equal "included_model::link",
                             link_driver_m.frame_mappings['link_source']
                     end
 
@@ -132,7 +132,7 @@ module RockGazebo
                         transform = driver_m.find_transform_of_port(
                             driver_m.position_samples_port)
 
-                        assert_equal "test::included_model::link",
+                        assert_equal "included_model::link",
                             device.frame_transform.from
                         assert_equal "world",
                             device.frame_transform.to
@@ -152,7 +152,7 @@ module RockGazebo
                         link_driver_m = device.to_instance_requirements
                         assert_equal ['gazebo:included_model'],
                             link_driver_m.deployment_hints.to_a
-                        assert_equal "test::included_model::link",
+                        assert_equal "included_model::link",
                             link_driver_m.frame_mappings['link_source']
                         assert_equal "link_source", transform.from
                         assert_equal "link_target", transform.to
@@ -164,7 +164,7 @@ module RockGazebo
 
                         assert_equal ['gazebo:included_model:g'],
                             sensor_driver_m.deployment_hints.to_a
-                        assert_equal "test::included_model::link",
+                        assert_equal "included_model::link",
                             device.frame_transform.from
                         assert_equal "world",
                             device.frame_transform.to
@@ -210,7 +210,7 @@ module RockGazebo
                 it "defines a device that exposes the submodel" do
                     device = @robot_model.find_device('renamed_model')
                     submodel_driver_m = device.to_instance_requirements
-                    assert_equal "test::attachment::included_model",
+                    assert_equal "included_model",
                         submodel_driver_m.frame_mappings['renamed_model_source']
                 end
 
@@ -224,7 +224,7 @@ module RockGazebo
 
                     assert_equal ['gazebo:attachment'],
                         link_driver_m.deployment_hints.to_a
-                    assert_equal "test::attachment::included_model::link",
+                    assert_equal "included_model::link",
                         link_driver_m.frame_mappings['included_model_link_source']
                     assert_equal "included_model_link_source", transform.from
                     assert_equal "included_model_link_target", transform.to
@@ -236,7 +236,7 @@ module RockGazebo
 
                     assert_equal ['gazebo:attachment:g'],
                         sensor_driver_m.deployment_hints.to_a
-                    assert_equal "test::attachment::included_model::link",
+                    assert_equal "attachment::included_model::link",
                         device.frame_transform.from
                     assert_equal "world",
                         device.frame_transform.to

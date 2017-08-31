@@ -85,20 +85,64 @@ module RockGazebo
                 nil
             end
 
+            def create_frame_mappings_for_used_model(model)
+                @link_frame_names ||= Hash.new
+                @link_frame_names[model] = model.name
+                model.each_link_with_name do |l, l_name|
+                    @link_frame_names[l] = "#{model.name}::#{l.full_name(root: model)}"
+                end
+            end
+
+            def link_frame_name(sdf)
+                @link_frame_names ||= Hash.new
+                @link_frame_names[sdf] ||= sdf.full_name(root: resolve_enclosing_world(sdf))
+            end
+
             def define_submodel_device(name, enclosing_device, actual_sdf_model)
+                enclosing_world = resolve_enclosing_world(actual_sdf_model)
                 normalized_name = normalize_name(name)
                 submodel_driver_m = OroGen::RockGazebo::ModelTask.specialize
                 driver_srv = submodel_driver_m.require_dynamic_service(
                     'submodel_export', as: normalized_name, frame_basename: normalized_name)
+
+                link_frame = link_frame_name(actual_sdf_model)
+
                 submodel_driver_m = submodel_driver_m.to_instance_requirements.
                     prefer_deployed_tasks(*enclosing_device.to_instance_requirements.deployment_hints).
                     with_arguments(model_dev: enclosing_device).
-                    use_frames("#{normalized_name}_source" => "#{actual_sdf_model.full_name}",
+                    use_frames("#{normalized_name}_source" => link_frame,
                                "#{normalized_name}_target" => 'world').
                     select_service(driver_srv)
                 device(CommonModels::Devices::Gazebo::Model, as: normalized_name, using: submodel_driver_m).
                     doc("Gazebo: model #{name} inside #{enclosing_device.sdf.full_name}").
+                    frame_transform(link_frame => 'world').
                     advanced
+            end
+
+            # @api private
+            #
+            # Find the toplevel model that contains the given one
+            #
+            # @return [Model] the enclosing model. Might be the original model
+            #   if it is toplevel.
+            def resolve_enclosing_model(model)
+                while model.parent.kind_of?(::SDF::Model)
+                    model = model.parent
+                end
+                model
+            end
+
+            # @api private
+            #
+            # Find the world that contains the given model
+            #
+            # @return [World,nil] the enclosing world, or nil if the model is
+            #   not included in one
+            def resolve_enclosing_world(node)
+                while node && !node.kind_of?(::SDF::World)
+                    node = node.parent
+                end
+                node
             end
 
             # Create device information that models how the rock-gazebo plugin
@@ -124,32 +168,34 @@ module RockGazebo
             #   generates a deprecation warning. Setting it to true ensures that
             #   the device names stay the same regardless of the SDF world it's
             #   built in.
-            # @return [void]
+            # @return [Syskit::Robot::Device] the device that represents the model
             # @raise [ArgumentError] if models does not contain robot_model
             def load_gazebo(model, deployment_prefix, name: model.name, prefix_device_with_name: false)
-                enclosing_model = model
-                while enclosing_model.parent.kind_of?(::SDF::Model)
-                    enclosing_model = enclosing_model.parent
-                end
+                enclosing_model = resolve_enclosing_model(model)
 
                 if enclosing_model != model
+                    create_frame_mappings_for_used_model(model)
                     enclosing_device = expose_gazebo_model(enclosing_model, deployment_prefix, device_name: enclosing_model.name)
-                    define_submodel_device(name, enclosing_device, model)
+                    model_device = define_submodel_device(name, enclosing_device, model)
                     prefix_device_with_name = true
                 else
                     enclosing_device = expose_gazebo_model(enclosing_model, deployment_prefix, device_name: name)
+                    model_device = enclosing_device
                     enclosing_device.advanced = false
                 end
                 if !prefix_device_with_name
                     Roby.warn_deprecated <<-EOMSG
-The link naming scheme in #use_sdf_model will change from using the link name as device name
-                         to prefixing it with the name given to #use_sdf_model (which defaults to the model name itself)
-                         set the prefix_device_with_name: option to true to enable the new behavior and remove this warning
-                         This warning will become an error before the functionality completely disappears
+
+                         The link naming scheme in #use_sdf_model and #use_gazebo_model will change from using the link
+                         name as device name to prefixing it with the name given to #use_sdf_model (which defaults to the
+                         model name itself) set the prefix_device_with_name: option to true to enable the new behavior
+                         and remove this warning This warning will become an error before the functionality completely
+                         disappears
                     EOMSG
                 end
                 load_gazebo_robot_model(model, enclosing_device, name: name,
                     prefix_device_with_name: prefix_device_with_name)
+                model_device
             end
 
             # @api private
@@ -161,7 +207,7 @@ The link naming scheme in #use_sdf_model will change from using the link name as
                 device(CommonModels::Devices::Gazebo::Model, as: device_name,
                        using: OroGen::RockGazebo::ModelTask).
                        prefer_deployed_tasks("#{deployment_prefix}:#{normalize_name(sdf.name)}").
-                       frame_transform(sdf.full_name => 'world').
+                       frame_transform(link_frame_name(sdf) => 'world').
                        advanced.
                        sdf(sdf).
                        doc("Gazebo: the #{sdf.name} model")
@@ -178,15 +224,18 @@ The link naming scheme in #use_sdf_model will change from using the link name as
             #
             # Define devices for all links and sensors in the model
             def load_gazebo_robot_model(sdf_model, root_device, name: sdf_model.name, prefix_device_with_name: true)
+                world = resolve_enclosing_world(sdf_model)
                 if prefix = sdf_model.full_name(root: root_device.sdf)
                     frame_prefix = "#{normalize_name(prefix)}_"
                 end
-                sdf_model.each_link do |l|
-                    device_name    = "#{normalize_name(l.name)}_link"
+                sdf_model.each_link_with_name do |l, l_name|
+                    device_name    = "#{normalize_name(l_name)}_link"
                     if prefix_device_with_name
                         device_name = "#{normalize_name(name)}_#{device_name}"
                     end
                     frame_basename = "#{frame_prefix}#{normalize_name(l.name)}"
+
+                    link_frame = link_frame_name(l)
 
                     link_driver_m = OroGen::RockGazebo::ModelTask.specialize
                     driver_srv = link_driver_m.require_dynamic_service(
@@ -194,11 +243,12 @@ The link naming scheme in #use_sdf_model will change from using the link name as
                     link_driver_m = link_driver_m.to_instance_requirements.
                         prefer_deployed_tasks(*root_device.to_instance_requirements.deployment_hints).
                         with_arguments(model_dev: root_device).
-                        use_frames("#{frame_basename}_source" => l.full_name,
+                        use_frames("#{frame_basename}_source" => link_frame,
                                    "#{frame_basename}_target" => 'world').
                         select_service(driver_srv)
                     device(CommonModels::Devices::Gazebo::Link, as: device_name, using: link_driver_m).
                         doc("Gazebo: state of the #{l.name} link of #{sdf_model.name}").
+                        frame_transform(link_frame => 'world').
                         advanced
                 end
                 sdf_model.each_sensor do |s|
@@ -206,7 +256,7 @@ The link naming scheme in #use_sdf_model will change from using the link name as
                     if prefix_device_with_name
                         device_name = "#{normalize_name(name)}_#{device_name}"
                     end
-                    if device = sensors_to_device(s, device_name, s.parent.full_name)
+                    if device = sensors_to_device(s, device_name, link_frame_name(s.parent))
                         if period = s.update_period
                             device.period(period)
                         end
