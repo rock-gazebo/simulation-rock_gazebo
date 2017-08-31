@@ -109,6 +109,31 @@ module RockGazebo
                     assert transform.rotation.approx?(Eigen::Quaternion.Identity)
                 end
             end
+
+            describe "#use_gazebo_world" do
+                before do
+                    Conf.sdf.load_sdf expand_fixture_world('attached_simple_model.world')
+                end
+
+                it "calls #use_sdf_world" do
+                    flexmock(@profile).should_receive(:use_sdf_world).once.pass_thru
+                    @profile.use_gazebo_world
+                end
+                it "exports the other models from the world but not their links" do
+                    @profile.use_gazebo_world
+                    assert @profile.robot.has_device?('other_model')
+                end
+                it "does not export the other model's links" do
+                    @profile.use_gazebo_world
+                    refute @profile.robot.has_device?('l')
+                    refute @profile.robot.has_device?('other_model_l')
+                end
+                it "does not re-exports the model passed to #use_gazebo_model" do
+                    @profile.use_gazebo_model 'model://simple_model', as: 'included_model',
+                        prefix_device_with_name: true, use_world: false
+                    @profile.use_gazebo_world
+                end
+            end
         end
     end
 end

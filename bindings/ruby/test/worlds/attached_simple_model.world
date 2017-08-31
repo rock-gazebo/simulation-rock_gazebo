@@ -15,6 +15,10 @@
                 <child>included_model::link</child>
             </joint>
         </model>
+
+        <model name="other_model">
+            <link name="l" />
+        </model>
     </world>
 </sdf>
 
