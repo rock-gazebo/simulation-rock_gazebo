@@ -30,13 +30,24 @@ module RockGazebo
                     if File.file?(model_sdf = File.join(full_path, 'model.sdf'))
                         full_path = model_sdf
                     else
-                        raise ArgumentError, "#{path} cannot be resolved to a valid gazebo world"
+                        raise ArgumentError, "#{path} cannot be resolved to a SDF file"
                     end
                 end
                 ::SDF::XML.model_path = Rock::Gazebo.model_path
                 world = ConfigurationExtension.world_from_path(full_path, world_name: world_name)
                 @world_file_path = full_path
+                @sdf = world.parent
                 @world = world
+            end
+
+            # Find all the models that have been included in the loaded world
+            #
+            # @param [String] model_name either a model:// URI or the full path
+            #   to the model's SDF file.
+            # @return [Array<Model>] the list of MOdel objects, included in
+            #   {#world}, that are the expected model
+            def find_all_included_models(model_name)
+                @sdf.find_all_included_models(model_name)
             end
 
             # Force-select the UTM zone that should be used to compute

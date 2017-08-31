@@ -7,7 +7,7 @@ module Helpers
     def setup
         Orocos.initialize if !Orocos.initialized?
         @gazebo_output = Tempfile.open 'rock_gazebo'
-        SDF::XML.model_path = [File.expand_path('models', __dir__)]
+        Rock::Gazebo.model_path = [File.expand_path('models', __dir__)]
     end
 
     def teardown
@@ -29,6 +29,11 @@ module Helpers
     def expand_fixture_world(path)
         fixture_world_dir = File.expand_path('worlds', __dir__)
         return File.expand_path(path, fixture_world_dir)
+    end
+
+    def expand_fixture_model(name)
+        File.expand_path(File.join(name, 'model.sdf'),
+                         File.join(__dir__, 'models'))
     end
  
     def gzserver(world_file, expected_task_name, timeout: 10)

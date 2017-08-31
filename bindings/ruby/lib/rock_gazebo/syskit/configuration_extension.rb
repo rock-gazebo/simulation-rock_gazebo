@@ -65,6 +65,18 @@ module RockGazebo
                 configured_deployment
             end
 
+            # @api private
+            #
+            # Resolves a world from a SDF file, which may have more than one
+            #
+            # @param [String] path path to the world file
+            # @param [String] world_name if not nil, the expected world name
+            # @return [World]
+            # @raise ArgumentError if the SDF file does not define a world
+            # @raise ArgumentError if the SDF file has more than one world and
+            #   world_name is not set
+            # @raise ArgumentError if the SDF file has more than one world and
+            #   none match the name provided as world_name
             def self.world_from_path(path, world_name: nil)
                 worlds = ::SDF::Root.load(path, flatten: false).each_world.to_a
                 if world_name

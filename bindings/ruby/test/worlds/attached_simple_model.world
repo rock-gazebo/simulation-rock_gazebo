@@ -10,6 +10,10 @@
                 <parent>world</parent>
                 <child>included_model::link</child>
             </joint>
+            <joint name="attach_to_parent" type="fixed">
+                <parent>in_attachment</parent>
+                <child>included_model::link</child>
+            </joint>
         </model>
     </world>
 </sdf>
