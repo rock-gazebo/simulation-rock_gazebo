@@ -104,6 +104,12 @@ module RockGazebo
                             @robot_sdf, 'gazebo', name: 'renamed_model')
                     end
 
+                    it "sets up the device transform on the link device" do
+                        device = @robot_model.find_device('link_link')
+                        assert_equal 'included_model::link', device.frame_transform.from
+                        assert_equal 'world', device.frame_transform.to
+                    end
+
                     it "exposes the links from the model but does not prefix them with the model name" do
                         device = @robot_model.find_device('link_link')
                         link_driver_m = device.to_instance_requirements
@@ -143,6 +149,12 @@ module RockGazebo
                     before do
                         @robot_model.load_gazebo(
                             @robot_sdf, 'gazebo', name: 'renamed_model', prefix_device_with_name: true)
+                    end
+
+                    it "sets up the device transform on the link device" do
+                        device = @robot_model.find_device('renamed_model_link_link')
+                        assert_equal 'included_model::link', device.frame_transform.from
+                        assert_equal 'world', device.frame_transform.to
                     end
 
                     it "exposes the links from the model" do
@@ -207,6 +219,12 @@ module RockGazebo
                     assert @robot_model.find_device('attachment')
                 end
 
+                it "sets up the device transform on the submodel device" do
+                    device = @robot_model.find_device('renamed_model')
+                    assert_equal 'included_model', device.frame_transform.from
+                    assert_equal 'world', device.frame_transform.to
+                end
+
                 it "defines a device that exposes the submodel" do
                     device = @robot_model.find_device('renamed_model')
                     submodel_driver_m = device.to_instance_requirements
@@ -216,6 +234,12 @@ module RockGazebo
 
                 it "ignores the links from the enclosing model" do
                     refute @robot_model.find_device('attachment_in_attachment_link')
+                end
+
+                it "sets up the transforms on the submodel's links" do
+                    device, _  = common_link_export_behavior
+                    assert_equal 'included_model::link', device.frame_transform.from
+                    assert_equal 'world', device.frame_transform.to
                 end
 
                 it "exposes the links from the submodel" do
@@ -230,6 +254,13 @@ module RockGazebo
                     assert_equal "included_model_link_target", transform.to
                 end
 
+                it "sets up the transforms on the submodel's sensors" do
+                    device, _  = common_sensor_export_behavior
+                    assert_equal "included_model::link",
+                        device.frame_transform.from
+                    assert_equal "world",
+                        device.frame_transform.to
+                end
                 it "exposes the sensors from the submodel" do
                     device, sensor_driver_m, driver_m, transform =
                         common_sensor_export_behavior
