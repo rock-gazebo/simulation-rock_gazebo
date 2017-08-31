@@ -184,14 +184,14 @@ module RockGazebo
                 end
             end
 
-            def common_link_export_behavior
-                device = @robot_model.find_device('renamed_model_link_link')
+            def common_link_export_behavior(link_name = "link")
+                device = @robot_model.find_device("renamed_model_#{link_name}_link")
                 link_driver_m = device.to_instance_requirements
                 driver_m = link_driver_m.to_component_model
-                assert_equal driver_m.renamed_model_link_link_port,
-                    link_driver_m.link_state_samples_port.to_component_port
-                transform = driver_m.find_transform_of_port(
-                    driver_m.renamed_model_link_link_port)
+
+                port = driver_m.find_port("renamed_model_#{link_name}_link")
+                assert_equal port, link_driver_m.link_state_samples_port.to_component_port
+                transform = driver_m.find_transform_of_port(port)
                 return device, link_driver_m, driver_m, transform
             end
             
@@ -261,6 +261,43 @@ module RockGazebo
                     assert_equal "world",
                         device.frame_transform.to
                 end
+
+                it "exposes the sensors from the submodel" do
+                    device, sensor_driver_m, driver_m, transform =
+                        common_sensor_export_behavior
+
+                    assert_equal ['gazebo:attachment:g'],
+                        sensor_driver_m.deployment_hints.to_a
+                end
+            end
+
+            describe "model containing another model" do
+                before do
+                    root = ::SDF::Root.load expand_fixture_world('attached_simple_model.world'), flatten: false
+                    @world = root.each_world.first
+                    @robot_sdf = @world.each_model.first
+                    @robot_model.load_gazebo(
+                        @robot_sdf, 'gazebo', name: 'renamed_model', prefix_device_with_name: true)
+                end
+
+                it "sets up the transforms on the submodel's links" do
+                    device, _  = common_link_export_behavior 'included_model_link'
+                    assert_equal 'attachment::included_model::link', device.frame_transform.from
+                    assert_equal 'world', device.frame_transform.to
+                end
+
+                it "exposes the links from the submodel" do
+                    device, link_driver_m, driver_m, transform =
+                        common_link_export_behavior 'included_model_link'
+
+                    assert_equal ['gazebo:attachment'],
+                        link_driver_m.deployment_hints.to_a
+                    assert_equal "attachment::included_model::link",
+                        link_driver_m.frame_mappings['link_source']
+                    assert_equal "link_source", transform.from
+                    assert_equal "link_target", transform.to
+                end
+
                 it "exposes the sensors from the submodel" do
                     device, sensor_driver_m, driver_m, transform =
                         common_sensor_export_behavior
