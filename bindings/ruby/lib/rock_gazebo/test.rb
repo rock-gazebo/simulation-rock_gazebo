@@ -13,7 +13,7 @@ if ENV['TEST_ENABLE_COVERAGE'] == '1'
     end
 end
 
-require 'flexmock/test_unit'
+require 'flexmock/minitest'
 require 'minitest/spec'
 
 if ENV['TEST_ENABLE_PRY'] != '0'
@@ -36,19 +36,11 @@ module RockGazebo
     #   end
     #
     module SelfTest
-        if defined? FlexMock
-            include FlexMock::ArgumentTypes
-            include FlexMock::MockContainer
-        end
-
         def setup
             # Setup code for all the tests
         end
 
         def teardown
-            if defined? FlexMock
-                flexmock_teardown
-            end
             super
             # Teardown code for all the tests
         end
