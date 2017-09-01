@@ -105,7 +105,11 @@ module RockGazebo
                 driver_srv = submodel_driver_m.require_dynamic_service(
                     'submodel_export', as: normalized_name, frame_basename: normalized_name)
 
-                link_frame = link_frame_name(actual_sdf_model)
+                if root_link = actual_sdf_model.each_link.first
+                    link_frame = link_frame_name(root_link)
+                else
+                    raise ArgumentError, "cannot refer to a submodel that has no links"
+                end
 
                 submodel_driver_m = submodel_driver_m.to_instance_requirements.
                     prefer_deployed_tasks(*enclosing_device.to_instance_requirements.deployment_hints).

@@ -1,8 +1,13 @@
 <?xml version="1.0" ?>
 <sdf version="1.5">
   <model name="simple test model">
-      <link name="link">
+      <link name="root">
           <sensor name="g" type="gps" />
       </link>
+      <link name="child" />
+      <joint name="roo2child">
+          <parent>root</parent>
+          <child>child</child>
+      </joint>
   </model>
 </sdf>

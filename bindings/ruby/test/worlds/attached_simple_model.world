@@ -8,11 +8,11 @@
             </include>
             <joint name="attach_to_world" type="fixed">
                 <parent>world</parent>
-                <child>included_model::link</child>
+                <child>included_model::root</child>
             </joint>
             <joint name="attach_to_parent" type="fixed">
                 <parent>in_attachment</parent>
-                <child>included_model::link</child>
+                <child>included_model::root</child>
             </joint>
         </model>
 

@@ -55,7 +55,7 @@ module RockGazebo
                     assert_equal "included_model_source", transform.from
                     assert_equal "included_model_target", transform.to
 
-                    assert_equal "attachment::included_model",
+                    assert_equal "attachment::included_model::root",
                         submodel_driver_m.frame_mappings['included_model_source']
                     assert_equal "world",
                         submodel_driver_m.frame_mappings['included_model_target']
@@ -105,26 +105,26 @@ module RockGazebo
                     end
 
                     it "sets up the device transform on the link device" do
-                        device = @robot_model.find_device('link_link')
-                        assert_equal 'included_model::link', device.frame_transform.from
+                        device = @robot_model.find_device('child_link')
+                        assert_equal 'included_model::child', device.frame_transform.from
                         assert_equal 'world', device.frame_transform.to
                     end
 
                     it "exposes the links from the model but does not prefix them with the model name" do
-                        device = @robot_model.find_device('link_link')
+                        device = @robot_model.find_device('child_link')
                         link_driver_m = device.to_instance_requirements
                         driver_m = link_driver_m.to_component_model
                         assert_equal ['gazebo:included_model'],
                             link_driver_m.deployment_hints.to_a
-                        assert_equal driver_m.link_link_port,
+                        assert_equal driver_m.child_link_port,
                             link_driver_m.link_state_samples_port.to_component_port
                         transform = driver_m.find_transform_of_port(
-                            driver_m.link_link_port)
-                        assert_equal "link_source", transform.from
-                        assert_equal "link_target", transform.to
+                            driver_m.child_link_port)
+                        assert_equal "child_source", transform.from
+                        assert_equal "child_target", transform.to
 
-                        assert_equal "included_model::link",
-                            link_driver_m.frame_mappings['link_source']
+                        assert_equal "included_model::child",
+                            link_driver_m.frame_mappings['child_source']
                     end
 
                     it "exposes the sensors from the model but does not prefix them with the model name" do
@@ -138,7 +138,7 @@ module RockGazebo
                         transform = driver_m.find_transform_of_port(
                             driver_m.position_samples_port)
 
-                        assert_equal "included_model::link",
+                        assert_equal "included_model::root",
                             device.frame_transform.from
                         assert_equal "world",
                             device.frame_transform.to
@@ -152,8 +152,11 @@ module RockGazebo
                     end
 
                     it "sets up the device transform on the link device" do
-                        device = @robot_model.find_device('renamed_model_link_link')
-                        assert_equal 'included_model::link', device.frame_transform.from
+                        device = @robot_model.find_device('renamed_model_root_link')
+                        assert_equal 'included_model::root', device.frame_transform.from
+                        assert_equal 'world', device.frame_transform.to
+                        device = @robot_model.find_device('renamed_model_child_link')
+                        assert_equal 'included_model::child', device.frame_transform.from
                         assert_equal 'world', device.frame_transform.to
                     end
 
@@ -164,10 +167,10 @@ module RockGazebo
                         link_driver_m = device.to_instance_requirements
                         assert_equal ['gazebo:included_model'],
                             link_driver_m.deployment_hints.to_a
-                        assert_equal "included_model::link",
-                            link_driver_m.frame_mappings['link_source']
-                        assert_equal "link_source", transform.from
-                        assert_equal "link_target", transform.to
+                        assert_equal "included_model::child",
+                            link_driver_m.frame_mappings['child_source']
+                        assert_equal "child_source", transform.from
+                        assert_equal "child_target", transform.to
                     end
 
                     it "exposes the sensors from the model" do
@@ -176,7 +179,7 @@ module RockGazebo
 
                         assert_equal ['gazebo:included_model:g'],
                             sensor_driver_m.deployment_hints.to_a
-                        assert_equal "included_model::link",
+                        assert_equal "included_model::root",
                             device.frame_transform.from
                         assert_equal "world",
                             device.frame_transform.to
@@ -184,7 +187,7 @@ module RockGazebo
                 end
             end
 
-            def common_link_export_behavior(link_name = "link")
+            def common_link_export_behavior(link_name = "child")
                 device = @robot_model.find_device("renamed_model_#{link_name}_link")
                 link_driver_m = device.to_instance_requirements
                 driver_m = link_driver_m.to_component_model
@@ -219,16 +222,16 @@ module RockGazebo
                     assert @robot_model.find_device('attachment')
                 end
 
-                it "sets up the device transform on the submodel device" do
+                it "sets up the device transform on the submodel device, using the submodel's root link as root frame" do
                     device = @robot_model.find_device('renamed_model')
-                    assert_equal 'included_model', device.frame_transform.from
+                    assert_equal 'included_model::root', device.frame_transform.from
                     assert_equal 'world', device.frame_transform.to
                 end
 
                 it "defines a device that exposes the submodel" do
                     device = @robot_model.find_device('renamed_model')
                     submodel_driver_m = device.to_instance_requirements
-                    assert_equal "included_model",
+                    assert_equal "included_model::root",
                         submodel_driver_m.frame_mappings['renamed_model_source']
                 end
 
@@ -238,7 +241,7 @@ module RockGazebo
 
                 it "sets up the transforms on the submodel's links" do
                     device, _  = common_link_export_behavior
-                    assert_equal 'included_model::link', device.frame_transform.from
+                    assert_equal 'included_model::child', device.frame_transform.from
                     assert_equal 'world', device.frame_transform.to
                 end
 
@@ -248,15 +251,15 @@ module RockGazebo
 
                     assert_equal ['gazebo:attachment'],
                         link_driver_m.deployment_hints.to_a
-                    assert_equal "included_model::link",
-                        link_driver_m.frame_mappings['included_model_link_source']
-                    assert_equal "included_model_link_source", transform.from
-                    assert_equal "included_model_link_target", transform.to
+                    assert_equal "included_model::child",
+                        link_driver_m.frame_mappings['included_model_child_source']
+                    assert_equal "included_model_child_source", transform.from
+                    assert_equal "included_model_child_target", transform.to
                 end
 
                 it "sets up the transforms on the submodel's sensors" do
                     device, _  = common_sensor_export_behavior
-                    assert_equal "included_model::link",
+                    assert_equal "included_model::root",
                         device.frame_transform.from
                     assert_equal "world",
                         device.frame_transform.to
@@ -281,21 +284,21 @@ module RockGazebo
                 end
 
                 it "sets up the transforms on the submodel's links" do
-                    device, _  = common_link_export_behavior 'included_model_link'
-                    assert_equal 'attachment::included_model::link', device.frame_transform.from
+                    device, _  = common_link_export_behavior 'included_model_child'
+                    assert_equal 'attachment::included_model::child', device.frame_transform.from
                     assert_equal 'world', device.frame_transform.to
                 end
 
                 it "exposes the links from the submodel" do
                     device, link_driver_m, driver_m, transform =
-                        common_link_export_behavior 'included_model_link'
+                        common_link_export_behavior 'included_model_child'
 
                     assert_equal ['gazebo:attachment'],
                         link_driver_m.deployment_hints.to_a
-                    assert_equal "attachment::included_model::link",
-                        link_driver_m.frame_mappings['link_source']
-                    assert_equal "link_source", transform.from
-                    assert_equal "link_target", transform.to
+                    assert_equal "attachment::included_model::child",
+                        link_driver_m.frame_mappings['child_source']
+                    assert_equal "child_source", transform.from
+                    assert_equal "child_target", transform.to
                 end
 
                 it "exposes the sensors from the submodel" do
@@ -304,7 +307,7 @@ module RockGazebo
 
                     assert_equal ['gazebo:attachment:g'],
                         sensor_driver_m.deployment_hints.to_a
-                    assert_equal "attachment::included_model::link",
+                    assert_equal "attachment::included_model::root",
                         device.frame_transform.from
                     assert_equal "world",
                         device.frame_transform.to
