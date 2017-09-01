@@ -10,6 +10,7 @@ module RockGazebo
                     Conf.sdf.world_path = world_path
                 end
                 Conf.gazebo.use_sim_time = false
+                Conf.gazebo.localhost = true
             end
 
             ::Robot.clear_models do
