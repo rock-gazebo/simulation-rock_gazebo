@@ -23,8 +23,8 @@ module RockGazebo
                     _, resolved_paths = Rock::Gazebo.resolve_worldfiles_and_models_arguments([File.join(*path)])
                     full_path = resolved_paths.first
                     if !File.file?(full_path)
-                        if File.file?(model_sdf = File.join(full_path, 'model.sdf'))
-                            full_path = model_sdf
+                        if File.file?(File.join(full_path, 'model.config'))
+                            full_path = ::SDF::XML.model_path_of(full_path)
                         else
                             raise ArgumentError, "#{full_path} cannot be resolved to a valid SDF file"
                         end
