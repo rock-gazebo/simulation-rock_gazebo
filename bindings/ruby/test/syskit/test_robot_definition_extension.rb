@@ -215,7 +215,8 @@ module RockGazebo
                     @world = root.each_world.first
                     @robot_sdf = @world.each_model.first.each_model.first
                     @robot_model.load_gazebo(
-                        @robot_sdf, 'gazebo', name: 'renamed_model')
+                        @robot_sdf, 'gazebo', name: 'renamed_model',
+                        prefix_device_with_name: true)
                 end
 
                 it "defines the enclosing device" do

@@ -177,16 +177,6 @@ module RockGazebo
             def load_gazebo(model, deployment_prefix, name: model.name, prefix_device_with_name: false)
                 enclosing_model = resolve_enclosing_model(model)
 
-                if enclosing_model != model
-                    create_frame_mappings_for_used_model(model)
-                    enclosing_device = expose_gazebo_model(enclosing_model, deployment_prefix, device_name: enclosing_model.name)
-                    model_device = define_submodel_device(name, enclosing_device, model)
-                    prefix_device_with_name = true
-                else
-                    enclosing_device = expose_gazebo_model(enclosing_model, deployment_prefix, device_name: name)
-                    model_device = enclosing_device
-                    enclosing_device.advanced = false
-                end
                 if !prefix_device_with_name
                     Roby.warn_deprecated <<-EOMSG
 
@@ -196,6 +186,17 @@ module RockGazebo
                          and remove this warning This warning will become an error before the functionality completely
                          disappears
                     EOMSG
+                end
+
+                if enclosing_model != model
+                    create_frame_mappings_for_used_model(model)
+                    enclosing_device = expose_gazebo_model(enclosing_model, deployment_prefix, device_name: enclosing_model.name)
+                    model_device = define_submodel_device(name, enclosing_device, model)
+                    prefix_device_with_name = true
+                else
+                    enclosing_device = expose_gazebo_model(enclosing_model, deployment_prefix, device_name: name)
+                    model_device = enclosing_device
+                    enclosing_device.advanced = false
                 end
                 load_gazebo_robot_model(model, enclosing_device, name: name,
                     prefix_device_with_name: prefix_device_with_name)
