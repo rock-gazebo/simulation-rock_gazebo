@@ -6,13 +6,6 @@ describe "The Rock/Gazebo plugin" do
 
     describe "Models" do
         attr_reader :task
-        before do
-            @task = gzserver 'model.world', '/gazebo:w:m'
-        end
-
-        it "exports the model using a ModelTask" do
-            assert_equal "rock_gazebo::ModelTask", task.model.name
-        end
 
         def configure_start_and_read_one_sample(port_name)
             task.configure
@@ -21,7 +14,21 @@ describe "The Rock/Gazebo plugin" do
             assert_has_one_new_sample reader
         end
 
-        describe "the pose export" do
+        describe "creation by the plugin" do
+            before do
+                @task = gzserver 'model.world', '/gazebo:w:m'
+            end
+
+            it "exports the model using a ModelTask" do
+                assert_equal "rock_gazebo::ModelTask", task.model.name
+            end
+        end
+
+        describe "the pose samples" do
+            before do
+                @task = gzserver 'model.world', '/gazebo:w:m'
+            end
+
             it "exports the model's pose" do
                 pose = configure_start_and_read_one_sample 'pose_samples'
                 assert Eigen::Vector3.new(1, 2, 3).approx?(pose.position)
@@ -51,8 +58,117 @@ describe "The Rock/Gazebo plugin" do
             end
         end
 
+        describe "the model's joints" do
+            before do
+                @task = gzserver 'joints_export.world', '/gazebo:w:m'
+            end
+
+            it "exports the state of all the non-fixed joints" do
+                joints = configure_start_and_read_one_sample 'joints_samples'
+                assert_equal ['m::j_00', 'm::j_01', 'm::child::j_00', 'm::child::j_01'], joints.names
+                assert_includes (0..0.1), joints.elements[0].position
+                assert_includes (0.2..0.3), joints.elements[1].position
+                assert_includes (0.4..0.5), joints.elements[2].position
+                assert_includes (0.6..0.7), joints.elements[3].position
+            end
+
+            it "allows commanding the joints" do
+                cmd = Types.base.samples.Joints.new(
+                    elements: [Types.base.JointState.Effort(-1),
+                               Types.base.JointState.Effort(1),
+                               Types.base.JointState.Effort(-1),
+                               Types.base.JointState.Effort(1)])
+
+                task.configure
+                task.start
+                reader = task.port('joints_samples').reader
+                writer = task.port('joints_cmd').writer
+                poll_until do
+                    writer.write(cmd)
+                    if joints = reader.read_new
+                        (-0.01..0.01).include?(joints.elements[0].position) &&
+                            (0.29..0.31).include?(joints.elements[1].position) &&
+                            (0.39..0.41).include?(joints.elements[2].position) &&
+                            (0.69..0.71).include?(joints.elements[3].position)
+                    end
+                end
+            end
+        end
+
+        describe "the joints export" do
+            before do
+                @task = gzserver 'joints_export.world', '/gazebo:w:m'
+            end
+
+            it "exports a set of joints in the specified order" do
+                task.exported_joints = [Types.rock_gazebo.JointExport.new(
+                    port_name: 'test', prefix: '', joints: ['m::child::j_00', 'm::j_01'])]
+                joints = configure_start_and_read_one_sample 'test_samples'
+                assert_equal ['m::child::j_00', 'm::j_01'], joints.names
+                assert_includes (0.4..0.5), joints.elements[0].position
+                assert_includes (0.2..0.3), joints.elements[1].position
+            end
+
+            it "gives command access to a subset of the joints" do
+                cmd = Types.base.samples.Joints.new(
+                    elements: [Types.base.JointState.Effort(-1),
+                               Types.base.JointState.Effort(1)])
+
+                task.exported_joints = [Types.rock_gazebo.JointExport.new(
+                    port_name: 'test', prefix: '', joints: ['m::child::j_00', 'm::j_01'])]
+
+                task.configure
+                task.start
+                reader = task.port('test_samples').reader
+                writer = task.port('test_cmd').writer
+                poll_until do
+                    writer.write(cmd)
+                    if joints = reader.read_new
+                        (0.39..0.41).include?(joints.elements[0].position) &&
+                            (0.29..0.31).include?(joints.elements[1].position)
+                    end
+                end
+            end
+            
+            describe "the prefix settting" do
+                it "raises if a joint name does not start with the requested prefix" do
+                    task.exported_joints = [Types.rock_gazebo.JointExport.new(
+                        port_name: 'test', prefix: 'm::child::', joints: ['m::child::j_00', 'm::j_01'])]
+                    assert_raises(Orocos::StateTransitionFailed) do
+                        task.configure
+                    end
+                end
+                it "allows to remove a scope prefix from the joint names" do
+                    task.exported_joints = [Types.rock_gazebo.JointExport.new(
+                        port_name: 'test', prefix: 'm::', joints: ['m::child::j_00', 'm::j_01'])]
+                    joints = configure_start_and_read_one_sample 'test_samples'
+                    assert_equal ['child::j_00', 'j_01'], joints.names
+                    assert_includes (0.4..0.5), joints.elements[0].position
+                    assert_includes (0.2..0.3), joints.elements[1].position
+                end
+            end
+
+            it "removes the ports on cleanup" do
+                task.exported_joints = [Types.rock_gazebo.JointExport.new(
+                    port_name: 'test', prefix: '', joints: ['m::child::j_00', 'm::j_01'])]
+                task.configure
+                task.cleanup
+                refute task.has_port?('test_cmd')
+                refute task.has_port?('test_samples')
+            end
+
+            it "fails to configure if a joint does not exist " do
+                task.exported_joints = [Types.rock_gazebo.JointExport.new(
+                    port_name: 'test', prefix: '', joints: ['does_not_exist', 'm::j_01'])]
+                assert_raises(Orocos::StateTransitionFailed) do
+                    task.configure
+                end
+            end
+        end
+
         describe "the link export" do
             before do
+                @task = gzserver 'model.world', '/gazebo:w:m'
             end
 
             it "exports a link's pose" do

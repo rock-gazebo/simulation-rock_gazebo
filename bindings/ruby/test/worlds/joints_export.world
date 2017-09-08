@@ -1,0 +1,73 @@
+<sdf version="1.4">
+<world name="w">
+    <model name="m">
+        <link name="root" />
+        <link name="00" />
+        <link name="01" />
+        <link name="02" />
+        <link name="child::00" />
+        <link name="child::01" />
+        <link name="child::02" />
+
+        <joint name="j_00" type="revolute">
+            <parent>root</parent>
+            <child>00</child>
+            <axis>
+                <xyz>1 0 0</xyz>
+                <limit>
+                    <lower>0</lower>
+                    <upper>0.1</upper>
+                </limit>
+            </axis>
+        </joint>
+
+        <joint name="j_01" type="revolute">
+            <parent>root</parent>
+            <child>01</child>
+            <axis>
+                <xyz>1 0 0</xyz>
+                <limit>
+                    <lower>0.2</lower>
+                    <upper>0.3</upper>
+                </limit>
+            </axis>
+        </joint>
+
+        <joint name="j_02" type="fixed">
+            <parent>root</parent>
+            <child>02</child>
+        </joint>
+
+        <joint name="child::j_00" type="revolute">
+            <parent>root</parent>
+            <child>child::00</child>
+            <axis>
+                <xyz>1 0 0</xyz>
+                <limit>
+                    <lower>0.4</lower>
+                    <upper>0.5</upper>
+                </limit>
+            </axis>
+        </joint>
+
+        <joint name="child::j_01" type="revolute">
+            <parent>root</parent>
+            <child>child::01</child>
+            <axis>
+                <xyz>1 0 0</xyz>
+                <limit>
+                    <lower>0.6</lower>
+                    <upper>0.7</upper>
+                </limit>
+            </axis>
+        </joint>
+
+        <joint name="child::j_02" type="fixed">
+            <parent>root</parent>
+            <child>child::02</child>
+        </joint>
+    </model>
+</world>
+</sdf>
+
+

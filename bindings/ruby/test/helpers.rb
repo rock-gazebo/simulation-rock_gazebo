@@ -75,6 +75,15 @@ module Helpers
             assert_in_delta expected.data[i], actual.data[i], delta, "element #{i} differs by more than #{delta}"
         end
     end
+
+    def poll_until(timeout: 5, period: 0.01, message: 'could not reach condition')
+        start = Time.now
+        while (Time.now - start) < timeout
+            return if yield
+            sleep(period)
+        end
+        flunk(message)
+    end
 end
 
 
