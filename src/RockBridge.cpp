@@ -1,5 +1,6 @@
 //====================================================================================== 
 #include "RockBridge.hpp"
+#include "Gazebo7Shims.hpp"
 
 #include <std/typekit/Plugin.hpp>
 #include <std/transports/corba/TransportPlugin.hpp>
@@ -142,7 +143,7 @@ void RockBridge::worldCreated(string const& worldName)
     setupTaskActivity(world_task);
 
     typedef physics::Model_V Model_V;
-    Model_V model_list = world->GetModels();
+    Model_V model_list = GzGet((*world), Models, ());
     for(Model_V::iterator model_it = model_list.begin(); model_it != model_list.end(); ++model_it)
     {
         gzmsg << "RockBridge: initializing model: "<< (*model_it)->GetName() << endl;
