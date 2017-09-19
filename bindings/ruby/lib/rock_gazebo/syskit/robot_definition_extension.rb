@@ -120,6 +120,7 @@ module RockGazebo
                 device(CommonModels::Devices::Gazebo::Model, as: normalized_name, using: submodel_driver_m).
                     doc("Gazebo: model #{name} inside #{enclosing_device.sdf.full_name}").
                     frame_transform(link_frame => 'world').
+                    sdf(actual_sdf_model).
                     advanced
             end
 

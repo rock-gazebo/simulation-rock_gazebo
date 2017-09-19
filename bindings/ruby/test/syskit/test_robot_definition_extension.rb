@@ -48,10 +48,10 @@ module RockGazebo
                     submodel_driver_m = device.to_instance_requirements
                         
                     driver_m = submodel_driver_m.to_component_model
-                    assert_equal driver_m.included_model_port,
+                    assert_equal driver_m.included_model_pose_samples_port,
                         submodel_driver_m.pose_samples_port.to_component_port
                     transform = driver_m.find_transform_of_port(
-                        driver_m.included_model_port)
+                        driver_m.included_model_pose_samples_port)
                     assert_equal "included_model_source", transform.from
                     assert_equal "included_model_target", transform.to
 
