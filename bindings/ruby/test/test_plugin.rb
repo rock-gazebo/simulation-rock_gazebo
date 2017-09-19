@@ -109,6 +109,14 @@ describe "The Rock/Gazebo plugin" do
                 assert_includes (0.199..0.301), joints.elements[1].position
             end
 
+            it "fails if the joint is given relative to the model" do
+                task.exported_joints = [Types.rock_gazebo.JointExport.new(
+                    port_name: 'test', prefix: '', joints: ['child::j_00'])]
+                assert_raises(Orocos::StateTransitionFailed) do
+                    task.configure
+                end
+            end
+
             it "gives command access to a subset of the joints" do
                 cmd = Types.base.samples.Joints.new(
                     elements: [Types.base.JointState.Effort(-1),
