@@ -167,114 +167,200 @@ describe "The Rock/Gazebo plugin" do
         end
 
         describe "the link export" do
-            before do
-                @task = gzserver 'model.world', '/gazebo:w:m'
-            end
+            describe "RBS export" do
+                before do
+                    @task = gzserver 'model.world', '/gazebo:w:m'
+                end
 
-            it "exports a link's pose" do
-                task.exported_links = [Types.rock_gazebo.LinkExport.new(
-                    port_name: 'test', source_link: 'l', target_link: 'root',
-                    port_period: Time.at(0))]
-                link_pose = configure_start_and_read_one_sample 'test'
-                assert Eigen::Vector3.new(2, 3, 4).approx?(link_pose.position)
-                assert Eigen::Quaternion.from_angle_axis(0.2, Eigen::Vector3.UnitZ).
-                    approx?(link_pose.orientation)
-            end
+                it "exports a link's pose" do
+                    task.exported_links = [Types.rock_gazebo.LinkExport.new(
+                        port_name: 'test', source_link: 'l', target_link: 'root',
+                        port_period: Time.at(0))]
+                    link_pose = configure_start_and_read_one_sample 'test'
+                    assert Eigen::Vector3.new(2, 3, 4).approx?(link_pose.position)
+                    assert Eigen::Quaternion.from_angle_axis(0.2, Eigen::Vector3.UnitZ).
+                        approx?(link_pose.orientation)
+                end
 
-            it "knows how to export a link in a nested model" do
-                task.exported_links = [Types.rock_gazebo.LinkExport.new(
-                    port_name: 'test', source_link: 'nested::l', target_link: 'root',
-                    port_period: Time.at(0))]
-                link_pose = configure_start_and_read_one_sample 'test'
-                assert Eigen::Vector3.new(3, 2, 1).approx?(link_pose.position)
-                assert Eigen::Quaternion.from_angle_axis(-0.2, Eigen::Vector3.UnitZ).
-                    approx?(link_pose.orientation)
-            end
+                it "uses the link names as frames by default" do
+                    task.exported_links = [Types.rock_gazebo.LinkExport.new(
+                        port_name: 'test', source_link: 'l', target_link: 'root',
+                        port_period: Time.at(0))]
+                    pose = configure_start_and_read_one_sample 'test'
+                    assert_equal 'l', pose.sourceFrame
+                    assert_equal 'root', pose.targetFrame
+                end
 
-            it "the pose's update period is controlled by the port_period parameter" do
-                task.exported_links = [Types.rock_gazebo.LinkExport.new(
-                    port_name: 'test', source_link: 'l', target_link: 'root',
-                    port_period: Time.at(0.1))]
-                task.configure
-                task.start
-                reader = task.test.reader
-                first_pose = assert_has_one_new_sample(reader)
-                second_pose = assert_has_one_new_sample(reader)
-                assert_in_delta(second_pose.time - first_pose.time, 0.1, 0.025)
-            end
+                it "allows to override the frame names" do
+                    task.exported_links = [Types.rock_gazebo.LinkExport.new(
+                        port_name: 'test', source_link: 'l', target_link: 'root',
+                        source_frame: 'src', target_frame: 'target',
+                        port_period: Time.at(0))]
+                    pose = configure_start_and_read_one_sample 'test'
+                    assert_equal 'src', pose.sourceFrame
+                    assert_equal 'target', pose.targetFrame
+                end
 
-            it "refuses to configure if the source link does not exist" do
-                task.exported_links = [Types.rock_gazebo.LinkExport.new(
-                    port_name: 'test', source_link: 'does_not_exist', target_link: 'root')]
-                assert_raises(Orocos::StateTransitionFailed) do
-                    task.configure
+                it "sets cov_position from the provided cov_position" do
+                    cov = matrix3_rand
+                    task.exported_links = [Types.rock_gazebo.LinkExport.new(
+                        port_name: 'test', source_link: 'l', target_link: 'root',
+                        cov_position: cov, port_period: Time.at(0))]
+                    pose = configure_start_and_read_one_sample 'test'
+                    assert_matrix3_in_delta cov, pose.cov_position, 1e-6
+                end
+
+                it "sets cov_orientation from the provided cov_orientation" do
+                    cov = matrix3_rand
+                    task.exported_links = [Types.rock_gazebo.LinkExport.new(
+                        port_name: 'test', source_link: 'l', target_link: 'root',
+                        cov_orientation: cov, port_period: Time.at(0))]
+                    pose = configure_start_and_read_one_sample 'test'
+                    assert_matrix3_in_delta cov, pose.cov_orientation, 1e-6
+                end
+
+                it "sets cov_velocity from the provided cov_velocity" do
+                    cov = matrix3_rand
+                    task.exported_links = [Types.rock_gazebo.LinkExport.new(
+                        port_name: 'test', source_link: 'l', target_link: 'root',
+                        cov_velocity: cov, port_period: Time.at(0))]
+                    pose = configure_start_and_read_one_sample 'test'
+                    assert_matrix3_in_delta cov, pose.cov_velocity, 1e-6
                 end
             end
 
-            it "refuses to configure if the target link does not exist" do
-                task.exported_links = [Types.rock_gazebo.LinkExport.new(
-                    port_name: 'test', source_link: 'l', target_link: 'does_not_exist')]
-                assert_raises(Orocos::StateTransitionFailed) do
-                    task.configure
+            describe "acceleration export" do
+                before do
+                    @task = gzserver 'freefall.world', '/gazebo:w:m'
+                end
+
+                it "exports a link's acceleration" do
+                    task.exported_links = [Types.rock_gazebo.LinkExport.new(
+                        port_name: 'test', source_link: 'l', target_link: 'root',
+                        port_period: Time.at(0))]
+                    link_acceleration = configure_start_and_read_one_sample 'test_acceleration'
+                    assert_in_delta 9.8, link_acceleration.acceleration.norm, 1e-3
                 end
             end
 
-            it "refuses to configure if the port is already in use" do
-                task.exported_links = [
-                    Types.rock_gazebo.LinkExport.new(
-                        port_name: 'test', source_link: 'l', target_link: 'root'),
-                    Types.rock_gazebo.LinkExport.new(
-                        port_name: 'test', source_link: 'l', target_link: 'root')
-                ]
-                assert_raises(Orocos::StateTransitionFailed) do
+            describe "wrench export" do
+                before do
+                    @task = gzserver 'wrench.world', '/gazebo:w:m'
+                end
+
+                it "allows to send a force command to its source link" do
+                    task.exported_links = [Types.rock_gazebo.LinkExport.new(
+                        port_name: 'test', source_link: 'leaf', target_link: 'root',
+                        port_period: Time.at(0))]
                     task.configure
+                    task.start
+                    wrench_w = task.port('test_wrench').writer
+                    joints_r = task.port('joints_samples').reader
+
+                    wrench = Types.base.samples.Wrench.new(
+                        time: Time.now,
+                        force: Eigen::Vector3.new(0, 1, 0),
+                        torque: Eigen::Vector3.new(0, 0, 0))
+
+                    100.times do
+                        wrench_w.write(wrench)
+                        sleep 0.01
+                    end
+
+                    joints = assert_has_one_new_sample joints_r
+                    root2middle = joints.elements[0].position
+                    assert(root2middle > 0.01, "expected the root2middle joint position to be greater than 0.01 radians, but it is #{root2middle}")
+                    middle2leaf = joints.elements[1].position
+                    assert(middle2leaf < -0.01, "expected the middle2leaf joint position to be lower than -0.01 radians, but it is #{middle2leaf}")
+                end
+
+                it "allows to send a torque command to its source link" do
+                    task.exported_links = [Types.rock_gazebo.LinkExport.new(
+                        port_name: 'test', source_link: 'middle', target_link: 'root',
+                        port_period: Time.at(0))]
+                    task.configure
+                    task.start
+                    wrench_w = task.port('test_wrench').writer
+                    joints_r = task.port('joints_samples').reader
+
+                    wrench = Types.base.samples.Wrench.new(
+                        time: Time.now,
+                        force: Eigen::Vector3.new(0, 0, 0),
+                        torque: Eigen::Vector3.new(0, 0, 1))
+
+                    100.times do
+                        wrench_w.write(wrench)
+                        sleep 0.01
+                    end
+
+                    joints = assert_has_one_new_sample joints_r
+                    root2middle = joints.elements[0].position
+                    assert(root2middle > 0.01, "expected the root2middle joint position to be greater than 0.01 radians, but it is #{root2middle}")
                 end
             end
 
-            it "uses the link names as frames by default" do
-                task.exported_links = [Types.rock_gazebo.LinkExport.new(
-                    port_name: 'test', source_link: 'l', target_link: 'root',
-                    port_period: Time.at(0))]
-                pose = configure_start_and_read_one_sample 'test'
-                assert_equal 'l', pose.sourceFrame
-                assert_equal 'root', pose.targetFrame
-            end
+            describe "common features" do
+                before do
+                    @task = gzserver 'model.world', '/gazebo:w:m'
+                end
 
-            it "allows to override the frame names" do
-                task.exported_links = [Types.rock_gazebo.LinkExport.new(
-                    port_name: 'test', source_link: 'l', target_link: 'root',
-                    source_frame: 'src', target_frame: 'target',
-                    port_period: Time.at(0))]
-                pose = configure_start_and_read_one_sample 'test'
-                assert_equal 'src', pose.sourceFrame
-                assert_equal 'target', pose.targetFrame
-            end
+                it "knows how to export a link in a nested model" do
+                    task.exported_links = [Types.rock_gazebo.LinkExport.new(
+                        port_name: 'test', source_link: 'nested::l', target_link: 'root',
+                        port_period: Time.at(0))]
+                    task.configure
+                    task.start
+                    writer = task.port('test_wrench').writer
 
-            it "sets cov_position from the provided cov_position" do
-                cov = matrix3_rand
-                task.exported_links = [Types.rock_gazebo.LinkExport.new(
-                    port_name: 'test', source_link: 'l', target_link: 'root',
-                    cov_position: cov, port_period: Time.at(0))]
-                pose = configure_start_and_read_one_sample 'test'
-                assert_matrix3_in_delta cov, pose.cov_position, 1e-6
-            end
+                    wrench = Types.base.commands.Wrench.new(
+                        time: Time.now,
+                        force: Eigen::Vector3.new(0, 0, 9.8),
+                        torque: Eigen::Vector3.new(0, 0, 0))
 
-            it "sets cov_orientation from the provided cov_orientation" do
-                cov = matrix3_rand
-                task.exported_links = [Types.rock_gazebo.LinkExport.new(
-                    port_name: 'test', source_link: 'l', target_link: 'root',
-                    cov_orientation: cov, port_period: Time.at(0))]
-                pose = configure_start_and_read_one_sample 'test'
-                assert_matrix3_in_delta cov, pose.cov_orientation, 1e-6
-            end
+                    assert Eigen::Vector3.new(3, 2, 1).approx?(link_pose.position)
+                    assert Eigen::Quaternion.from_angle_axis(-0.2, Eigen::Vector3.UnitZ).
+                        approx?(link_pose.orientation)
+                end
 
-            it "sets cov_velocity from the provided cov_velocity" do
-                cov = matrix3_rand
-                task.exported_links = [Types.rock_gazebo.LinkExport.new(
-                    port_name: 'test', source_link: 'l', target_link: 'root',
-                    cov_velocity: cov, port_period: Time.at(0))]
-                pose = configure_start_and_read_one_sample 'test'
-                assert_matrix3_in_delta cov, pose.cov_velocity, 1e-6
+                it "the pose's update period is controlled by the port_period parameter" do
+                    task.exported_links = [Types.rock_gazebo.LinkExport.new(
+                        port_name: 'test', source_link: 'l', target_link: 'root',
+                        port_period: Time.at(0.1))]
+                    task.configure
+                    task.start
+                    reader = task.test.reader
+                    first_pose  = assert_has_one_new_sample(reader)
+                    second_pose = assert_has_one_new_sample(reader)
+                    assert_in_delta(second_pose.time - first_pose.time, 0.1, 0.025)
+                end
+
+                it "refuses to configure if the source link does not exist" do
+                    task.exported_links = [Types.rock_gazebo.LinkExport.new(
+                        port_name: 'test', source_link: 'does_not_exist', target_link: 'root')]
+                    assert_raises(Orocos::StateTransitionFailed) do
+                        task.configure
+                    end
+                end
+
+                it "refuses to configure if the target link does not exist" do
+                    task.exported_links = [Types.rock_gazebo.LinkExport.new(
+                        port_name: 'test', source_link: 'l', target_link: 'does_not_exist')]
+                    assert_raises(Orocos::StateTransitionFailed) do
+                        task.configure
+                    end
+                end
+
+                it "refuses to configure if the port is already in use" do
+                    task.exported_links = [
+                        Types.rock_gazebo.LinkExport.new(
+                            port_name: 'test', source_link: 'l', target_link: 'root'),
+                        Types.rock_gazebo.LinkExport.new(
+                            port_name: 'test', source_link: 'l', target_link: 'root')
+                    ]
+                    assert_raises(Orocos::StateTransitionFailed) do
+                        task.configure
+                    end
+                end
             end
         end
     end

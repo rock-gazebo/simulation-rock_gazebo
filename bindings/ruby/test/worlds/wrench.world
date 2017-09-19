@@ -1,0 +1,44 @@
+<sdf version="1.4">
+    <world name="w">
+        <model name="m">
+            <link name="root">
+                <pose>1 0 0 0 0 0</pose>
+            </link>
+            <link name="middle">
+                <pose>2 0 0 0 0 0</pose>
+            </link>
+            <link name="leaf">
+                <pose>3 0 0 0 0 0</pose>
+            </link>
+            <joint name="attach_to_ground" type="fixed">
+                <parent>root</parent>
+                <child>world</child>
+            </joint>
+            <joint name="root2middle" type="revolute">
+                <parent>root</parent>
+                <child>middle</child>
+                <axis>
+                    <xyz>0 0 1</xyz>
+                    <limits>
+                        <lower>-0.1</lower>
+                        <upper>0.1</upper>
+                    </limits>
+                </axis>
+            </joint>
+            <joint name="middle2leaf" type="revolute">
+                <parent>middle</parent>
+                <child>leaf</child>
+                <axis>
+                    <xyz>0 0 1</xyz>
+                    <limits>
+                        <lower>-0.1</lower>
+                        <upper>0.1</upper>
+                    </limits>
+                </axis>
+            </joint>
+        </model>
+    </world>
+</sdf>
+
+
+

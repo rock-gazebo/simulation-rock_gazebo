@@ -1,0 +1,20 @@
+<sdf version="1.4">
+<world name="w">
+    <model name="m">
+        <pose>1 2 3 0 0 0.1</pose>
+        <link name="root">
+        </link>
+        <link name="l">
+            <pose>2 3 4 0 0 0.2</pose>
+        </link>
+
+        <include>
+        <name>nested</name>
+        <uri>model://model</uri>
+        <pose>3 2 1 0 0 -0.2</pose>
+        </include>
+    </model>
+</world>
+</sdf>
+
+
