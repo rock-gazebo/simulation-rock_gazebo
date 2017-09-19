@@ -66,10 +66,10 @@ describe "The Rock/Gazebo plugin" do
             it "exports the state of all the non-fixed joints" do
                 joints = configure_start_and_read_one_sample 'joints_samples'
                 assert_equal ['m::j_00', 'm::j_01', 'm::child::j_00', 'm::child::j_01'], joints.names
-                assert_includes (0..0.1), joints.elements[0].position
-                assert_includes (0.2..0.3), joints.elements[1].position
-                assert_includes (0.4..0.5), joints.elements[2].position
-                assert_includes (0.6..0.7), joints.elements[3].position
+                assert_includes (-0.01..0.101), joints.elements[0].position
+                assert_includes (0.199..0.301), joints.elements[1].position
+                assert_includes (0.399..0.501), joints.elements[2].position
+                assert_includes (0.599..0.701), joints.elements[3].position
             end
 
             it "allows commanding the joints" do
@@ -105,8 +105,8 @@ describe "The Rock/Gazebo plugin" do
                     port_name: 'test', prefix: '', joints: ['m::child::j_00', 'm::j_01'])]
                 joints = configure_start_and_read_one_sample 'test_samples'
                 assert_equal ['m::child::j_00', 'm::j_01'], joints.names
-                assert_includes (0.4..0.5), joints.elements[0].position
-                assert_includes (0.2..0.3), joints.elements[1].position
+                assert_includes (0.399..0.501), joints.elements[0].position
+                assert_includes (0.199..0.301), joints.elements[1].position
             end
 
             it "gives command access to a subset of the joints" do
@@ -143,8 +143,8 @@ describe "The Rock/Gazebo plugin" do
                         port_name: 'test', prefix: 'm::', joints: ['m::child::j_00', 'm::j_01'])]
                     joints = configure_start_and_read_one_sample 'test_samples'
                     assert_equal ['child::j_00', 'j_01'], joints.names
-                    assert_includes (0.4..0.5), joints.elements[0].position
-                    assert_includes (0.2..0.3), joints.elements[1].position
+                    assert_includes (0.399..0.501), joints.elements[0].position
+                    assert_includes (0.199..0.301), joints.elements[1].position
                 end
             end
 
