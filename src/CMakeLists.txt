@@ -1,3 +1,4 @@
+add_definitions(-DRTT_COMPONENT)
 rock_library(rock_gazebo
 	SOURCES RockBridge.cpp
 	HEADERS RockBridge.hpp

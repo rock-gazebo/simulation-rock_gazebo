@@ -43,6 +43,9 @@
 #include <rtt/transports/corba/TaskContextServer.hpp>
 #include <rtt/transports/corba/CorbaDispatcher.hpp>
 
+#include <rtt/deployment/ComponentLoader.hpp>
+#include <rtt/plugin/PluginLoader.hpp>
+
 
 using namespace std;
 using namespace gazebo;
@@ -119,6 +122,8 @@ void RockBridge::Load(int _argc , char** _argv)
 // worldCreated() is called every time a world is added
 void RockBridge::worldCreated(string const& worldName)
 {
+    RTT::Logger::In in("rock-gazebo");
+
     // Create the logger component and start the activity
     logger::Logger* logger_task = new logger::Logger();
     logger_task->provides()->setName("gazebo:" + worldName +"_Logger");
@@ -144,10 +149,14 @@ void RockBridge::worldCreated(string const& worldName)
 
     typedef physics::Model_V Model_V;
     Model_V model_list = GzGet((*world), Models, ());
+    sdf::ElementPtr worldSDF;
     for(Model_V::iterator model_it = model_list.begin(); model_it != model_list.end(); ++model_it)
     {
         gzmsg << "RockBridge: initializing model: "<< (*model_it)->GetName() << endl;
         sdf::ElementPtr modelElement = (*model_it)->GetSDF();
+
+        if (!worldSDF)
+            worldSDF = modelElement->GetParent();
 
         // Create and initialize a component for each gazebo model
         ModelTask* model_task = new ModelTask();
@@ -160,7 +169,55 @@ void RockBridge::worldCreated(string const& worldName)
         // Create and initialize a component for each sensor
         instantiateSensorComponents( modelElement, (*model_it) );
     }
-    model_list.clear();
+
+    if (worldSDF)
+    {
+        RTT::ComponentLoader::shared_ptr loader = RTT::ComponentLoader::Instance();
+
+        sdf::ElementPtr pluginElement = worldSDF->GetElement("plugin");
+        while (pluginElement)
+        {
+            if (pluginElement->Get<string>("name") == "rock_components")
+                processRockComponentsPlugin(pluginElement);
+            pluginElement = pluginElement->GetNextElement("plugin");
+        }
+    }
+}
+
+void RockBridge::processRockComponentsPlugin(sdf::ElementPtr pluginElement)
+{
+    auto plugin_loader = RTT::plugin::PluginLoader::Instance();
+    sdf::ElementPtr loadElement = pluginElement->GetElement("load");
+    while (loadElement)
+    {
+        string path = loadElement->Get<string>("path");
+        if (!plugin_loader->loadLibrary(path))
+            gzthrow("rock-gazebo: failed to load requested library " + path + "\n");
+
+        gzmsg << "rock-gazebo: loaded library " << path << endl;
+        loadElement = loadElement->GetNextElement("load");
+    }
+
+    auto component_loader = RTT::ComponentLoader::Instance();
+    sdf::ElementPtr taskElement = pluginElement->GetElement("task");
+    while (taskElement)
+    {
+        string name  = taskElement->Get<string>("name");
+        string model = taskElement->Get<string>("model");
+        string file  = taskElement->Get<string>("filename");
+
+        if (!file.empty())
+            component_loader->loadLibrary(file);
+
+        RTT::TaskContext* task_context =
+            component_loader->loadComponent(name, model);
+        if (!task_context)
+            gzthrow("rock-gazebo: failed to load task context " + name + " of model " + model + "\n");
+
+        gzmsg << "rock-gazebo: created task " << name << " of model " << model << endl;
+        setupTaskActivity(task_context);
+        taskElement = taskElement->GetNextElement("task");
+    }
 }
 
 void RockBridge::setupTaskActivity(RTT::TaskContext* task)

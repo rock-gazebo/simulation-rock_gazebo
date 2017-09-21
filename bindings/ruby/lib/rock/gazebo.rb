@@ -76,6 +76,31 @@ module Rock
             self.model_path = self.default_model_path
         end
 
+        def self.prepare_spawn(cmd, *cmdline, download_missing_models: true)
+            env = Hash.new
+            if cmdline.first.kind_of?(Hash)
+                env = cmdline.shift
+            end
+
+            model_path, args = resolve_worldfiles_and_models_arguments(cmdline)
+            SDF::XML.model_path.concat(model_path)
+            tempfiles = Array.new
+            args = args.map do |arg|
+                if arg =~ /\.sdf$|\.world$/
+                    world_xml = process_sdf_world(arg)
+                    processed_world = Tempfile.new
+                    processed_world.write(world_xml.to_s)
+                    processed_world.flush
+                    tempfiles << processed_world
+                    processed_world.path
+                else arg
+                end
+            end
+            yield(Array[env, cmd, '-s', RockGazebo::PATH_TO_PLUGIN, *args])
+        ensure
+            tempfiles.each(&:close)
+        end
+
         def self.compute_spawn_arguments(cmd, *cmdline)
             env = Hash.new
             if cmdline.first.kind_of?(Hash)
@@ -87,12 +112,64 @@ module Rock
             Array[env, cmd, '-s', RockGazebo::PATH_TO_PLUGIN, *args]
         end
 
-        def self.spawn(cmd, *cmdline, **options)
-            Process.spawn(*compute_spawn_arguments(cmd, *cmdline), **options)
+        def self.process_sdf_world(world_path)
+            sdf = SDF::Root.load(world_path)
+
+            # post-process the rock_components info
+            sdf.each_world do |w|
+                w.each_plugin do |p|
+                    if p.name == 'rock_components'
+                        normalize_rock_components(p)
+                    end
+                end
+            end
+
+            sdf.xml
         end
 
-        def self.exec(cmd, *cmdline, **options)
-            Process.exec(*compute_spawn_arguments(cmd, *cmdline), **options)
+        def self.normalize_rock_components(plugin)
+            loader = OroGen::Loaders::RTT.new(ENV['OROCOS_TARGET'] || 'gnulinux')
+
+            needed_typekits = Set.new
+            needed_libraries = Set.new
+            plugin.xml.elements.each('task') do |task_xml|
+                model_name = task_xml.attributes['model']
+                task_model = loader.task_model_from_name(model_name)
+                task_xml.attributes['filename'] = loader.task_library_path_from_model_name(model_name)
+                task_model.each_interface_type do |type|
+                    needed_typekits << loader.typekit_for(type)
+                end
+            end
+
+            needed_typekits.each do |tk|
+                next if tk.virtual?
+                plugins = Orocos.find_typekit_plugin_paths(tk.name)
+                plugins.each do |path, required|
+                    needed_libraries << [path, required]
+                end
+            end
+
+            needed_libraries.each do |path, required|
+                library_element = REXML::Element.new('load')
+                library_element.attributes['path'] = path
+                library_element.attributes['required'] = required ? '1' : '0'
+                plugin.xml.elements << library_element
+            end
+
+        rescue OroGen::NotFound => e
+            raise e, "while processing the rock_components plugin, #{e.message}", e.backtrace
+        end
+
+        def self.spawn(cmd, *cmdline, download_missing_models: true, **options)
+            prepare_spawn(cmd, *cmdline, download_missing_models: download_missing_models) do |args|
+                Process.spawn(*args, **options)
+            end
+        end
+
+        def self.exec(cmd, *cmdline, download_missing_models: true, **options)
+            prepare_spawn(cmd, *cmdline, download_missing_models: download_missing_models) do |args|
+                Process.exec(*args, **options)
+            end
         end
     end
 end

@@ -39,6 +39,7 @@ namespace rock_gazebo
             void updateBegin(gazebo::common::UpdateInfo const& info);
             void setupTaskActivity(RTT::TaskContext* task);
 
+            void processRockComponentsPlugin(sdf::ElementPtr pluginElement);
             void instantiatePluginComponents( sdf::ElementPtr modelElement, ModelPtr model );
             void instantiateSensorComponents( sdf::ElementPtr modelElement, ModelPtr model );
 
