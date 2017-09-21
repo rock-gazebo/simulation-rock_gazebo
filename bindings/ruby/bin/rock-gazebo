@@ -1,9 +1,13 @@
 #! /usr/bin/env ruby
 
 require 'optparse'
+require 'rock/gazebo'
 
 NO_GUI=%w{off no}
 GUI_MODES=%w{vizkit gzclient}
+Rock::Gazebo.logger.level = Logger::INFO
+download_only = false
+update_models = false
 
 gui = 'vizkit'
 gzserver_args = Array.new
@@ -22,35 +26,51 @@ options = OptionParser.new do |opt|
             STDERR.puts "'#{gui}' is not a valide GUI mode"
         end
     end
+    opt.on '--download-only', 'download missing models and exit' do
+        download_only = true
+    end
+    opt.on '--update-models', 'attempt to update already-present models. It updates all already-downloaded models, not only the ones that the world file refers to' do
+        update_models = true
+    end
     opt.on '--verbose', 'run gzserver in verbose mode' do
         gzserver_args << '--verbose'
+        Rock::Gazebo.logger.level = Logger::DEBUG
     end
 end
 
 args = options.parse(ARGV)
 if args.size != 1
-    STDERR.puts "Scene argument missing"
-    puts options
-    exit 1
+    if update_models
+        Rock::Gazebo.update_existing_models
+        exit 0
+    else
+        STDERR.puts "Scene argument missing"
+        puts options
+        exit 1
+    end
 end
-scene = args.first
 
 require 'rock/bundles'
-
 # Workaround: default_loader calls Orocos.load unconditionally :(
 Orocos.disable_sigchld_handler = true
 Bundles.load
+SDF::XML.model_path = Rock::Gazebo.model_path
+
+_, args = Rock::Gazebo.resolve_worldfiles_and_models_arguments(args)
+scene = args.first
+
+if update_models
+    Rock::Gazebo.update_existing_models
+end
+
+Rock::Gazebo.download_missing_models(scene)
+exit(0) if download_only
 
 if gui == 'vizkit'
     require 'Qt'
     require 'vizkit'
-    require 'rock/gazebo'
     require 'rock_gazebo/viz'
-else
-    require 'rock/gazebo'
 end
-
-SDF::XML.model_path = Rock::Gazebo.model_path
 
 subprocesses = Hash.new
 begin

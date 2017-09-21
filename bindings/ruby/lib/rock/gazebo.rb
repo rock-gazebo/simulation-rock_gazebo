@@ -1,9 +1,15 @@
 require 'rock/bundles'
 require 'rock_gazebo/path_to_plugin'
 require 'sdf'
+require 'minitar'
+
+require 'utilrb/logger'
 
 module Rock
     module Gazebo
+        extend Logger::Root('rock-gazebo', Logger::WARN)
+        extend Logger::Forward
+
         def self.default_model_path
             Bundles.find_dirs('models', 'sdf', all: true, order: :specific_first) +
                 (ENV['GAZEBO_MODEL_PATH']||"").split(':') +
@@ -76,7 +82,7 @@ module Rock
             self.model_path = self.default_model_path
         end
 
-        def self.prepare_spawn(cmd, *cmdline, download_missing_models: true)
+        def self.prepare_spawn(cmd, *cmdline)
             env = Hash.new
             if cmdline.first.kind_of?(Hash)
                 env = cmdline.shift
@@ -135,7 +141,8 @@ module Rock
             plugin.xml.elements.each('task') do |task_xml|
                 model_name = task_xml.attributes['model']
                 task_model = loader.task_model_from_name(model_name)
-                task_xml.attributes['filename'] = loader.task_library_path_from_model_name(model_name)
+                task_xml.attributes['filename'] = loader.
+                    task_library_path_from_name(task_model.project.name)
                 task_model.each_interface_type do |type|
                     needed_typekits << loader.typekit_for(type)
                 end
@@ -143,16 +150,15 @@ module Rock
 
             needed_typekits.each do |tk|
                 next if tk.virtual?
-                plugins = Orocos.find_typekit_plugin_paths(tk.name)
-                plugins.each do |path, required|
-                    needed_libraries << [path, required]
+                needed_libraries << loader.typekit_library_path_from_name(tk.name)
+                ['typelib', 'mqueue', 'corba'].each do |transport_name|
+                    needed_libraries << loader.transport_library_path_from_name(tk.name, transport_name)
                 end
             end
 
-            needed_libraries.each do |path, required|
+            needed_libraries.each do |path|
                 library_element = REXML::Element.new('load')
                 library_element.attributes['path'] = path
-                library_element.attributes['required'] = required ? '1' : '0'
                 plugin.xml.elements << library_element
             end
 
@@ -160,8 +166,59 @@ module Rock
             raise e, "while processing the rock_components plugin, #{e.message}", e.backtrace
         end
 
-        def self.spawn(cmd, *cmdline, download_missing_models: true, **options)
-            prepare_spawn(cmd, *cmdline, download_missing_models: download_missing_models) do |args|
+        def self.download_path
+            if @download_path
+                @download_path
+            else
+                File.join(Dir.home, '.gazebo', 'models')
+            end
+        end
+
+        def self.download_path=(path)
+            @download_path = File.expand_path(path)
+        end
+
+        def self.download_missing_models(world_path)
+            SDF::Root.load(world_path)
+        rescue SDF::XML::NoSuchModel => missing_model
+            model_name = missing_model.model_name
+            if !SDF::XML.model_path.include?(download_path)
+                raise NoSuchModel, "#{world_path} refers to model #{model_name} which was not available in #{model_path.join(":")}. I can't download it as the configured download path #{download_path} is not part of SDF::XML.model_path."
+            end
+
+            info "#{world_path} refers to model #{model_name} that is not available, trying to download from models.gazebosim.org"
+            begin
+                download_model(model_name)
+            rescue Exception => e
+                raise NoSuchModel, "#{world_path} refers to model #{model_name} which was not available in #{model_path.join(":")}, attempted to download it from #{uri}, but this failed with #{e.message}. You may want to update the GAZEBO_MODEL_PATH environment variable, or set SDF::XML.model_path explicitely."
+            end
+            retry
+        end
+
+        def self.download_model(name)
+            require 'open-uri'
+            uri = "http://models.gazebosim.org/#{name}/model.tar.gz"
+            targz = URI(uri).read
+            unzipped = Zlib::GzipReader.new(StringIO.new(targz))
+            Minitar.unpack(unzipped, download_path)
+        end
+
+        def self.update_existing_models
+            Dir.glob(File.join(download_path, '*')) do |path|
+                name = File.basename(path)
+                if name != '.' && name != '..' && File.directory?(path)
+                    begin
+                        download_model(name)
+                        info "downloaded #{name}"
+                    rescue Exception => e
+                        warn "could not update #{name}: #{e.message}"
+                    end
+                end
+            end
+        end
+
+        def self.spawn(cmd, *cmdline, **options)
+            prepare_spawn(cmd, *cmdline) do |args|
                 Process.spawn(*args, **options)
             end
         end
@@ -173,4 +230,3 @@ module Rock
         end
     end
 end
-
