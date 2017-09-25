@@ -51,6 +51,20 @@ using namespace std;
 using namespace gazebo;
 using namespace rock_gazebo;
 
+struct GazeboActivity : RTT::extras::SequentialActivity
+{
+    using SequentialActivity::SequentialActivity;
+
+    bool trigger()
+    {
+        return false;
+    }
+    bool execute()
+    {
+        return RTT::extras::SequentialActivity::trigger();
+    }
+};
+
 RockBridge::RockBridge()
 {
 }
@@ -227,8 +241,8 @@ void RockBridge::setupTaskActivity(RTT::TaskContext* task)
     RTT::corba::CorbaDispatcher::Instance( task->ports(), ORO_SCHED_OTHER, RTT::os::LowestPriority );
 
     // Create and start sequential task activities
-    RTT::extras::SequentialActivity* activity =
-        new RTT::extras::SequentialActivity(task->engine());
+    GazeboActivity* activity =
+        new GazeboActivity(task->engine());
     activity->start();
     activities.push_back(activity);
     tasks.push_back(task);
@@ -240,7 +254,7 @@ void RockBridge::updateBegin(common::UpdateInfo const& info)
 {
     for(Activities::iterator it = activities.begin(); it != activities.end(); ++it)
     {
-        (*it)->trigger();
+        (*it)->execute();
     }
 }
 
