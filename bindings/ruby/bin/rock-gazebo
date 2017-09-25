@@ -23,7 +23,8 @@ options = OptionParser.new do |opt|
         elsif GUI_MODES.include?(gui_mode)
             gui = gui_mode
         else
-            STDERR.puts "'#{gui}' is not a valide GUI mode"
+            STDERR.puts "'#{gui_mode}' is not a valide GUI mode, use one of #{GUI_MODES.join(", ")}. To disable the GUI altogether, pass one of the following: #{NO_GUI.join(", ")} "
+            exit 1
         end
     end
     opt.on '--download-only', 'download missing models and exit' do
