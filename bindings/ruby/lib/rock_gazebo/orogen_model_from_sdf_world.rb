@@ -46,6 +46,14 @@ module RockGazebo
                 end
             end
         end
+        world.each_plugin do |plugin|
+            if plugin.name == 'rock_components'
+                plugin.xml.elements.each('task') do |task_element|
+                    deployment.task(task_element.attributes['name'], task_element.attributes['model']).
+                        periodic(period)
+                end
+            end
+        end
 
         deployment
     end
