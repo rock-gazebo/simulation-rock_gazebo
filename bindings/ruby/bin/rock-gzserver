@@ -1,5 +1,7 @@
 #! /usr/bin/env ruby
 require 'rock/gazebo'
-Bundles.setup_search_paths
-Rock::Gazebo.exec('gzserver', *ARGV)
+STDERR.puts "DEPRECATION WARNING: rock-gzserver is deprecated"
+STDERR.puts "DEPRECATION WARNING: use the --gui=no argument to rock-gazebo instead"
+STDERR.puts
+Process.exec File.join(__dir__, 'rock-gazebo'), '--gui=no', *ARGV
 
