@@ -210,7 +210,7 @@ module RockGazebo
             #
             # @param [Array<SDF::Model>] models the SDF representation of the models
             def expose_gazebo_model(sdf, deployment_prefix, device_name: normalize_name(sdf.name))
-                device(CommonModels::Devices::Gazebo::Model, as: device_name,
+                device(CommonModels::Devices::Gazebo::RootModel, as: device_name,
                        using: OroGen::RockGazebo::ModelTask).
                        prefer_deployed_tasks("#{deployment_prefix}:#{normalize_name(sdf.name)}").
                        frame_transform(link_frame_name(sdf) => 'world').

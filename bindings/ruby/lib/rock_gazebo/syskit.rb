@@ -4,6 +4,8 @@ require 'sdf'
 require 'orocos'
 require 'syskit'
 require 'models/devices/gazebo/model'
+require 'models/devices/gazebo/root_model'
+require 'models/devices/gazebo/link'
 require 'transformer/syskit'
 Transformer::SyskitPlugin.enable
 require 'transformer/sdf'
