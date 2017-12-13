@@ -90,21 +90,19 @@ module Rock
 
             model_path, args = resolve_worldfiles_and_models_arguments(cmdline)
             SDF::XML.model_path.concat(model_path)
-            tempfiles = Array.new
+            @tempfiles ||= Array.new
             args = args.map do |arg|
                 if arg =~ /\.sdf$|\.world$/
                     world_xml = process_sdf_world(arg)
                     processed_world = Tempfile.new
                     processed_world.write(world_xml.to_s)
                     processed_world.flush
-                    tempfiles << processed_world
+                    @tempfiles << processed_world
                     processed_world.path
                 else arg
                 end
             end
             yield(Array[env, cmd, '-s', RockGazebo::PATH_TO_PLUGIN, *args])
-        ensure
-            tempfiles.each(&:close)
         end
 
         def self.compute_spawn_arguments(cmd, *cmdline)
