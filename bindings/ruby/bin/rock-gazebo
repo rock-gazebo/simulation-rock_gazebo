@@ -37,6 +37,10 @@ options = OptionParser.new do |opt|
         gzserver_args << '--verbose'
         Rock::Gazebo.logger.level = Logger::DEBUG
     end
+    opt.on '--pause', 'run gzserver in paused state' do
+        gzserver_args << '--pause'
+        Rock::Gazebo.logger.level = Logger::DEBUG
+    end
 end
 
 args = options.parse(ARGV)
