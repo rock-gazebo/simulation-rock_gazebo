@@ -7,8 +7,6 @@
 #include <ignition/math/Quaternion.hh>
 
 #include <gazebo/gazebo_config.h>
-#include <gazebo/math/Pose.hh>
-#include <gazebo/math/Matrix3.hh>
 
 #if GAZEBO_MAJOR_VERSION >= 8
 namespace rock_gazebo
@@ -30,6 +28,9 @@ namespace rock_gazebo
 #define ToIgn(value) \
 	value
 #else
+
+#include <gazebo/math/Pose.hh>
+#include <gazebo/math/Matrix3.hh>
 
 namespace rock_gazebo
 {
