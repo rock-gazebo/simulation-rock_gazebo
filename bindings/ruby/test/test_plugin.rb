@@ -11,7 +11,7 @@ describe "The Rock/Gazebo plugin" do
             task.configure
             task.start
             reader = task.port(port_name).reader
-            assert_has_one_new_sample reader
+            assert_has_one_new_sample reader, 10
         end
 
         describe "creation by the plugin" do
@@ -66,10 +66,10 @@ describe "The Rock/Gazebo plugin" do
             it "exports the state of all the non-fixed joints" do
                 joints = configure_start_and_read_one_sample 'joints_samples'
                 assert_equal ['m::j_00', 'm::j_01', 'm::child::j_00', 'm::child::j_01'], joints.names
-                assert_includes (-0.01..0.101), joints.elements[0].position
-                assert_includes (0.199..0.301), joints.elements[1].position
-                assert_includes (0.399..0.501), joints.elements[2].position
-                assert_includes (0.599..0.701), joints.elements[3].position
+                assert_includes (-0.1..0.11), joints.elements[0].position
+                assert_includes (0.19..0.31), joints.elements[1].position
+                assert_includes (0.39..0.51), joints.elements[2].position
+                assert_includes (0.59..0.71), joints.elements[3].position
             end
 
             it "allows commanding the joints" do
@@ -105,8 +105,8 @@ describe "The Rock/Gazebo plugin" do
                     port_name: 'test', prefix: '', joints: ['m::child::j_00', 'm::j_01'])]
                 joints = configure_start_and_read_one_sample 'test_samples'
                 assert_equal ['m::child::j_00', 'm::j_01'], joints.names
-                assert_includes (0.399..0.501), joints.elements[0].position
-                assert_includes (0.199..0.301), joints.elements[1].position
+                assert_includes (0.39..0.51), joints.elements[0].position
+                assert_includes (0.19..0.31), joints.elements[1].position
             end
 
             it "fails if the joint is given relative to the model" do
@@ -151,8 +151,8 @@ describe "The Rock/Gazebo plugin" do
                         port_name: 'test', prefix: 'm::', joints: ['m::child::j_00', 'm::j_01'])]
                     joints = configure_start_and_read_one_sample 'test_samples'
                     assert_equal ['child::j_00', 'j_01'], joints.names
-                    assert_includes (0.399..0.501), joints.elements[0].position
-                    assert_includes (0.199..0.301), joints.elements[1].position
+                    assert_includes (0.39..0.51), joints.elements[0].position
+                    assert_includes (0.19..0.31), joints.elements[1].position
                 end
             end
 
@@ -254,6 +254,7 @@ describe "The Rock/Gazebo plugin" do
             describe "wrench export" do
                 before do
                     @task = gzserver 'wrench.world', '/gazebo:w:m'
+                    Orocos.load_typekit 'base'
                 end
 
                 it "allows to send a force command to its source link" do
@@ -310,6 +311,7 @@ describe "The Rock/Gazebo plugin" do
             describe "common features" do
                 before do
                     @task = gzserver 'model.world', '/gazebo:w:m'
+                    Orocos.load_typekit 'base'
                 end
 
                 it "knows how to export a link in a nested model" do
@@ -318,13 +320,8 @@ describe "The Rock/Gazebo plugin" do
                         port_period: Time.at(0))]
                     task.configure
                     task.start
-                    writer = task.port('test_wrench').writer
 
-                    wrench = Types.base.commands.Wrench.new(
-                        time: Time.now,
-                        force: Eigen::Vector3.new(0, 0, 9.8),
-                        torque: Eigen::Vector3.new(0, 0, 0))
-
+                    link_pose = assert_has_one_new_sample(task.test.reader)
                     assert Eigen::Vector3.new(3, 2, 1).approx?(link_pose.position)
                     assert Eigen::Quaternion.from_angle_axis(-0.2, Eigen::Vector3.UnitZ).
                         approx?(link_pose.orientation)
@@ -494,7 +491,7 @@ describe "The Rock/Gazebo plugin" do
             end
 
             it "converts the position to the configured UTM frame" do
-                sample = read_sample 'gps-far-from-origin.world', 'utm_samples' do |task|
+                sample = read_sample 'gps-check-utm.world', 'utm_samples' do |task|
                     task.gps_frame = 'gps_test'
                     task.utm_frame = 'utm_test'
                     task.nwu_origin = Eigen::Vector3.Zero
@@ -505,8 +502,8 @@ describe "The Rock/Gazebo plugin" do
                 # UTM coordinates to NWU
                 assert_equal 'gps_test', sample.sourceFrame
                 assert_equal 'utm_test', sample.targetFrame
-                assert_in_delta 686382, sample.position.x, 1
-                assert_in_delta 7464646, sample.position.y, 1
+                assert_in_delta 687394, sample.position.x, 1
+                assert_in_delta 7465634, sample.position.y, 1
             end
 
             it "converts the position to the configured NWU frame" do

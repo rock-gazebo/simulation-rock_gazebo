@@ -70,6 +70,11 @@
             <parent>root</parent>
             <child>child::02</child>
         </joint>
+
+        <joint name="fixed_base" type="fixed">
+            <parent>root</parent>
+            <child>world</child>
+        </joint>
     </model>
 </world>
 </sdf>
