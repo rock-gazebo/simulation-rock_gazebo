@@ -371,6 +371,17 @@ describe "The Rock/Gazebo plugin" do
     end
 
     describe "IMU sensor" do
+        def read_orientation_sample(world_file)
+            @task = gzserver world_file, '/gazebo:w:m:i'
+            yield(@task) if block_given?
+            reader = @task.orientation_samples.reader
+            @task.configure
+            @task.start
+            assert_has_one_new_sample(reader)
+        ensure
+            reader.disconnect if reader
+        end
+
         def read_imu_sample(world_file)
             @task = gzserver world_file, '/gazebo:w:m:i'
             yield(@task) if block_given?
@@ -409,6 +420,29 @@ describe "The Rock/Gazebo plugin" do
             end
             diff_t = (Time.now - sample.time)
             assert(diff_t > 0 && diff_t < 10)
+        end
+
+        it "provides an orientation-to-starting pose by default" do
+            sample = read_orientation_sample 'imu-not-aligned.world'
+            assert sample.orientation.approx?(Eigen::Quaternion.Identity)
+        end
+
+        it "provides an orientation-to-horizontal if reference == REFERENCE_HORIZONTAL_PLANE" do
+            sample = read_orientation_sample 'imu-not-aligned.world' do |task|
+                task.reference = :REFERENCE_HORIZONTAL_PLANE
+            end
+            expected = Eigen::Quaternion.from_euler(
+                Eigen::Vector3.new(0, 0.1, 0.1), 2, 1, 0)
+            assert sample.orientation.approx?(expected)
+        end
+
+        it "provides an orientation-to-absolute if reference == REFERENCE_ABSOLUTE" do
+            sample = read_orientation_sample 'imu-not-aligned.world' do |task|
+                task.reference = :REFERENCE_ABSOLUTE
+            end
+            expected = Eigen::Quaternion.from_euler(
+                Eigen::Vector3.new(0.1, 0.1, 0.1), 2, 1, 0)
+            assert sample.orientation.approx?(expected)
         end
     end
 
