@@ -76,7 +76,7 @@ module Helpers
         end
     end
 
-    def poll_until(timeout: 5, period: 0.01, message: 'could not reach condition')
+    def poll_until(timeout: 10, period: 0.01, message: 'could not reach condition')
         start = Time.now
         while (Time.now - start) < timeout
             return if yield

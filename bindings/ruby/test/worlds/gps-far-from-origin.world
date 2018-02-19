@@ -1,4 +1,4 @@
-<sdf version="1.4">
+<sdf version="1.6">
 <world name="w">
     <spherical_coordinates>
         <surface_model>EARTH_WGS84</surface_model>

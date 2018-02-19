@@ -3,7 +3,10 @@
     <model name="m">
         <link name="l">
             <sensor name="i" type="imu" />
+            <pose>0 0 0 0.1 0.1 0.1</pose>
         </link>
+        <static>true</static>
     </model>
 </world>
 </sdf>
+

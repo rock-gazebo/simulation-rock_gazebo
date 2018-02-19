@@ -1,4 +1,4 @@
-<sdf version="1.4">
+<sdf version="1.6">
 <world name="w">
     <model name="m">
         <link name="root" />
@@ -13,6 +13,7 @@
             <parent>root</parent>
             <child>00</child>
             <axis>
+                <initial_position>0.05</initial_position>
                 <xyz>1 0 0</xyz>
                 <limit>
                     <lower>0</lower>
@@ -25,6 +26,7 @@
             <parent>root</parent>
             <child>01</child>
             <axis>
+                <initial_position>0.25</initial_position>
                 <xyz>1 0 0</xyz>
                 <limit>
                     <lower>0.2</lower>
@@ -42,6 +44,7 @@
             <parent>root</parent>
             <child>child::00</child>
             <axis>
+                <initial_position>0.45</initial_position>
                 <xyz>1 0 0</xyz>
                 <limit>
                     <lower>0.4</lower>
@@ -54,6 +57,7 @@
             <parent>root</parent>
             <child>child::01</child>
             <axis>
+                <initial_position>0.65</initial_position>
                 <xyz>1 0 0</xyz>
                 <limit>
                     <lower>0.6</lower>
@@ -65,6 +69,11 @@
         <joint name="child::j_02" type="fixed">
             <parent>root</parent>
             <child>child::02</child>
+        </joint>
+
+        <joint name="fixed_base" type="fixed">
+            <parent>root</parent>
+            <child>world</child>
         </joint>
     </model>
 </world>
