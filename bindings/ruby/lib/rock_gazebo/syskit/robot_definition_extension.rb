@@ -175,7 +175,9 @@ module RockGazebo
             #   built in.
             # @return [Syskit::Robot::Device] the device that represents the model
             # @raise [ArgumentError] if models does not contain robot_model
-            def load_gazebo(model, deployment_prefix, name: model.name, prefix_device_with_name: false)
+            def load_gazebo(model, deployment_prefix, name: model.name, reuse: nil, prefix_device_with_name: false)
+                # Allow passing a profile instead of a robot definition
+                reuse = reuse.robot if reuse.respond_to?(:robot)
                 enclosing_model = resolve_enclosing_model(model)
 
                 if !prefix_device_with_name
@@ -191,15 +193,16 @@ module RockGazebo
 
                 if enclosing_model != model
                     create_frame_mappings_for_used_model(model)
-                    enclosing_device = expose_gazebo_model(enclosing_model, deployment_prefix, device_name: enclosing_model.name)
+                    enclosing_device = expose_gazebo_model(enclosing_model, deployment_prefix, reuse: reuse, device_name: enclosing_model.name)
                     model_device = define_submodel_device(name, enclosing_device, model)
                     prefix_device_with_name = true
                 else
-                    enclosing_device = expose_gazebo_model(enclosing_model, deployment_prefix, device_name: name)
+                    enclosing_device = expose_gazebo_model(enclosing_model, deployment_prefix, reuse: reuse, device_name: name)
                     model_device = enclosing_device
                     enclosing_device.advanced = false
                 end
                 load_gazebo_robot_model(model, enclosing_device, name: name,
+                    reuse: reuse,
                     prefix_device_with_name: prefix_device_with_name)
                 model_device
             end
@@ -209,9 +212,14 @@ module RockGazebo
             # Define devices for each model in the world
             #
             # @param [Array<SDF::Model>] models the SDF representation of the models
-            def expose_gazebo_model(sdf, deployment_prefix, device_name: normalize_name(sdf.name))
+            def expose_gazebo_model(sdf, deployment_prefix, reuse: nil, device_name: normalize_name(sdf.name))
+                if reuse && (existing = reuse.find_device(device_name))
+                    register_device(device_name, existing)
+                    return existing
+                end
+
                 device(CommonModels::Devices::Gazebo::RootModel, as: device_name,
-                       using: OroGen::RockGazebo::ModelTask).
+                       using: OroGen.rock_gazebo.ModelTask).
                        prefer_deployed_tasks("#{deployment_prefix}:#{normalize_name(sdf.name)}").
                        frame_transform(link_frame_name(sdf) => 'world').
                        advanced.
@@ -229,7 +237,7 @@ module RockGazebo
             # @api private
             #
             # Define devices for all links and sensors in the model
-            def load_gazebo_robot_model(sdf_model, root_device, name: sdf_model.name, prefix_device_with_name: true)
+            def load_gazebo_robot_model(sdf_model, root_device, reuse: nil, name: sdf_model.name, prefix_device_with_name: true)
                 world = resolve_enclosing_world(sdf_model)
                 if prefix = sdf_model.full_name(root: root_device.sdf)
                     frame_prefix = "#{normalize_name(prefix)}_"
@@ -238,6 +246,10 @@ module RockGazebo
                     device_name    = "#{normalize_name(l_name)}_link"
                     if prefix_device_with_name
                         device_name = "#{normalize_name(name)}_#{device_name}"
+                    end
+                    if reuse && (existing = reuse.find_device(name))
+                        register_device(name, existing)
+                        next
                     end
                     frame_basename = "#{frame_prefix}#{normalize_name(l.name)}"
 
