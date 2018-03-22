@@ -6,8 +6,9 @@ require 'rock/gazebo'
 NO_GUI=%w{off no}
 GUI_MODES=%w{vizkit gzclient}
 Rock::Gazebo.logger.level = Logger::INFO
-download_only = false
-update_models = false
+download_only  = false
+parse_sdf_only = false
+update_models  = false
 
 gui = 'vizkit'
 gzserver_args = Array.new
@@ -26,6 +27,9 @@ options = OptionParser.new do |opt|
             STDERR.puts "'#{gui_mode}' is not a valide GUI mode, use one of #{GUI_MODES.join(", ")}. To disable the GUI altogether, pass one of the following: #{NO_GUI.join(", ")} "
             exit 1
         end
+    end
+    opt.on '--parse-sdf-only', "only parse the SDF and output rock-gazebo's normalized SDF file on standard output" do
+        parse_sdf_only = true
     end
     opt.on '--download-only', 'download missing models and exit' do
         download_only = true
@@ -69,6 +73,15 @@ if update_models
 end
 
 Rock::Gazebo.download_missing_models(scene)
+
+if parse_sdf_only
+    args.each do |path|
+        xml = Rock::Gazebo.process_sdf_world(path)
+        xml.write(STDOUT, 2)
+    end
+    exit 0
+end
+
 exit(0) if download_only
 
 if gui == 'vizkit'
