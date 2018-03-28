@@ -1,18 +1,17 @@
-= Syskit usage
+# Syskit usage
 
-== Directory Layout
+## Directory Layout
 
 In a bundle, scenes go in scenes/$scenename/$scenename.world. Bundle-specific
 models go in models/sdf/$modelname/{model.config,model.sdf}.
-
-== Using Gazebo
+## Using Gazebo
 
 At the profile level, one can use SDF to declare the type of robot that is
 being used. This is done in a profile by calling <tt>use\_gazebo\_model</tt>. The
 method accepts any kind of model (i.e. model:// or a path that can be resolved
 under models/sdf and scenes/)
 
-```
+```ruby
 profile 'Base' do
     # Sets up the transformer based on the model's kinematic structure
     #
@@ -38,7 +37,7 @@ Global setup is done by adding the following statement in your robot
 configuation file's requires statement. It must be done before requiring any
 profile that uses use\_sdf\_model.
 
-~~~
+~~~ruby
 Robot.init do
   require 'rock_gazebo/syskit'
 end
@@ -56,7 +55,7 @@ declares all the devices automatically.
 The selected world passed to `use_gazebo_world` is a default. It can be
 overriden on the command line with the `--set=sdf.world_path=world_name` option.
 
-== Devices bound to the gazebo instance
+## Devices bound to the gazebo instance
 
 `use_gazebo_model` defines a number of devices that bind to the gazebo instance,
 namely:
@@ -77,7 +76,7 @@ on the definition.
 
 For instance
 
-```
+```ruby
 define('simulated_underwater_camera', Compositions::CameraSimulation).
     transformer_uses_sdf_links_of(flat_fish_dev)
 ```
@@ -87,7 +86,7 @@ where the argument is the device that represents a model in the SDF world.
 Finally, if some specific link-related transformations are needed, they can be
 explicitely exported with `sdf_export_link`
 
-```
+```ruby
 robot do
   # Export the transformation from the `flat_fish::dvl` link of the `flat_fish`
   # model to the `flat_fish::imu` link of the `flat_fish` model. The create
@@ -100,7 +99,7 @@ end
 controlled in which case the transformation will be exported only at the
 specified period, e.g.
 
-```
+```ruby
 robot do
   # Export the transformation from the `flat_fish::dvl` link of the `flat_fish`
   # model to the `flat_fish::imu` link of the `flat_fish` model. The create
@@ -110,7 +109,7 @@ robot do
 end
 ```
 
-== Using SDF without Gazebo
+## Using SDF without Gazebo
 
 A number of SDF-related functionality (static environment description,
 spherical coordinates, transformer setup) are desirable in a Syskit system even
@@ -118,7 +117,7 @@ if not using Gazebo.
 
 This is done at the config level with 
 
-```
+```ruby
 Robot.init do
   require 'rock_gazebo/syskit'
 end
@@ -129,7 +128,7 @@ end
 
 and at the profile level 
 
-```
+```ruby
 profile 'Base' do
     # Sets up the transformer based on the model's kinematic structure
     use_sdf_model 'model://myrobot'
