@@ -125,31 +125,32 @@ module RockGazebo
             #
             # @param [Boolean] use_world whether {#use_gazebo_world} should be
             #   called at the end. You usually want this
-            def use_gazebo_model(*path, as: nil, use_world: true, prefix_device_with_name: nil)
-                model = use_sdf_model(*path, as: as)
+            def use_gazebo_model(*path, as: nil, use_world: true, reuse: nil, prefix_device_with_name: nil)
+                use_sdf_model(*path, as: as)
                 model_in_world = resolve_model_in_world
 
                 # Load the model in the syskit subsystems
                 robot.load_gazebo(model_in_world, "gazebo:#{sdf_world.name}",
+                                  reuse: reuse,
                                   prefix_device_with_name: prefix_device_with_name)
 
-                if use_world
-                    use_gazebo_world
-                end
+                use_gazebo_world(reuse: reuse) if use_world
             end
 
             # Exports the world into the transformer and expose the models
             # within the gazebo world as devices on the robot interface
-            def use_gazebo_world
+            def use_gazebo_world(reuse: nil)
                 use_sdf_world
                 if @sdf
                     model_in_world = resolve_model_in_world
                     enclosing_model = robot.resolve_enclosing_model(model_in_world)
                 end
 
+                reuse = reuse.robot if reuse.respond_to?(:robot)
                 sdf_world.each_model do |model|
                     if model != enclosing_model
-                        robot.expose_gazebo_model(model, "gazebo:#{sdf_world.name}")
+                        robot.expose_gazebo_model(model, "gazebo:#{sdf_world.name}",
+                            reuse: reuse)
                     end
                 end
             end
