@@ -5,8 +5,8 @@ module RockGazebo
         describe SDF do
             describe "#global_origin" do
                 def dataset
-                    [[48.858093, 2.294694, 31, true, 448_265.91, 5_411_920.65],
-                     [-22.970722, -43.182365, 23, false, 686_336.05, 7_458_567.56]]
+                    [[48.8580, 2.2946, 31, true, 448_258.92, 5_411_910.38],
+                     [-22.9707, -43.1823, 23, false, 686_342.74, 7_458_569.92]]
                 end
 
                 it "sets the UTM zone to default and returns the UTM coordinates of the spherical_coordinates element" do
@@ -15,8 +15,8 @@ module RockGazebo
                         sdf.world = ::SDF::World.from_string(
                             "<world>
                                 <spherical_coordinates>
-                                    <latitude_deg>#{lat}</latitude_deg>
-                                    <longitude_deg>#{long}</longitude_deg>
+                                    <latitude_deg>#{format('%.4f', lat)}</latitude_deg>
+                                    <longitude_deg>#{format('%.4f', long)}</longitude_deg>
                                     <elevation>42</elevation>
                                 </spherical_coordinates>
                              </world>")
@@ -52,8 +52,26 @@ module RockGazebo
                     assert_in_delta 1000, utm.y, 0.01
                     assert_in_delta 42, utm.z, 0.01
                 end
+
+                it "resolves other coordinates w.r.t. the local origin" do
+                    sdf = SDF.new
+                    sdf.world = ::SDF::World.from_string(
+                        "<world>
+                            <spherical_coordinates>
+                                <latitude_deg>48.8580</latitude_deg>
+                                <longitude_deg>2.2946</longitude_deg>
+                                <elevation>42</elevation>
+                            </spherical_coordinates>
+                            </world>")
+
+                    assert Eigen::Vector3.Zero.approx?(
+                        sdf.local_position(48.8580, 2.2946, 42))
+
+                    d = (Eigen::Vector3.new(5.52, -3.72, 1) -
+                        sdf.local_position(48.85805, 2.29465, 43)).norm
+                    assert(d < 0.1)
+                end
             end
         end
     end
 end
-
