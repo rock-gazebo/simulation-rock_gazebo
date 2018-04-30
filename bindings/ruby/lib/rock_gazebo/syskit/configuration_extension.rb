@@ -1,7 +1,7 @@
 module RockGazebo
     module Syskit
         module ConfigurationExtension
-            ::Robot.config do
+            Roby.app.on_setup do
                 if Conf.sdf.world_path?
                     world_path = Conf.sdf.world_path
                 end
@@ -13,7 +13,7 @@ module RockGazebo
                 Conf.gazebo.localhost = true
             end
 
-            ::Robot.clear_models do
+            Roby.app.on_clear_models do
                 Conf.sdf.world_file_path = nil
                 Conf.sdf.has_profile_loaded = false
             end
@@ -35,7 +35,7 @@ module RockGazebo
                 Conf.sdf.load_sdf(*path, world_name: world_name)
             end
 
-            # Sets up Syskit to use gazebo configured to use the given world 
+            # Sets up Syskit to use gazebo configured to use the given world
             #
             # @return [Syskit::Deployment] a deployment object that represents
             #   gazebo itself
@@ -45,7 +45,7 @@ module RockGazebo
 
                 if !has_process_server?('gazebo')
                     if localhost
-                        options = Hash[host_id: 'localhost'] 
+                        options = Hash[host_id: 'localhost']
                     else
                         options = Hash.new
                     end
@@ -105,4 +105,3 @@ module RockGazebo
         ::Syskit::RobyApp::Configuration.include ConfigurationExtension
     end
 end
-
