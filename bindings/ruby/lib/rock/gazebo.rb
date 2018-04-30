@@ -188,17 +188,23 @@ module Rock
             begin
                 download_model(model_name)
             rescue Exception => e
-                raise NoSuchModel, "#{world_path} refers to model #{model_name} which was not available in #{model_path.join(":")}, attempted to download it from #{uri}, but this failed with #{e.message}. You may want to update the GAZEBO_MODEL_PATH environment variable, or set SDF::XML.model_path explicitely."
+                raise SDF::XML::NoSuchModel, "#{world_path} refers to model #{model_name} which was not available in #{model_path.join(":")}, #{e.message}. You may want to update the GAZEBO_MODEL_PATH environment variable, or set SDF::XML.model_path explicitely."
             end
             retry
         end
 
+        def self.download_model_uri(name)
+            "http://models.gazebosim.org/#{name}/model.tar.gz"
+        end
+
         def self.download_model(name)
             require 'open-uri'
-            uri = "http://models.gazebosim.org/#{name}/model.tar.gz"
+            uri = download_model_uri(name)
             targz = URI(uri).read
             unzipped = Zlib::GzipReader.new(StringIO.new(targz))
             Minitar.unpack(unzipped, download_path)
+        rescue Exception => e
+            raise e, "attempted to download model #{name} from #{uri}, but this failed with #{e.message}"
         end
 
         def self.update_existing_models
