@@ -7,8 +7,6 @@
 #include <ignition/math/Quaternion.hh>
 
 #include <gazebo/gazebo_config.h>
-#include <gazebo/math/Pose.hh>
-#include <gazebo/math/Matrix3.hh>
 
 #if GAZEBO_MAJOR_VERSION >= 8
 namespace rock_gazebo
@@ -39,13 +37,6 @@ namespace rock_gazebo
 	   matrix[0][0], matrix[0][1], matrix[0][2],
 	   matrix[1][0], matrix[1][1], matrix[1][2],
 	   matrix[2][0], matrix[2][1], matrix[2][2]);
-    }
-    inline gazebo::math::Matrix3 GzMatrix3(ignition::math::Matrix3d const& matrix)
-    {
-	return gazebo::math::Matrix3(
-	   matrix(0, 0), matrix(0, 1), matrix(0, 2),
-	   matrix(1, 0), matrix(1, 1), matrix(1, 2),
-	   matrix(2, 0), matrix(2, 1), matrix(2, 2));
     }
 
 }
