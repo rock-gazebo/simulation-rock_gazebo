@@ -7,8 +7,6 @@
 #include <ignition/math/Quaternion.hh>
 
 #include <gazebo/gazebo_config.h>
-#include <gazebo/math/Pose.hh>
-#include <gazebo/math/Matrix3.hh>
 
 #if GAZEBO_MAJOR_VERSION >= 8
 namespace rock_gazebo
@@ -31,6 +29,8 @@ namespace rock_gazebo
 	value
 #else
 
+#include <gazebo/math/Pose.hh>
+#include <gazebo/math/Matrix3.hh>
 namespace rock_gazebo
 {
     inline ignition::math::Matrix3d IgnMatrix3(gazebo::math::Matrix3 const& matrix)
