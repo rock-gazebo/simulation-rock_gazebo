@@ -46,7 +46,6 @@ module RockGazebo
             def plugins_to_device(plugin, device_name, frame_name)
                 if plugin.filename =~ /gazebo_thruster/
                     require 'common_models/models/devices/gazebo/thruster'
-                    p device_name
                     device(CommonModels::Devices::Gazebo::Thruster, as: device_name, 
                         using: OroGen::RockGazebo::ThrusterTask)
                 end
