@@ -3,9 +3,21 @@
     <model name="m">
         <pose>1 2 3 0 0 0.1</pose>
         <link name="root">
+            <inertial>
+            <mass>2</mass>
+            <inertia>
+            <ixx>2</ixx>
+            <iyy>2</iyy>
+            <izz>2</izz>
+            </inertia>
+            </inertial>
         </link>
         <link name="l">
             <pose>2 3 4 0 0 0.2</pose>
+        </link>
+
+        <link name="rotated_link">
+            <pose>0 0 0 0 1.5708 0</pose>
         </link>
 
         <include>

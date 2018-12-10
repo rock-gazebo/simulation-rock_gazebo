@@ -35,7 +35,7 @@ module Helpers
         File.expand_path(File.join(name, 'model.sdf'),
                          File.join(__dir__, 'models'))
     end
- 
+
     def gzserver(world_file, expected_task_name, timeout: 10)
         @gazebo_pid = Rock::Gazebo.spawn(
             'gzserver', expand_fixture_world(world_file), '--verbose', '--model-dir', File.join(__dir__, 'models'),
@@ -83,6 +83,28 @@ module Helpers
             sleep(period)
         end
         flunk(message)
+    end
+
+    def configure_start_and_read_one_sample(port_name, &block)
+        task.configure
+        task.start
+        assert_port_has_one_new_sample(port_name, 10, &block)
+    end
+
+    def assert_port_has_one_new_sample(port_name, timeout = 10, &block)
+        reader = @task.port(port_name).reader
+        assert_has_one_new_sample_matching(reader, timeout, &block)
+    end
+
+    def assert_has_one_new_sample_matching(reader, timeout = 10)
+        if block_given?
+            poll_until do
+                sample = assert_has_one_new_sample(reader, timeout)
+                return sample if yield(sample)
+            end
+        else
+            assert_has_one_new_sample(reader, timeout)
+        end
     end
 end
 
