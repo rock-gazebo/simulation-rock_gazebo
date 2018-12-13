@@ -237,10 +237,9 @@ describe "The Rock/Gazebo plugin" do
                     end
                 end
 
-                describe "velocity with use_proper_reference_frames=false" do
+                describe "velocity" do
                     before do
                         @task = gzserver 'freefall.world', '/gazebo:w:m'
-                        @task.use_proper_reference_frames = false
                     end
 
                     it "exports a link's linear velocity" do
@@ -254,15 +253,15 @@ describe "The Rock/Gazebo plugin" do
                         assert_in_delta 0, rbs.velocity.y, 1e-3
                     end
 
-                    it "exports the velocity always in the source link's frame" do
+                    it "exports the velocity in the target link's frame" do
                         task.exported_links = [Types.rock_gazebo.LinkExport.new(
                             port_name: 'test', source_link: 'root', target_link: 'rotated_link',
                             port_period: Time.at(0))]
                         rbs = configure_start_and_read_one_sample 'test' do |sample|
-                            sample.velocity.z > -1
+                            sample.velocity.x > 1
                         end
-                        assert_in_delta 0, rbs.velocity.x, 1e-3
                         assert_in_delta 0, rbs.velocity.y, 1e-3
+                        assert_in_delta 0, rbs.velocity.z, 1e-3
                     end
 
                     it "exports a link's angular velocity" do
@@ -299,137 +298,11 @@ describe "The Rock/Gazebo plugin" do
                         assert_in_delta 0, rbs.angular_velocity.z, 1e-3
                     end
                 end
-                describe "velocity with use_proper_reference_frames=true" do
-                    before do
-                        @task = gzserver 'freefall.world', '/gazebo:w:m'
-                        @task.use_proper_reference_frames = true
-                    end
-
-                    it "exports a link's linear velocity" do
-                        task.exported_links = [Types.rock_gazebo.LinkExport.new(
-                            port_name: 'test', source_link: 'l', target_link: 'root',
-                            port_period: Time.at(0))]
-                        rbs = configure_start_and_read_one_sample 'test' do |sample|
-                            sample.velocity.z < -1
-                        end
-                        assert_in_delta 0, rbs.velocity.x, 1e-3
-                        assert_in_delta 0, rbs.velocity.y, 1e-3
-                    end
-
-                    it "exports the velocity in the target link's frame" do
-                        task.exported_links = [Types.rock_gazebo.LinkExport.new(
-                            port_name: 'test', source_link: 'root', target_link: 'rotated_link',
-                            port_period: Time.at(0))]
-                        rbs = configure_start_and_read_one_sample 'test' do |sample|
-                            sample.velocity.x > 1
-                        end
-                        assert_in_delta 0, rbs.velocity.y, 1e-3
-                        assert_in_delta 0, rbs.velocity.z, 1e-3
-                    end
-
-                    it "exports a link's angular velocity" do
-                        task.exported_links = [Types.rock_gazebo.LinkExport.new(
-                            port_name: 'test', source_link: 'root', target_link: 'root',
-                            port_period: Time.at(0))]
-                        wrench = Types.base.samples.Wrench.new(time: Time.now,
-                            force: Eigen::Vector3.Zero, torque: Eigen::Vector3.new(1, 0, 0))
-                        @task.configure
-                        @task.start
-                        writer = @task.test_wrench.writer
-                        rbs = assert_port_has_one_new_sample 'test' do |sample|
-                            writer.write(wrench)
-                            sample.angular_velocity.x > 1
-                        end
-                        assert_in_delta 0, rbs.angular_velocity.y, 1e-3
-                        assert_in_delta 0, rbs.angular_velocity.z, 1e-3
-                    end
-
-                    it "exports the angular velocity in the target links's frame" do
-                        task.exported_links = [Types.rock_gazebo.LinkExport.new(
-                            port_name: 'test', source_link: 'root', target_link: 'rotated_link',
-                            port_period: Time.at(0))]
-                        wrench = Types.base.samples.Wrench.new(time: Time.now,
-                            force: Eigen::Vector3.Zero, torque: Eigen::Vector3.new(1, 0, 0))
-                        @task.configure
-                        @task.start
-                        writer = @task.test_wrench.writer
-                        rbs = assert_port_has_one_new_sample 'test' do |sample|
-                            writer.write(wrench)
-                            sample.angular_velocity.z > 1
-                        end
-                        assert_in_delta 0, rbs.angular_velocity.x, 1e-3
-                        assert_in_delta 0, rbs.angular_velocity.y, 1e-3
-                    end
-                end
             end
 
-            describe "acceleration export with use_proper_reference_frames=false" do
+            describe "acceleration export" do
                 before do
                     @task = gzserver 'freefall.world', '/gazebo:w:m'
-                    @task.use_proper_reference_frames = false
-                end
-
-                it "exports a link's linear acceleration" do
-                    task.exported_links = [Types.rock_gazebo.LinkExport.new(
-                        port_name: 'test', source_link: 'l', target_link: 'root',
-                        port_period: Time.at(0))]
-                    link_acceleration = configure_start_and_read_one_sample 'test_acceleration'
-                    assert_in_delta(-9.8, link_acceleration.acceleration.z, 1e-3)
-                end
-
-                it "exports the linear acceleration always in the source frame" do
-                    task.exported_links = [Types.rock_gazebo.LinkExport.new(
-                        port_name: 'test', source_link: 'root', target_link: 'rotated_link',
-                        port_period: Time.at(0))]
-                    link_acceleration = configure_start_and_read_one_sample 'test_acceleration'
-                    assert_in_delta(-9.8, link_acceleration.acceleration.z, 1e-3)
-                end
-
-                it "exports a link's angular acceleration" do
-                    task.exported_links = [Types.rock_gazebo.LinkExport.new(
-                        port_name: 'test', source_link: 'root', target_link: 'root',
-                        port_period: Time.at(0))]
-                    wrench = Types.base.samples.Wrench.new(time: Time.now,
-                        force: Eigen::Vector3.Zero, torque: Eigen::Vector3.new(1, 0, 0))
-
-                    task.configure
-                    task.start
-                    writer = task.test_wrench.writer
-
-                    acc = assert_port_has_one_new_sample 'test_acceleration' do |sample|
-                        writer.write(wrench)
-                        sample.angular_acceleration.norm > 0.1
-                    end
-                    assert_in_delta 0.5, acc.angular_acceleration.x, 1e-3
-                    assert_in_delta 0, acc.angular_acceleration.y, 1e-3
-                    assert_in_delta 0, acc.angular_acceleration.z, 1e-3
-                end
-
-                it "exports the angular acceleration always in the source frame" do
-                    task.exported_links = [Types.rock_gazebo.LinkExport.new(
-                        port_name: 'test', source_link: 'root', target_link: 'rotated_link',
-                        port_period: Time.at(0))]
-                    wrench = Types.base.samples.Wrench.new(time: Time.now,
-                        force: Eigen::Vector3.Zero, torque: Eigen::Vector3.new(1, 0, 0))
-
-                    task.configure
-                    task.start
-                    writer = task.test_wrench.writer
-
-                    acc = assert_port_has_one_new_sample 'test_acceleration' do |sample|
-                        writer.write(wrench)
-                        sample.angular_acceleration.norm > 0.1
-                    end
-                    assert_in_delta 0.5, acc.angular_acceleration.x, 1e-3
-                    assert_in_delta 0, acc.angular_acceleration.y, 1e-3
-                    assert_in_delta 0, acc.angular_acceleration.z, 1e-3
-                end
-            end
-
-            describe "acceleration export with use_proper_reference_frames=true" do
-                before do
-                    @task = gzserver 'freefall.world', '/gazebo:w:m'
-                    @task.use_proper_reference_frames = true
                 end
 
                 it "exports a link's linear acceleration" do
@@ -440,13 +313,12 @@ describe "The Rock/Gazebo plugin" do
                     assert_in_delta 9.8, link_acceleration.acceleration.norm, 1e-3
                 end
 
-                it "exports the linear acceleration expressed in the target frame" do
+                it "exports the linear acceleration expressed in the source frame" do
                     task.exported_links = [Types.rock_gazebo.LinkExport.new(
                         port_name: 'test', source_link: 'root', target_link: 'rotated_link',
                         port_period: Time.at(0))]
                     link_acceleration = configure_start_and_read_one_sample 'test_acceleration'
-
-                    assert_in_delta 9.8, link_acceleration.acceleration.x, 1e-3
+                    assert_in_delta -9.8, link_acceleration.acceleration.z, 1e-3
                 end
 
                 it "exports a link's angular acceleration" do
@@ -469,12 +341,12 @@ describe "The Rock/Gazebo plugin" do
                     assert_in_delta 0, acc.angular_acceleration.z, 1e-3
                 end
 
-                it "exports the angular acceleration expressed in the target frame" do
+                it "exports the angular acceleration expressed in the source frame" do
                     task.exported_links = [Types.rock_gazebo.LinkExport.new(
                         port_name: 'test', source_link: 'root', target_link: 'rotated_link',
                         port_period: Time.at(0))]
                     wrench = Types.base.samples.Wrench.new(time: Time.now,
-                        force: Eigen::Vector3.Zero, torque: Eigen::Vector3.new(0, 0, 1))
+                        force: Eigen::Vector3.Zero, torque: Eigen::Vector3.new(1, 0, 0))
 
                     task.configure
                     task.start
@@ -484,7 +356,7 @@ describe "The Rock/Gazebo plugin" do
                         writer.write(wrench)
                         sample.angular_acceleration.norm > 0.1
                     end
-                    assert_in_delta(-0.5, acc.angular_acceleration.x, 1e-3)
+                    assert_in_delta 0.5, acc.angular_acceleration.x, 1e-3
                     assert_in_delta 0, acc.angular_acceleration.y, 1e-3
                     assert_in_delta 0, acc.angular_acceleration.z, 1e-3
                 end
