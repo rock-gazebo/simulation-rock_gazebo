@@ -62,7 +62,11 @@ end
 require 'rock/bundles'
 # Workaround: default_loader calls Orocos.load unconditionally :(
 Orocos.disable_sigchld_handler = true
-Bundles.load
+if start
+    Bundles.load
+else
+    Bundles.setup_search_paths
+end
 SDF::XML.model_path = Rock::Gazebo.model_path
 
 _, args = Rock::Gazebo.resolve_worldfiles_and_models_arguments(args)

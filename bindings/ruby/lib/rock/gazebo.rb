@@ -78,7 +78,7 @@ module Rock
         end
 
         def self.initialize
-            Bundles.load
+            Bundles.setup_search_paths
             self.model_path = self.default_model_path
         end
 
