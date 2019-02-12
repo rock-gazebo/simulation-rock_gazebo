@@ -1,5 +1,4 @@
-require 'rock_gazebo/syskit/test'
-require_relative '../helpers'
+require_relative 'helpers'
 
 module RockGazebo
     module Syskit
@@ -7,6 +6,7 @@ module RockGazebo
             before do
                 @robot_model = ::Syskit::Robot::RobotDefinition.new
                 Roby.app.using_task_library 'rock_gazebo'
+                Conf.sdf = SDF.new
                 require 'models/orogen/rock_gazebo'
             end
 
@@ -35,25 +35,19 @@ module RockGazebo
                 before do
                     root = ::SDF::Root.load expand_fixture_world('attached_simple_model.world'), flatten: false
                     @world = root.each_world.first
+                    ::Syskit.conf.use_deployments_from_gazebo(@world, prefix: 'gazebo_prefix')
                 end
 
                 it "creates a device that exports the submodel" do
                     attachment = @world.each_model.to_a.first
-                    root_device = @robot_model.expose_gazebo_model(attachment, "gazebo_prefix")
+                    root_device, _ = @robot_model.expose_gazebo_model(
+                        attachment, "gazebo_prefix:test")
                     device = @robot_model.define_submodel_device(
                         'included_model', root_device, attachment.each_model.first)
 
                     assert_equal CommonModels::Devices::Gazebo::Model, device.model
 
                     submodel_driver_m = device.to_instance_requirements
-                        
-                    driver_m = submodel_driver_m.to_component_model
-                    assert_equal driver_m.included_model_pose_samples_port,
-                        submodel_driver_m.pose_samples_port.to_component_port
-                    transform = driver_m.find_transform_of_port(
-                        driver_m.included_model_pose_samples_port)
-                    assert_equal "included_model_source", transform.from
-                    assert_equal "included_model_target", transform.to
 
                     assert_equal "attachment::included_model::root",
                         submodel_driver_m.frame_mappings['included_model_source']
@@ -64,7 +58,10 @@ module RockGazebo
 
             describe "root model" do
                 before do
-                    root = ::SDF::Root.load expand_fixture_world('simple_model.world'), flatten: false
+                    root = ::SDF::Root.load expand_fixture_world(
+                        'simple_model.world'), flatten: false
+                    ::Syskit.conf.use_deployments_from_gazebo(root.each_world.first)
+
                     @world = root.each_world.first
                     @robot_sdf = @world.each_model.first
                 end
@@ -73,20 +70,20 @@ module RockGazebo
                     before do
                         flexmock(Roby).should_receive(:warn_deprecated).at_least.once
                         @robot_model.load_gazebo(
-                            @robot_sdf, 'gazebo', name: 'renamed_model')
+                            @robot_sdf, 'gazebo:test', name: 'renamed_model')
                         @device = @robot_model.find_device('renamed_model')
                         @model_driver_m = @device.to_instance_requirements
                         @driver_m = @model_driver_m.to_component_model
                     end
 
                     it "exposes the model device" do
-                        assert_equal CommonModels::Devices::Gazebo::Model,
+                        assert_equal CommonModels::Devices::Gazebo::RootModel,
                             @device.model
                     end
 
-                    it "sets up the deployment name" do
-                        assert_equal ['gazebo:included_model'],
-                            @model_driver_m.deployment_hints.to_a
+                    it "selects the deployment" do
+                        assert_has_single_deployed_task 'gazebo:test:included_model',
+                            @model_driver_m
                     end
 
                     it "sets up the transforms" do
@@ -101,7 +98,7 @@ module RockGazebo
                     before do
                         flexmock(Roby).should_receive(:warn_deprecated).at_least.once
                         @robot_model.load_gazebo(
-                            @robot_sdf, 'gazebo', name: 'renamed_model')
+                            @robot_sdf, 'gazebo:test', name: 'renamed_model')
                     end
 
                     it "sets up the device transform on the link device" do
@@ -114,8 +111,8 @@ module RockGazebo
                         device = @robot_model.find_device('child_link')
                         link_driver_m = device.to_instance_requirements
                         driver_m = link_driver_m.to_component_model
-                        assert_equal ['gazebo:included_model'],
-                            link_driver_m.deployment_hints.to_a
+                        assert_has_single_deployed_task 'gazebo:test:included_model',
+                            link_driver_m
                         assert_equal driver_m.child_link_port,
                             link_driver_m.link_state_samples_port.to_component_port
                         transform = driver_m.find_transform_of_port(
@@ -127,12 +124,14 @@ module RockGazebo
                             link_driver_m.frame_mappings['child_source']
                     end
 
-                    it "exposes the sensors from the model but does not prefix them with the model name" do
+                    it "exposes the sensors from the model but does not prefix them "\
+                        "with the model name" do
+
                         device = @robot_model.find_device('g_sensor')
                         sensor_driver_m = device.to_instance_requirements
                         driver_m = sensor_driver_m.to_component_model
-                        assert_equal ['gazebo:included_model:g'],
-                            sensor_driver_m.deployment_hints.to_a
+                        assert_has_single_deployed_task 'gazebo:test:included_model:g',
+                            sensor_driver_m
                         assert_equal OroGen::RockGazebo::GPSTask,
                             driver_m.model
                         transform = driver_m.find_transform_of_port(
@@ -148,7 +147,7 @@ module RockGazebo
                 describe "link export behavior" do
                     before do
                         @robot_model.load_gazebo(
-                            @robot_sdf, 'gazebo', name: 'renamed_model', prefix_device_with_name: true)
+                            @robot_sdf, 'gazebo:test', name: 'renamed_model', prefix_device_with_name: true)
                     end
 
                     it "sets up the device transform on the link device" do
@@ -165,8 +164,8 @@ module RockGazebo
                             common_link_export_behavior
 
                         link_driver_m = device.to_instance_requirements
-                        assert_equal ['gazebo:included_model'],
-                            link_driver_m.deployment_hints.to_a
+                        assert_has_single_deployed_task 'gazebo:test:included_model',
+                            link_driver_m
                         assert_equal "included_model::child",
                             link_driver_m.frame_mappings['child_source']
                         assert_equal "child_source", transform.from
@@ -177,8 +176,8 @@ module RockGazebo
                         device, sensor_driver_m, driver_m, transform =
                             common_sensor_export_behavior
 
-                        assert_equal ['gazebo:included_model:g'],
-                            sensor_driver_m.deployment_hints.to_a
+                        assert_has_single_deployed_task 'gazebo:test:included_model:g',
+                            sensor_driver_m
                         assert_equal "included_model::root",
                             device.frame_transform.from
                         assert_equal "world",
@@ -197,7 +196,7 @@ module RockGazebo
                 transform = driver_m.find_transform_of_port(port)
                 return device, link_driver_m, driver_m, transform
             end
-            
+
             def common_sensor_export_behavior
                 device = @robot_model.find_device('renamed_model_g_sensor')
                 sensor_driver_m = device.to_instance_requirements
@@ -211,11 +210,13 @@ module RockGazebo
 
             describe "model-in-model" do
                 before do
-                    root = ::SDF::Root.load expand_fixture_world('attached_simple_model.world'), flatten: false
+                    root = ::SDF::Root.load expand_fixture_world(
+                        'attached_simple_model.world'), flatten: false
                     @world = root.each_world.first
+                    ::Syskit.conf.use_deployments_from_gazebo(@world)
                     @robot_sdf = @world.each_model.first.each_model.first
                     @robot_model.load_gazebo(
-                        @robot_sdf, 'gazebo', name: 'renamed_model',
+                        @robot_sdf, 'gazebo:test', name: 'renamed_model',
                         prefix_device_with_name: true)
                 end
 
@@ -223,7 +224,8 @@ module RockGazebo
                     assert @robot_model.find_device('attachment')
                 end
 
-                it "sets up the device transform on the submodel device, using the submodel's root link as root frame" do
+                it "sets up the device transform on the submodel device, "\
+                   "using the submodel's root link as root frame" do
                     device = @robot_model.find_device('renamed_model')
                     assert_equal 'included_model::root', device.frame_transform.from
                     assert_equal 'world', device.frame_transform.to
@@ -250,8 +252,8 @@ module RockGazebo
                     device, link_driver_m, driver_m, transform =
                         common_link_export_behavior
 
-                    assert_equal ['gazebo:attachment'],
-                        link_driver_m.deployment_hints.to_a
+                    assert_has_single_deployed_task 'gazebo:test:attachment',
+                        link_driver_m
                     assert_equal "included_model::child",
                         link_driver_m.frame_mappings['included_model_child_source']
                     assert_equal "included_model_child_source", transform.from
@@ -270,18 +272,21 @@ module RockGazebo
                     device, sensor_driver_m, driver_m, transform =
                         common_sensor_export_behavior
 
-                    assert_equal ['gazebo:attachment:g'],
-                        sensor_driver_m.deployment_hints.to_a
+                    assert_has_single_deployed_task 'gazebo:test:attachment:g',
+                        sensor_driver_m
                 end
             end
 
             describe "model containing another model" do
                 before do
-                    root = ::SDF::Root.load expand_fixture_world('attached_simple_model.world'), flatten: false
+                    root = ::SDF::Root.load expand_fixture_world(
+                        'attached_simple_model.world'), flatten: false
                     @world = root.each_world.first
+                    ::Syskit.conf.use_deployments_from_gazebo(@world)
                     @robot_sdf = @world.each_model.first
                     @robot_model.load_gazebo(
-                        @robot_sdf, 'gazebo', name: 'renamed_model', prefix_device_with_name: true)
+                        @robot_sdf, 'gazebo:test', name: 'renamed_model',
+                        prefix_device_with_name: true)
                 end
 
                 it "sets up the transforms on the submodel's links" do
@@ -294,8 +299,8 @@ module RockGazebo
                     device, link_driver_m, driver_m, transform =
                         common_link_export_behavior 'included_model_child'
 
-                    assert_equal ['gazebo:attachment'],
-                        link_driver_m.deployment_hints.to_a
+                    assert_has_single_deployed_task 'gazebo:test:attachment',
+                        link_driver_m
                     assert_equal "attachment::included_model::child",
                         link_driver_m.frame_mappings['child_source']
                     assert_equal "child_source", transform.from
@@ -306,13 +311,20 @@ module RockGazebo
                     device, sensor_driver_m, driver_m, transform =
                         common_sensor_export_behavior
 
-                    assert_equal ['gazebo:attachment:g'],
-                        sensor_driver_m.deployment_hints.to_a
+                    assert_has_single_deployed_task 'gazebo:test:attachment:g',
+                        sensor_driver_m
                     assert_equal "attachment::included_model::root",
                         device.frame_transform.from
                     assert_equal "world",
                         device.frame_transform.to
                 end
+            end
+
+            def assert_has_single_deployed_task(expected_name, object)
+                group = object.deployment_group
+                tasks = group.each_deployed_task.to_a
+                assert_equal 1, tasks.size
+                assert_equal expected_name, tasks.first.first
             end
         end
     end

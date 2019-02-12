@@ -18,6 +18,9 @@ module RockGazebo
             # The full path to the worl file
             attr_accessor :world_file_path
 
+            # The configured deployment object that represents this world's tasks
+            attr_accessor :deployment_group
+
             def initialize
                 @world = ::SDF::World.empty
             end

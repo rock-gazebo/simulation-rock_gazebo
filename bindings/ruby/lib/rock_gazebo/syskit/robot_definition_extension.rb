@@ -14,22 +14,22 @@ module RockGazebo
                 case sensor.type
                 when 'ray'
                     require 'common_models/models/devices/gazebo/ray'
-                    device(CommonModels::Devices::Gazebo::Ray, as: device_name, 
+                    device(CommonModels::Devices::Gazebo::Ray, as: device_name,
                         using: OroGen::RockGazebo::LaserScanTask).
                         frame(frame_name)
                 when 'imu'
                     require 'common_models/models/devices/gazebo/imu'
-                    device(CommonModels::Devices::Gazebo::Imu, as: device_name, 
+                    device(CommonModels::Devices::Gazebo::Imu, as: device_name,
                         using: OroGen::RockGazebo::ImuTask).
                         frame_transform(frame_name => 'world')
                 when 'camera'
                     require 'common_models/models/devices/gazebo/camera'
-                    device(CommonModels::Devices::Gazebo::Camera, as: device_name, 
+                    device(CommonModels::Devices::Gazebo::Camera, as: device_name,
                         using: OroGen::RockGazebo::CameraTask).
                         frame(frame_name)
                 when 'gps'
                     require 'common_models/models/devices/gazebo/gps'
-                    device(CommonModels::Devices::Gazebo::GPS, as: device_name, 
+                    device(CommonModels::Devices::Gazebo::GPS, as: device_name,
                         using: OroGen::RockGazebo::GPSTask).
                         frame_transform(frame_name => 'world')
                 end
@@ -46,7 +46,7 @@ module RockGazebo
             def plugins_to_device(plugin, device_name, frame_name)
                 if plugin.filename =~ /gazebo_thruster/
                     require 'common_models/models/devices/gazebo/thruster'
-                    device(CommonModels::Devices::Gazebo::Thruster, as: device_name, 
+                    device(CommonModels::Devices::Gazebo::Thruster, as: device_name,
                         using: OroGen::RockGazebo::ThrusterTask)
                 end
             end
@@ -133,7 +133,7 @@ module RockGazebo
                 end
 
                 submodel_driver_m = submodel_driver_m.to_instance_requirements.
-                    prefer_deployed_tasks(*enclosing_device.to_instance_requirements.deployment_hints).
+                    use_deployment_group(*enclosing_device.deployment_group).
                     with_arguments(model_dev: enclosing_device).
                     use_frames("#{normalized_name}_source" => link_frame,
                                "#{normalized_name}_target" => 'world').
@@ -214,16 +214,21 @@ module RockGazebo
 
                 if enclosing_model != model
                     create_frame_mappings_for_used_model(model)
-                    enclosing_device = expose_gazebo_model(enclosing_model, deployment_prefix, reuse: reuse, device_name: enclosing_model.name)
+                    enclosing_device, enclosing_device_task_name = expose_gazebo_model(
+                        enclosing_model, deployment_prefix,
+                        reuse: reuse, device_name: enclosing_model.name)
                     model_device = define_submodel_device(name, enclosing_device, model)
                     prefix_device_with_name = true
                 else
-                    enclosing_device = expose_gazebo_model(enclosing_model, deployment_prefix, reuse: reuse, device_name: name)
+                    enclosing_device, enclosing_device_task_name = expose_gazebo_model(
+                        enclosing_model, deployment_prefix,
+                        reuse: reuse, device_name: name)
                     model_device = enclosing_device
                     enclosing_device.advanced = false
                 end
-                load_gazebo_robot_model(model, enclosing_device, name: name,
-                    reuse: reuse,
+                load_gazebo_robot_model(model, enclosing_device,
+                    enclosing_device_task_name,
+                    name: name, reuse: reuse,
                     prefix_device_with_name: prefix_device_with_name)
                 model_device
             end
@@ -239,13 +244,17 @@ module RockGazebo
                     return existing
                 end
 
-                device(CommonModels::Devices::Gazebo::RootModel, as: device_name,
+                task_name = "#{deployment_prefix}:#{normalize_name(sdf.name)}"
+                deployment_group = Conf.sdf.deployment_group.
+                    deployed_task_by_name(task_name)
+                dev = device(CommonModels::Devices::Gazebo::RootModel, as: device_name,
                        using: OroGen.rock_gazebo.ModelTask).
-                       prefer_deployed_tasks("#{deployment_prefix}:#{normalize_name(sdf.name)}").
+                       use_deployment_group(deployment_group).
                        frame_transform(link_frame_name(sdf) => 'world').
                        advanced.
                        sdf(sdf).
                        doc("Gazebo: the #{sdf.name} model")
+                return dev, task_name
             end
 
             # @api private
@@ -258,7 +267,9 @@ module RockGazebo
             # @api private
             #
             # Define devices for all links and sensors in the model
-            def load_gazebo_robot_model(sdf_model, root_device, reuse: nil, name: sdf_model.name, prefix_device_with_name: true)
+            def load_gazebo_robot_model(sdf_model, root_device, name_prefix,
+                reuse: nil, name: sdf_model.name, prefix_device_with_name: true)
+
                 world = resolve_enclosing_world(sdf_model)
                 if prefix = sdf_model.full_name(root: root_device.sdf)
                     frame_prefix = "#{normalize_name(prefix)}_"
@@ -280,8 +291,7 @@ module RockGazebo
                     driver_srv = link_driver_m.require_dynamic_service(
                         'link_export', as: device_name, frame_basename: frame_basename)
                     link_driver_m = link_driver_m.to_instance_requirements.
-                        prefer_deployed_tasks(*root_device.
-                            to_instance_requirements.deployment_hints).
+                        use_deployment_group(root_device.deployment_group).
                         with_arguments(model_dev: root_device).
                         use_frames("#{frame_basename}_source" => link_frame,
                                    "#{frame_basename}_target" => 'world').
@@ -302,10 +312,10 @@ module RockGazebo
                         end
                         device.doc "Gazebo: #{s.name} sensor of #{sdf_model.full_name}"
 
-                        deployment_name = 
-                            root_device.to_instance_requirements.deployment_hints.first
-                        device.sdf(s).
-                            prefer_deployed_tasks("#{deployment_name}:#{normalize_name(s.name)}")
+                        deployment_name = "#{name_prefix}:#{normalize_name(s.name)}"
+                        deployment_group = Conf.sdf.deployment_group.
+                            deployed_task_by_name(deployment_name)
+                        device.sdf(s).use_deployment_group(deployment_group)
                     else
                         RockGazebo.warn "Robot#load_gazebo: don't know how to handle" \
                             "sensor #{s.full_name} of type #{s.type}"
@@ -316,11 +326,11 @@ module RockGazebo
                     if prefix_device_with_name
                         device_name = "#{normalize_name(name)}_#{device_name}"
                     end
-                    if device = plugins_to_device(plugin, device_name, 
+                    if device = plugins_to_device(plugin, device_name,
                             link_frame_name(plugin.parent))
                         device.doc "Gazebo: #{plugin.name} plugin of #{sdf_model.full_name}"
 
-                        deployment_name = 
+                        deployment_name =
                             root_device.to_instance_requirements.deployment_hints.first
                         device.sdf(plugin).
                             prefer_deployed_tasks("#{deployment_name}:#{normalize_name(plugin.name)}")

@@ -37,11 +37,22 @@ module RockGazebo
 
             # Sets up Syskit to use gazebo configured to use the given world
             #
-            # @return [Syskit::Deployment] a deployment object that represents
-            #   gazebo itself
+            # @return [Syskit::Models::ConfiguredDeployment]
             def use_gazebo_world(*path, world_name: nil, localhost: Conf.gazebo.localhost?)
                 world = use_sdf_world(*path, world_name: world_name)
-                deployment_model = ConfigurationExtension.world_to_orogen(world)
+                use_deployments_from_gazebo(world, localhost: localhost)
+            end
+
+            # Register the deployments from gazebo to be used in profiles
+            #
+            # The deployments are registerd in Conf.sdf.deployment_groups,
+            # to be picked up by the use_gazebo_model stanza in the profiles
+            #
+            # @return [Syskit::Models::ConfiguredDeployment]
+            def use_deployments_from_gazebo(world,
+                    prefix: 'gazebo', localhost: Conf.gazebo.localhost?)
+                deployment_model = ConfigurationExtension.world_to_orogen(world,
+                    prefix: prefix)
 
                 if !has_process_server?('gazebo')
                     if localhost
@@ -61,8 +72,11 @@ module RockGazebo
                     end
 
                 configured_deployment = ::Syskit::Models::ConfiguredDeployment.
-                    new(process_server_config.name, deployment_model, Hash[], "gazebo:#{world.name}", Hash.new)
-                register_configured_deployment(configured_deployment)
+                    new(process_server_config.name, deployment_model, Hash[],
+                        "#{prefix}:#{world.name}", Hash.new)
+                group = ::Syskit::Models::DeploymentGroup.new
+                group.register_configured_deployment(configured_deployment)
+                Conf.sdf.deployment_group = group
                 configured_deployment
             end
 
@@ -95,9 +109,9 @@ module RockGazebo
                 end
             end
 
-            def self.world_to_orogen(world)
+            def self.world_to_orogen(world, prefix: prefix)
                 ::Syskit::Deployment.new_submodel(name: "Deployment::Gazebo::#{world.name}") do
-                    RockGazebo.setup_orogen_model_from_sdf_world(self, world)
+                    RockGazebo.setup_orogen_model_from_sdf_world(self, world, prefix: prefix)
                 end
             end
         end

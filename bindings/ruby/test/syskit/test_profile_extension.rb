@@ -1,5 +1,4 @@
-require 'rock_gazebo/syskit/test'
-require_relative '../helpers'
+require_relative 'helpers'
 
 module RockGazebo
     module Syskit
@@ -35,7 +34,7 @@ module RockGazebo
                     assert_equal "#{expand_fixture_model('two_toplevel_models')} has more than one top level model, cannot use in use_sdf_model",
                         e.message
                 end
-            
+
                 it "returns the loaded model" do
                     model = @profile.use_sdf_model 'model://simple_model'
                     assert_equal 'simple test model', model.name

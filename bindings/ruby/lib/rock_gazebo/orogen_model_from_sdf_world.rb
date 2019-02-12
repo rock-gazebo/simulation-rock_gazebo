@@ -15,33 +15,33 @@ module RockGazebo
         setup_orogen_model_from_sdf_world(deployment, world, period: 0.1)
     end
 
-    def self.setup_orogen_model_from_sdf_world(deployment, world, period: 0.1)
-        deployment.task("gazebo:#{world.name}", "rock_gazebo::WorldTask").
+    def self.setup_orogen_model_from_sdf_world(deployment, world, prefix: "gazebo", period: 0.1)
+        deployment.task("#{prefix}:#{world.name}", "rock_gazebo::WorldTask").
             periodic(period)
-        deployment.task("gazebo:#{world.name}_Logger", "logger::Logger").
+        deployment.task("#{prefix}:#{world.name}_Logger", "logger::Logger").
             periodic(period)
         world.each_model do |model|
-            deployment.task("gazebo:#{world.name}:#{model.name}", "rock_gazebo::ModelTask").
+            deployment.task("#{prefix}:#{world.name}:#{model.name}", "rock_gazebo::ModelTask").
                 periodic(period)
 
             model.each_sensor do |sensor|
                 if sensor.type == 'ray'
-                    deployment.task("gazebo:#{world.name}:#{model.name}:#{sensor.name}", "rock_gazebo::LaserScanTask").
+                    deployment.task("#{prefix}:#{world.name}:#{model.name}:#{sensor.name}", "rock_gazebo::LaserScanTask").
                         periodic(period)
                 elsif sensor.type == 'camera'
-                    deployment.task("gazebo:#{world.name}:#{model.name}:#{sensor.name}", "rock_gazebo::CameraTask").
+                    deployment.task("#{prefix}:#{world.name}:#{model.name}:#{sensor.name}", "rock_gazebo::CameraTask").
                         periodic(period)
                 elsif sensor.type == 'imu'
-                    deployment.task("gazebo:#{world.name}:#{model.name}:#{sensor.name}", "rock_gazebo::ImuTask").
+                    deployment.task("#{prefix}:#{world.name}:#{model.name}:#{sensor.name}", "rock_gazebo::ImuTask").
                         periodic(period)
                 elsif sensor.type == 'gps'
-                    deployment.task("gazebo:#{world.name}:#{model.name}:#{sensor.name}", "rock_gazebo::GPSTask").
+                    deployment.task("#{prefix}:#{world.name}:#{model.name}:#{sensor.name}", "rock_gazebo::GPSTask").
                         periodic(period)
                 end
             end
             model.each_plugin do |plugin|
                 if plugin.filename =~ /gazebo_thruster/
-                    deployment.task("gazebo:#{world.name}:#{model.name}:#{plugin.name}", "rock_gazebo::ThrusterTask").
+                    deployment.task("#{prefix}:#{world.name}:#{model.name}:#{plugin.name}", "rock_gazebo::ThrusterTask").
                         periodic(period)
                 end
             end
