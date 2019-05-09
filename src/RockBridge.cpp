@@ -1,4 +1,4 @@
-//====================================================================================== 
+//======================================================================================
 #include "RockBridge.hpp"
 #include "Gazebo7Shims.hpp"
 
@@ -144,7 +144,12 @@ void RockBridge::worldCreated(string const& worldName)
     // RTT::Activity runs the task in separate thread
     RTT::Activity* logger_activity = new RTT::Activity( logger_task->engine() );
     RTT::corba::TaskContextServer::Create( logger_task );
-    RTT::corba::CorbaDispatcher::Instance( logger_task->ports(), ORO_SCHED_OTHER, RTT::os::LowestPriority );
+#if RTT_VERSION_GTE(2,8,99)
+    logger_task->addConstant<int>("CorbaDispatcherScheduler", ORO_SCHED_OTHER);
+    logger_task->addConstant<int>("CorbaDispatcherPriority", RTT::os::LowestPriority);
+#else
+    RTT::corba::CorbaDispatcher::Instance(logger_task->ports(), ORO_SCHED_OTHER, RTT::os::LowestPriority);
+#endif
     logger_activity->start();
     activities.push_back( logger_activity );
     tasks.push_back( logger_task );
@@ -238,7 +243,12 @@ void RockBridge::setupTaskActivity(RTT::TaskContext* task)
 {
     // Export the component interface on CORBA to Ruby access the component
     RTT::corba::TaskContextServer::Create( task );
-    RTT::corba::CorbaDispatcher::Instance( task->ports(), ORO_SCHED_OTHER, RTT::os::LowestPriority );
+#if RTT_VERSION_GTE(2,8,99)
+    task->addConstant<int>("CorbaDispatcherScheduler", ORO_SCHED_OTHER);
+    task->addConstant<int>("CorbaDispatcherPriority", RTT::os::LowestPriority);
+#else
+    RTT::corba::CorbaDispatcher::Instance(task->ports(), ORO_SCHED_OTHER, RTT::os::LowestPriority);
+#endif
 
     // Create and start sequential task activities
     GazeboActivity* activity =
