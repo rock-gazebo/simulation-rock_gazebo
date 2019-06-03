@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module RockGazebo
     module Syskit
         # SDF-related configuration
@@ -24,19 +26,19 @@ module RockGazebo
 
             def load_sdf(*path, world_name: nil)
                 path = File.join(*path)
-                _, resolved_paths = Rock::Gazebo.
-                    resolve_worldfiles_and_models_arguments([path])
+                _, resolved_paths = Rock::Gazebo
+                                    .resolve_worldfiles_and_models_arguments([path])
                 full_path = resolved_paths.first
                 unless File.file?(full_path)
-                    if File.file?(model_sdf = File.join(full_path, 'model.sdf'))
-                        full_path = model_sdf
-                    else
+                    unless File.file?(model_sdf = File.join(full_path, 'model.sdf'))
                         raise ArgumentError, "#{path} cannot be resolved to a SDF file"
                     end
+
+                    full_path = model_sdf
                 end
                 ::SDF::XML.model_path = Rock::Gazebo.model_path
-                world = ConfigurationExtension.
-                    world_from_path(full_path, world_name: world_name)
+                world = ConfigurationExtension
+                        .world_from_path(full_path, world_name: world_name)
                 @world_file_path = full_path
                 @sdf = world.parent
                 @world = world
@@ -56,10 +58,12 @@ module RockGazebo
             # {#global_origin}
             def select_utm_zone(zone, north)
                 @utm_zone  = zone
-                @utm_north = !!north
+                @utm_north = !!north # rubocop:disable Style/DoubleNegation
                 utm = spherical_coordinates.utm(zone: utm_zone, north: utm_north?)
-                @utm_global_origin = Eigen::Vector3.new(utm.easting, utm.northing,
-                    world.spherical_coordinates.elevation)
+                @utm_global_origin = Eigen::Vector3.new(
+                    utm.easting, utm.northing,
+                    world.spherical_coordinates.elevation
+                )
                 @global_origin = self.class.utm2nwu(utm_global_origin)
             end
 
@@ -115,10 +119,11 @@ module RockGazebo
             # The local position of the given lat/lon/alt coordinates
             def local_position(latitude, longitude, altitude)
                 zone_letter = GeoUtm::UTMZones.calc_utm_default_letter(latitude)
-                utm = GeoUtm::LatLon.new(latitude, longitude).
-                    to_utm(zone: "#{utm_zone}#{zone_letter}")
+                utm = GeoUtm::LatLon.new(latitude, longitude)
+                                    .to_utm(zone: "#{utm_zone}#{zone_letter}")
                 utm_nwu = self.class.utm2nwu(
-                    Eigen::Vector3.new(utm.e, utm.n, altitude))
+                    Eigen::Vector3.new(utm.e, utm.n, altitude)
+                )
                 utm_nwu - global_origin
             end
 
@@ -126,7 +131,7 @@ module RockGazebo
                 world.respond_to?(method_name, include_all)
             end
 
-            def method_missing(*args, &block)
+            def method_missing(*args, &block) # rubocop:disable Style/MethodMissingSuper
                 world.public_send(*args, &block)
             end
         end
