@@ -15,6 +15,7 @@
 #include <rock_gazebo/ModelTask.hpp>
 #include <rock_gazebo/WorldTask.hpp>
 #include <rock_gazebo/ThrusterTask.hpp>
+#include <rock_gazebo/UnderwaterTask.hpp>
 #include <rock_gazebo/LaserScanTask.hpp>
 #include <rock_gazebo/CameraTask.hpp>
 #include <rock_gazebo/ImuTask.hpp>
@@ -282,6 +283,12 @@ void RockBridge::instantiatePluginComponents(sdf::ElementPtr modelElement, Model
         if(filename == "libgazebo_thruster.so")
         {
             auto* task = new ThrusterTask();
+            task->setGazeboModel(name, model);
+            setupTaskActivity(task);
+        }
+        else if(filename == "libgazebo_underwater.so")
+        {
+            auto* task = new UnderwaterTask();
             task->setGazeboModel(name, model);
             setupTaskActivity(task);
         }

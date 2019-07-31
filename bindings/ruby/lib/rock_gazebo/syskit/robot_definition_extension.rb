@@ -48,11 +48,17 @@ module RockGazebo
             #   device model and device driver that should be used for this
             #   sensor
             def plugins_to_device(plugin, device_name, _frame_name)
-                if plugin.filename =~ /gazebo_thruster/
+                case plugin.filename
+                when /gazebo_thruster/
                     require 'common_models/models/devices/gazebo/thruster'
                     device(CommonModels::Devices::Gazebo::Thruster,
                            as: device_name,
-                           using: OroGen::RockGazebo::ThrusterTask)
+                           using: OroGen.rock_gazebo.ThrusterTask)
+                when /gazebo_underwater/
+                    require 'common_models/models/devices/gazebo/underwater'
+                    device(CommonModels::Devices::Gazebo::Underwater,
+                           as: device_name,
+                           using: OroGen.rock_gazebo.UnderwaterTask)
                 end
             end
 
@@ -339,7 +345,7 @@ module RockGazebo
                         device_name = "#{normalize_name(name)}_#{device_name}"
                     end
                     if device = plugins_to_device(plugin, device_name,
-                            link_frame_name(plugin.parent))
+                                                  link_frame_name(plugin.parent))
                         device.doc "Gazebo: #{plugin.name} plugin of #{sdf_model.full_name}"
 
                         deployment_name =
