@@ -273,14 +273,17 @@ void RockBridge::instantiatePluginComponents(sdf::ElementPtr modelElement, Model
 {
     sdf::ElementPtr pluginElement = modelElement->GetElement("plugin");
     while(pluginElement) {
-        string pluginFilename = pluginElement->Get<string>("filename");
-        gzmsg << "RockBridge: found plugin "<< pluginFilename << endl;
+        string filename = pluginElement->Get<string>("filename");
+        string name = pluginElement->Get<string>("name");
+        gzmsg << "RockBridge: found plugin name='" << name << "' "
+              << "filename='" << filename << "'" << endl;
+
         // Add more model plugins testing them here
         if(pluginFilename == "libgazebo_thruster.so")
         {
-            ThrusterTask* thruster_task = new ThrusterTask();
-            thruster_task->setGazeboModel( model );
-            setupTaskActivity(thruster_task);
+            auto* task = new ThrusterTask();
+            task->setGazeboModel(name, model);
+            setupTaskActivity(task);
         }
 
         pluginElement = pluginElement->GetNextElement("plugin");
