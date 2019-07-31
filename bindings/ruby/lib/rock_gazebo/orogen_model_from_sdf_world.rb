@@ -40,8 +40,12 @@ module RockGazebo
                 end
             end
             model.each_plugin do |plugin|
-                if plugin.filename =~ /gazebo_thruster/
+                case plugin.filename
+                when /gazebo_thruster/
                     deployment.task("gazebo:#{world.name}:#{model.name}:#{plugin.name}", "rock_gazebo::ThrusterTask").
+                        periodic(period)
+                when /gazebo_underwater/
+                    deployment.task("gazebo:#{world.name}:#{model.name}:#{plugin.name}", "rock_gazebo::UnderwaterTask").
                         periodic(period)
                 end
             end
