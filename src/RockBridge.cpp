@@ -39,7 +39,7 @@
 #include <rtt/Activity.hpp>
 #include <rtt/TaskContext.hpp>
 #include <rtt/base/ActivityInterface.hpp>
-#include <rtt/extras/SequentialActivity.hpp>
+#include <rtt/extras/SlaveActivity.hpp>
 #include <rtt/transports/corba/ApplicationServer.hpp>
 #include <rtt/transports/corba/TaskContextServer.hpp>
 #include <rtt/transports/corba/CorbaDispatcher.hpp>
@@ -51,20 +51,6 @@
 using namespace std;
 using namespace gazebo;
 using namespace rock_gazebo;
-
-struct GazeboActivity : RTT::extras::SequentialActivity
-{
-    using SequentialActivity::SequentialActivity;
-
-    bool trigger()
-    {
-        return false;
-    }
-    bool execute()
-    {
-        return RTT::extras::SequentialActivity::trigger();
-    }
-};
 
 RockBridge::RockBridge()
 {
@@ -252,8 +238,8 @@ void RockBridge::setupTaskActivity(RTT::TaskContext* task)
 #endif
 
     // Create and start sequential task activities
-    GazeboActivity* activity =
-        new GazeboActivity(task->engine());
+    RTT::extras::SlaveActivity* activity =
+        new RTT::extras::SlaveActivity(task->engine());
     activity->start();
     activities.push_back(activity);
     tasks.push_back(task);
