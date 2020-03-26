@@ -7,6 +7,8 @@ $LOAD_PATH.unshift File.dirname(rock_bundle.path)
 $LOAD_PATH.unshift rock_bundle.path
 Roby.app.search_path << rock_bundle.path
 
+require 'rock_gazebo/root_logger'
+
 # simplecov must be loaded FIRST. Only the files required after it gets loaded
 # will be profiled !!!
 if ENV['TEST_ENABLE_COVERAGE'] == '1'
@@ -14,10 +16,10 @@ if ENV['TEST_ENABLE_COVERAGE'] == '1'
         require 'simplecov'
         SimpleCov.start
     rescue LoadError
-        require 'rock_gazebo/syskit'
-        RockGazebo.warn "coverage is disabled because the 'simplecov' gem cannot be loaded"
-    rescue Exception => e
-        require 'rock_gazebo/syskit'
+        RockGazebo.warn(
+            "coverage is disabled because the 'simplecov' gem cannot be loaded"
+        )
+    rescue Exception => e # rubocop:disable Lint/RescueException
         RockGazebo.warn "coverage is disabled: #{e.message}"
     end
 end
@@ -25,7 +27,7 @@ end
 if ENV['TEST_ENABLE_PRY'] != '0'
     begin
         require 'pry'
-    rescue Exception
+    rescue Exception # rubocop:disable Lint/RescueException
         RockGazebo.warn "debugging is disabled because the 'pry' gem cannot be loaded"
     end
 end
