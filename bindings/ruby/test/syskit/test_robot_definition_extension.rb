@@ -49,7 +49,7 @@ module RockGazebo
                     @world = root.each_world.first
                 end
 
-                it 'creates a device that exports the submodel' do
+                it 'creates a device that exports the submodel\'s joints' do
                     attachment = @world.each_model.to_a.first
                     root_device = @robot_model.expose_gazebo_model(
                         attachment, 'gazebo_prefix'
@@ -63,18 +63,8 @@ module RockGazebo
                     submodel_driver_m = device.to_instance_requirements
 
                     driver_m = submodel_driver_m.to_component_model
-                    assert_equal driver_m.included_model_pose_samples_port,
-                                 submodel_driver_m.pose_samples_port.to_component_port
-                    transform = driver_m.find_transform_of_port(
-                        driver_m.included_model_pose_samples_port
-                    )
-                    assert_equal 'included_model_source', transform.from
-                    assert_equal 'included_model_target', transform.to
-
-                    assert_equal 'attachment::included_model::root',
-                                 submodel_driver_m.frame_mappings['included_model_source']
-                    assert_equal 'world',
-                                 submodel_driver_m.frame_mappings['included_model_target']
+                    assert_equal driver_m.included_model_joints_cmd_port,
+                                 submodel_driver_m.joints_cmd_port.to_component_port
                 end
             end
 
@@ -97,7 +87,7 @@ module RockGazebo
                     end
 
                     it 'exposes the model device' do
-                        assert_equal CommonModels::Devices::Gazebo::Model,
+                        assert_equal CommonModels::Devices::Gazebo::RootModel,
                                      @device.model
                     end
 
