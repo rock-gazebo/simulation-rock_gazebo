@@ -1,4 +1,6 @@
-require "rock/gazebo"
+# frozen_string_literal: true
+
+require 'rock/gazebo'
 require 'rock_gazebo/orogen_model_from_sdf_world'
 require 'sdf'
 require 'orocos'
