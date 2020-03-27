@@ -62,13 +62,13 @@ describe 'The Rock/Gazebo plugin' do
             end
 
             it 'exports the state of all the non-fixed joints' do
-                joints = configure_start_and_read_one_sample 'joints_samples'
-                assert_equal ['m::j_00', 'm::j_01', 'm::child::j_00', 'm::child::j_01'],
-                             joints.names
-                assert_includes (-0.1..0.11), joints.elements[0].position
-                assert_includes (0.19..0.31), joints.elements[1].position
-                assert_includes (0.39..0.51), joints.elements[2].position
-                assert_includes (0.59..0.71), joints.elements[3].position
+                configure_start_and_read_one_sample 'joints_samples' do |joints|
+                    joints.names == %w[m::j_00 m::j_01 m::child::j_00 m::child::j_01] &&
+                        (-0.1..0.11).include?(joints.elements[0].position) &&
+                        (0.19..0.31).include?(joints.elements[1].position) &&
+                        (0.39..0.51).include?(joints.elements[2].position) &&
+                        (0.59..0.71).include?(joints.elements[3].position)
+                end
             end
 
             it 'allows commanding the joints' do
@@ -103,17 +103,41 @@ describe 'The Rock/Gazebo plugin' do
             it 'exports a set of joints in the specified order' do
                 task.exported_joints = [Types.rock_gazebo.JointExport.new(
                     port_name: 'test', prefix: '',
-                    joints: ['m::child::j_00', 'm::j_01']
+                    joints: %w[m::child::j_00 m::j_01],
+                    port_period: Time.at(0)
                 )]
-                joints = configure_start_and_read_one_sample 'test_samples'
-                assert_equal ['m::child::j_00', 'm::j_01'], joints.names
-                assert_includes (0.39..0.51), joints.elements[0].position
-                assert_includes (0.19..0.31), joints.elements[1].position
+                configure_start_and_read_one_sample 'test_samples' do |joints|
+                    joints.names == %w[m::child::j_00 m::j_01] &&
+                        (0.39..0.51).include?(joints.elements[0].position) &&
+                        (0.19..0.31).include?(joints.elements[1].position)
+                end
+            end
+
+            it 'exports values at the simulation rate' do
+                task.exported_joints = [Types.rock_gazebo.JointExport.new(
+                    port_name: 'test', prefix: '',
+                    joints: %w[m::child::j_00 m::j_01],
+                    port_period: Time.at(0)
+                )]
+                samples = configure_start_read_samples_and_stop 'test_samples', 0.5
+                assert (22..28).include?(samples.size)
+            end
+
+            it 'allows to control the output period of a joint export' do
+                task.exported_joints = [Types.rock_gazebo.JointExport.new(
+                    port_name: 'test', prefix: '',
+                    joints: %w[m::child::j_00 m::j_01],
+                    port_period: Time.at(0.1)
+                )]
+                samples = configure_start_read_samples_and_stop 'test_samples', 0.5
+                assert (4..6).include?(samples.size)
             end
 
             it 'fails if the joint is given relative to the model' do
                 task.exported_joints = [Types.rock_gazebo.JointExport.new(
-                    port_name: 'test', prefix: '', joints: ['child::j_00']
+                    port_name: 'test', prefix: '',
+                    joints: %w[child::j_00],
+                    port_period: Time.at(0)
                 )]
                 assert_raises(Orocos::StateTransitionFailed) do
                     task.configure
@@ -128,7 +152,8 @@ describe 'The Rock/Gazebo plugin' do
 
                 task.exported_joints = [Types.rock_gazebo.JointExport.new(
                     port_name: 'test', prefix: '',
-                    joints: ['m::child::j_00', 'm::j_01']
+                    joints: %w[m::child::j_00 m::j_01],
+                    port_period: Time.at(0)
                 )]
 
                 task.configure
@@ -144,11 +169,12 @@ describe 'The Rock/Gazebo plugin' do
                 end
             end
 
-            describe 'the prefix settting' do
+            describe 'the prefix setting' do
                 it 'raises if a joint name does not start with the requested prefix' do
                     task.exported_joints = [Types.rock_gazebo.JointExport.new(
                         port_name: 'test', prefix: 'm::child::',
-                        joints: ['m::child::j_00', 'm::j_01']
+                        joints: %w[m::child::j_00 m::j_01],
+                        port_period: Time.at(0)
                     )]
                     assert_raises(Orocos::StateTransitionFailed) do
                         task.configure
@@ -157,19 +183,22 @@ describe 'The Rock/Gazebo plugin' do
                 it 'allows to remove a scope prefix from the joint names' do
                     task.exported_joints = [Types.rock_gazebo.JointExport.new(
                         port_name: 'test', prefix: 'm::',
-                        joints: ['m::child::j_00', 'm::j_01']
+                        joints: %w[m::child::j_00 m::j_01],
+                        port_period: Time.at(0)
                     )]
-                    joints = configure_start_and_read_one_sample 'test_samples'
-                    assert_equal ['child::j_00', 'j_01'], joints.names
-                    assert_includes (0.39..0.51), joints.elements[0].position
-                    assert_includes (0.19..0.31), joints.elements[1].position
+                    configure_start_and_read_one_sample 'test_samples' do |joints|
+                        joints.names == %w[child::j_00 j_01] &&
+                            (0.39..0.51).include?(joints.elements[0].position) &&
+                            (0.19..0.31).include?(joints.elements[1].position)
+                    end
                 end
             end
 
             it 'removes the ports on cleanup' do
                 task.exported_joints = [Types.rock_gazebo.JointExport.new(
                     port_name: 'test', prefix: '',
-                    joints: ['m::child::j_00', 'm::j_01']
+                    joints: %w[m::child::j_00 m::j_01],
+                    port_period: Time.at(0)
                 )]
                 task.configure
                 task.cleanup
@@ -180,7 +209,8 @@ describe 'The Rock/Gazebo plugin' do
             it 'fails to configure if a joint does not exist' do
                 task.exported_joints = [Types.rock_gazebo.JointExport.new(
                     port_name: 'test', prefix: '',
-                    joints: ['does_not_exist', 'm::j_01']
+                    joints: %w[does_not_exist m::j_01],
+                    port_period: Time.at(0)
                 )]
                 assert_raises(Orocos::StateTransitionFailed) do
                     task.configure
@@ -525,7 +555,8 @@ describe 'The Rock/Gazebo plugin' do
                 it 'refuses to configure if the source link does not exist' do
                     task.exported_links = [Types.rock_gazebo.LinkExport.new(
                         port_name: 'test',
-                        source_link: 'does_not_exist', target_link: 'root'
+                        source_link: 'does_not_exist', target_link: 'root',
+                        port_period: Time.at(0)
                     )]
                     assert_raises(Orocos::StateTransitionFailed) do
                         task.configure
@@ -535,7 +566,8 @@ describe 'The Rock/Gazebo plugin' do
                 it 'refuses to configure if the target link does not exist' do
                     task.exported_links = [Types.rock_gazebo.LinkExport.new(
                         port_name: 'test',
-                        source_link: 'l', target_link: 'does_not_exist'
+                        source_link: 'l', target_link: 'does_not_exist',
+                        port_period: Time.at(0)
                     )]
                     assert_raises(Orocos::StateTransitionFailed) do
                         task.configure
@@ -545,10 +577,12 @@ describe 'The Rock/Gazebo plugin' do
                 it 'refuses to configure if the port is already in use' do
                     task.exported_links = [
                         Types.rock_gazebo.LinkExport.new(
-                            port_name: 'test', source_link: 'l', target_link: 'root'
+                            port_name: 'test', source_link: 'l', target_link: 'root',
+                            port_period: Time.at(0)
                         ),
                         Types.rock_gazebo.LinkExport.new(
-                            port_name: 'test', source_link: 'l', target_link: 'root'
+                            port_name: 'test', source_link: 'l', target_link: 'root',
+                            port_period: Time.at(0)
                         )
                     ]
                     assert_raises(Orocos::StateTransitionFailed) do

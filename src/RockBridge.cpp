@@ -263,8 +263,9 @@ void RockBridge::setupTaskActivity(RTT::TaskContext* task)
 // It triggers all rock components (world, model and plugins)
 void RockBridge::updateBegin(common::UpdateInfo const& info)
 {
-    for(Activities::iterator it = activities.begin(); it != activities.end(); ++it)
-    {
+    for (Activities::iterator it = activities.begin();
+         it != activities.end();
+         ++it) {
         (*it)->execute();
     }
 }

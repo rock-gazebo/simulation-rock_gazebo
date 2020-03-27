@@ -1,14 +1,13 @@
 # frozen_string_literal: true
 
-require 'rock_gazebo/test'
-require 'sdf'
+require 'test/helpers'
 require 'rock_gazebo/orogen_model_from_sdf_world'
 
 module RockGazebo
     describe 'orogen_model_from_sdf_world' do
         before do
             require 'orocos'
-            Orocos.load
+            Orocos.load unless Orocos.loaded?
         end
 
         def data_dir

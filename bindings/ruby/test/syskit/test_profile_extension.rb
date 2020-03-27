@@ -75,22 +75,22 @@ module RockGazebo
                 it 'parses the world stored in Conf.sdf.world into the transformer' do
                     @profile.use_sdf_world
                     assert_transformer_has_frame(
-                        @profile, 'attachment::included_model::link'
+                        @profile, 'attachment::included_model::root'
                     )
                 end
                 it 'does not add the model loaded by #use_sdf_model '\
                    'to the transformer instance' do
                     @profile.use_sdf_model 'model://simple_model', as: 'included_model'
-                    assert_transformer_has_frame @profile, 'included_model::link'
+                    assert_transformer_has_frame @profile, 'included_model::root'
                     @profile.use_sdf_world
-                    assert_transformer_has_frame @profile, 'test::included_model::link'
+                    refute_transformer_has_frame @profile, 'test::included_model::root'
                 end
                 it 'creates transforms for joints between an '\
                    'included model and its parent' do
                     @profile.use_sdf_model 'model://simple_model', as: 'included_model'
                     @profile.use_sdf_world
                     transform = @profile.transformer.transformation_for(
-                        'included_model::link', 'attachment::in_attachment'
+                        'included_model::root', 'attachment::in_attachment'
                     )
                     assert transform.translation.approx?(Eigen::Vector3.Zero)
                     assert transform.rotation.approx?(Eigen::Quaternion.Identity)
@@ -100,7 +100,7 @@ module RockGazebo
                     @profile.use_sdf_model 'model://simple_model', as: 'included_model'
                     @profile.use_sdf_world
                     transform = @profile.transformer.transformation_for(
-                        'included_model::link', 'test'
+                        'included_model::root', 'test'
                     )
                     assert transform.translation.approx?(Eigen::Vector3.Zero)
                     assert transform.rotation.approx?(Eigen::Quaternion.Identity)
@@ -137,6 +137,12 @@ module RockGazebo
                     assert transform.translation.approx?(Eigen::Vector3.Zero)
                     assert transform.rotation.approx?(Eigen::Quaternion.Identity)
                 end
+            end
+
+            def refute_transformer_has_frame(profile, frame_name)
+                refute profile.transformer.has_frame?(frame_name),
+                       "expected #{profile.transformer.frames.to_a} to "\
+                       "not include #{frame_name}"
             end
 
             def assert_transformer_has_frame(profile, frame_name)

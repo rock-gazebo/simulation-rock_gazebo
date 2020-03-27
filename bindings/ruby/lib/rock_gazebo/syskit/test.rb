@@ -55,11 +55,13 @@ module RockGazebo
     module SelfTest
         def setup
             # Setup code for all the tests
+            super
         end
 
         def teardown
             super
             # Teardown code for all the tests
+            super
         end
     end
 end

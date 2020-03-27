@@ -4,6 +4,7 @@ require 'minitest/autorun'
 require 'orocos/test/component'
 require 'minitest/spec'
 require 'rock/gazebo'
+require 'sdf'
 
 module Helpers
     def setup
@@ -93,14 +94,17 @@ module Helpers
         end
     end
 
-    def poll_until(timeout: 10, period: 0.01, message: 'could not reach condition')
-        start = Time.now
-        while (Time.now - start) < timeout
+    def poll_until(
+        timeout: 10, period: 0.01,
+        flunk: true, message: 'could not reach condition'
+    )
+        deadline = Time.now + timeout
+        while Time.now < deadline
             return if yield
 
             sleep(period)
         end
-        flunk(message)
+        flunk(message) if flunk
     end
 
     def configure_start_and_read_one_sample(port_name, &block)
@@ -115,14 +119,42 @@ module Helpers
     end
 
     def assert_has_one_new_sample_matching(reader, timeout = 10)
-        if block_given?
-            poll_until do
-                sample = assert_has_one_new_sample(reader, timeout)
+        return assert_has_one_new_sample(reader, timeout) unless block_given?
+
+        rejected_samples = []
+        poll_until(timeout: timeout, flunk: false) do
+            now = Time.now
+            if (sample = reader.read_new)
                 return sample if yield(sample)
+
+                rejected_samples << sample
+                nil
             end
-        else
-            assert_has_one_new_sample(reader, timeout)
         end
+
+        formatted_samples = rejected_samples.map do |s|
+            PP.pp(s, ''.dup)
+        end.join("\n")
+
+        if rejected_samples.empty?
+            flunk("no sample arrived in #{timeout}s")
+        else
+            flunk("got #{rejected_samples.size} samples but none matched "\
+                    "what was expected: #{formatted_samples}")
+        end
+    end
+
+    def configure_start_read_samples_and_stop(port_name, duration)
+        task.configure
+        reader = task.port(port_name).reader type: :buffer, size: 100
+        task.start
+        sleep duration
+        task.stop
+        samples = []
+        while (s = reader.read_new)
+            samples << s
+        end
+        samples
     end
 end
 

@@ -5,9 +5,11 @@
           <sensor name="g" type="gps" />
       </link>
       <link name="child" />
-      <joint name="roo2child">
+      <joint name="roo2child" type="revolute">
           <parent>root</parent>
           <child>child</child>
+          <axis>
+          </axis>
       </joint>
   </model>
 </sdf>
