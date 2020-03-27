@@ -1,7 +1,10 @@
 rock_add_ruby_package(rock_gazebo)
-rock_add_ruby_package(rock)
+if (rock_gazebo_AVAILABLE)
+    rock_ruby_library(rock)
+endif()
+
 configure_file(path_to_plugin.rb.in path_to_plugin.rb @ONLY)
-if (rock_AVAILABLE)
+if (rock_gazebo_AVAILABLE)
     install(PROGRAMS bin/rock-gazebo-viz bin/rock-gazebo-run bin/rock-gazebo
         bin/rock-gzserver
         DESTINATION bin
