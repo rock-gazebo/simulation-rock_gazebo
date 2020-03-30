@@ -367,10 +367,10 @@ module RockGazebo
                     )
                     @world = root.each_world.first
                     @robot_sdf = @world.each_model.first
-                    device = @robot_model.expose_gazebo_model(@robot_sdf, 'prefix')
+                    @device = @robot_model.expose_gazebo_model(@robot_sdf, 'prefix')
 
                     @joint_device = @robot_model.sdf_export_joint(
-                        device,
+                        @device,
                         as: 'some_links', joint_names: ['prefix::j1']
                     )
                 end
@@ -380,6 +380,23 @@ module RockGazebo
                     srv = @joint_device.to_instance_requirements.instanciate(plan)
                     assert_equal ['prefix::j1'],
                                  srv.model.dynamic_service_options[:joint_names]
+                end
+
+                it 'sets ignore_joint_names to false by default' do
+                    plan = Roby::Plan.new
+                    srv = @joint_device.to_instance_requirements.instanciate(plan)
+                    refute srv.model.dynamic_service_options[:ignore_joint_names]
+                end
+
+                it 'passes a ignore_joint_names flag' do
+                    plan = Roby::Plan.new
+                    joint_device = @robot_model.sdf_export_joint(
+                        @device,
+                        as: 'other_links', joint_names: ['prefix::j1'],
+                        ignore_joint_names: true
+                    )
+                    srv = joint_device.to_instance_requirements.instanciate(plan)
+                    assert srv.model.dynamic_service_options[:ignore_joint_names]
                 end
             end
         end

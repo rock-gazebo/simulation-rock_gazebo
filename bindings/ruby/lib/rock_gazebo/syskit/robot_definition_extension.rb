@@ -68,18 +68,23 @@ module RockGazebo
             #
             # Use it for instance, to get a simulated actuator
             def sdf_export_joint(
-                model_dev, as: nil, joint_names: [], ignore_joint_names: false
+                model_dev,
+                as: nil, joint_names: [],
+                ignore_joint_names: false
             )
                 driver_def = model_dev.to_instance_requirements.to_component_model.dup
                 driver_m = OroGen::RockGazebo::ModelTask.specialize
                 driver_srv = driver_m.require_dynamic_service(
-                    'joint_export', as: as, joint_names: joint_names
+                    'joint_export',
+                    as: as, joint_names: joint_names,
+                    ignore_joint_names: ignore_joint_names
                 )
 
                 driver_def.add_models([driver_m])
                 driver_def.select_service(driver_srv)
 
-                device(CommonModels::Devices::Gazebo::Joint, as: as, using: driver_def)
+                device(CommonModels::Devices::Gazebo::Joint,
+                       as: as, using: driver_def)
             end
 
             # Setup a link export feature of rock_gazebo::ModelTask
