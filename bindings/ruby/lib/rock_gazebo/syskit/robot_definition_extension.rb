@@ -70,13 +70,15 @@ module RockGazebo
             def sdf_export_joint(
                 model_dev,
                 as: nil, joint_names: [],
-                ignore_joint_names: false
+                ignore_joint_names: false,
+                position_offsets: []
             )
                 driver_def = model_dev.to_instance_requirements.to_component_model.dup
                 driver_m = OroGen::RockGazebo::ModelTask.specialize
                 driver_srv = driver_m.require_dynamic_service(
                     'joint_export',
                     as: as, joint_names: joint_names,
+                    position_offsets: position_offsets,
                     ignore_joint_names: ignore_joint_names
                 )
 
