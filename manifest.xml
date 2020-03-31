@@ -3,9 +3,9 @@
   This package integrates the gazebo simulator and the Rock framework.
   </description>
   <author>Thomio Watanabe/thomio.watanabe@fieb.org.br</author>
-  <license></license>
-  <url>http://</url>
-  <logo>http://</logo>
+  <author>Sylvain Joyeux/sylvain.joyeux@tidewise.io</author>
+  <maintainer>Sylvain Joyeux/sylvain.joyeux@tidewise.io</maintainer>
+  <license>LGPLv2 or later</license>
   <depend package="base/cmake" />
 
   <depend_optional package="simulation/gazebo" />
@@ -16,4 +16,7 @@
   <depend_optional package="gui/collada_osg" />
   <depend_optional package="gui/robot_model" />
   <depend_optional package="bundles/common_models" />
+
+  <test_depend package="tools/syskit" />
+  <test_depend package="bundles/common_models" />
 </package>
