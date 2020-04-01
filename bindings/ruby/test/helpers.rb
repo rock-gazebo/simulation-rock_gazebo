@@ -107,15 +107,55 @@ module Helpers
         flunk(message) if flunk
     end
 
-    def configure_start_and_read_one_sample(port_name, &block)
-        task.configure
-        task.start
-        assert_port_has_one_new_sample(port_name, 10, &block)
+    def create_active_reader(port_name, **policy)
+        @task.configure
+        reader = @task.port(port_name).reader(**policy)
+        @task.start
+        reader
     end
 
-    def assert_port_has_one_new_sample(port_name, timeout = 10, &block)
+    def configure_start_and_read_one_new_sample(port_name)
+        reader = create_active_reader(port_name)
+        assert_has_one_new_sample(reader)
+    ensure
+        reader&.disconnect
+    end
+
+    def configure_start_read_samples_and_stop(port_name, duration, buffer_size: 100)
+        reader = create_active_reader(port_name, type: :buffer, size: buffer_size)
+        sleep duration
+        @task.stop
+        samples = []
+        while (s = reader.read_new)
+            samples << s
+        end
+        samples
+    end
+
+    def configure_start_count_samples_and_stop(port_name, duration, buffer_size: 100)
+        reader = create_active_reader(port_name, type: :buffer, size: buffer_size)
+        sleep 1
+        reader.clear
+        sleep duration
+        @task.stop
+        count = 0
+        sample = reader.new_sample
+        count += 1 while reader.raw_read_new(sample)
+        count
+    end
+
+    def configure_start_and_read_one_new_sample_matching(port_name, timeout = 10, &block)
+        reader = create_active_reader(port_name)
+        assert_has_one_new_sample_matching(reader, timeout, &block)
+    ensure
+        reader&.disconnect
+    end
+
+    def assert_port_has_one_new_sample_matching(port_name, timeout = 10, &block)
         reader = @task.port(port_name).reader
         assert_has_one_new_sample_matching(reader, timeout, &block)
+    ensure
+        reader&.disconnect
     end
 
     def assert_has_one_new_sample_matching(reader, timeout = 10)
@@ -123,7 +163,6 @@ module Helpers
 
         rejected_samples = []
         poll_until(timeout: timeout, flunk: false) do
-            now = Time.now
             if (sample = reader.read_new)
                 return sample if yield(sample)
 
@@ -144,20 +183,47 @@ module Helpers
         end
     end
 
-    def configure_start_read_samples_and_stop(port_name, duration)
-        task.configure
-        reader = task.port(port_name).reader type: :buffer, size: 100
-        task.start
-        sleep duration
-        task.stop
-        samples = []
-        while (s = reader.read_new)
-            samples << s
-        end
-        samples
-    end
-end
+    def self.common_sensor_behavior(
+        ctx, world_basename:, task_name:, port_name:, model_name:
+    )
+        ctx.send(:describe, "common sensor behavior for #{model_name}") do
+            it "exports the sensor using #{model_name}" do
+                task = gzserver "#{world_basename}.world", task_name
+                assert_equal model_name, task.model.name
+            end
 
-class Minitest::Test # rubocop:disable Style/ClassAndModuleChildren
-    include Helpers
+            it 'does not output anything while the component is only configured' do
+                @task = gzserver "#{world_basename}.world", task_name
+                reader = @task.port(port_name).reader
+                @task.configure
+                sleep 0.5
+                refute reader.read_new
+            end
+
+            it 'does not output anything after the component is stopped' do
+                @task = gzserver "#{world_basename}.world", task_name
+                @task.configure
+                @task.start
+                @task.stop
+                reader = @task.port(port_name).reader
+                sleep 0.5
+                refute reader.read_new
+            end
+
+            it 'outputs one sample per cycle by default' do
+                @task = gzserver "#{world_basename}.world", task_name
+                count = configure_start_count_samples_and_stop(port_name, 1)
+                # Gazebo can't reliably hold the 50 Hz. The IMU gets ~35 to ~38
+                # Checked that it's indeed due to samples not arriving in the
+                # task's callback
+                assert_includes 30...60, count
+            end
+
+            it 'honors the rate set in the SDF file' do
+                @task = gzserver "#{world_basename}-custom-rate.world", task_name
+                count = configure_start_count_samples_and_stop(port_name, 1)
+                assert_includes 9..11, count
+            end
+        end
+    end
 end
