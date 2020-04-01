@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module RockGazebo
     module Syskit
         # Gazebo-specific extensions to {Syskit::Robot::RobotDefinition}
@@ -74,9 +76,12 @@ module RockGazebo
             #   which must match a link, model or frame name on the SDF model
             # @return [Syskit::Robot::MasterDeviceInstance] the exported link as
             #   a device instance of type CommonModels::Devices::Gazebo::Link
-            def sdf_export_link(model_dev, as: nil, from_frame: nil, to_frame: nil,
-                                cov_position: nil, cov_orientation: nil,
-                                cov_velocity: nil)
+            def sdf_export_link(
+                model_dev,
+                as: nil, from_frame: nil, to_frame: nil,
+                cov_position: nil, cov_orientation: nil,
+                cov_velocity: nil
+            )
                 if !as
                     raise ArgumentError, 'provide a name for the device and port '\
                                          "through the 'as' option"
@@ -95,7 +100,8 @@ module RockGazebo
                     as: as, frame_basename: as,
                     cov_position: cov_position,
                     cov_orientation: cov_orientation,
-                    cov_velocity: cov_velocity)
+                    cov_velocity: cov_velocity
+                )
 
                 link_driver.add_models([link_driver_m])
                 link_driver
@@ -141,7 +147,8 @@ module RockGazebo
                 submodel_driver_m = OroGen::RockGazebo::ModelTask.specialize
                 driver_srv = submodel_driver_m.require_dynamic_service(
                     'submodel_export',
-                    as: normalized_name, frame_basename: normalized_name)
+                    as: normalized_name, frame_basename: normalized_name
+                )
 
                 unless (root_link = actual_sdf_model.each_link.first)
                     raise ArgumentError, 'cannot refer to a submodel that has no links'
@@ -214,8 +221,10 @@ module RockGazebo
             #   built in.
             # @return [Syskit::Robot::Device] the device that represents the model
             # @raise [ArgumentError] if models does not contain robot_model
-            def load_gazebo(model, deployment_prefix,
-                            name: model.name, reuse: nil, prefix_device_with_name: false)
+            def load_gazebo(
+                model, deployment_prefix,
+                name: model.name, reuse: nil, prefix_device_with_name: false
+            )
                 # Allow passing a profile instead of a robot definition
                 reuse = reuse.robot if reuse.respond_to?(:robot)
                 enclosing_model = resolve_enclosing_model(model)
@@ -257,8 +266,10 @@ module RockGazebo
             # Define devices for each model in the world
             #
             # @param [Array<SDF::Model>] models the SDF representation of the models
-            def expose_gazebo_model(sdf, deployment_prefix,
-                                    reuse: nil, device_name: normalize_name(sdf.name))
+            def expose_gazebo_model(
+                sdf, deployment_prefix,
+                reuse: nil, device_name: normalize_name(sdf.name)
+            )
                 if reuse && (existing = reuse.find_device(device_name))
                     register_device(device_name, existing)
                     return existing
@@ -268,7 +279,8 @@ module RockGazebo
                        as: device_name,
                        using: OroGen.rock_gazebo.ModelTask)
                     .prefer_deployed_tasks(
-                        "#{deployment_prefix}:#{normalize_name(sdf.name)}")
+                        "#{deployment_prefix}:#{normalize_name(sdf.name)}"
+                    )
                     .frame_transform(link_frame_name(sdf) => 'world')
                     .advanced
                     .sdf(sdf)
@@ -285,10 +297,11 @@ module RockGazebo
             # @api private
             #
             # Define devices for all links and sensors in the model
-            def load_gazebo_robot_model(sdf_model, root_device,
-                                        reuse: nil, name: sdf_model.name,
-                                        prefix_device_with_name: true)
-                if prefix = sdf_model.full_name(root: root_device.sdf)
+            def load_gazebo_robot_model(
+                sdf_model, root_device,
+                reuse: nil, name: sdf_model.name, prefix_device_with_name: true
+            )
+                if (prefix = sdf_model.full_name(root: root_device.sdf))
                     frame_prefix = "#{normalize_name(prefix)}_"
                 end
                 sdf_model.each_link_with_name do |l, l_name|

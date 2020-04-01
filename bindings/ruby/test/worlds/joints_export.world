@@ -1,5 +1,10 @@
 <sdf version="1.6">
 <world name="w">
+    <physics type="ode" default="1">
+    <max_step_size>0.02</max_step_size>
+    <real_time_update_rate>50</real_time_update_rate>
+    </physics>
+
     <model name="m">
         <link name="root" />
         <link name="00" />
