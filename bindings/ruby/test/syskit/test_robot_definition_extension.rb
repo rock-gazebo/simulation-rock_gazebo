@@ -35,8 +35,8 @@ module RockGazebo
                     actual_model, enclosing_model = @robot_model.find_actual_model(
                         'included_model', @world.each_model.to_a
                     )
-                    assert_equal @world.each_model.first, enclosing_model
                     assert_equal @world.each_model.first.each_model.first, actual_model
+                    assert_equal @world.each_model.first, enclosing_model
                 end
             end
 
@@ -328,6 +328,75 @@ module RockGazebo
                                  device.frame_transform.from
                     assert_equal 'world',
                                  device.frame_transform.to
+                end
+            end
+
+            describe '#sdf_export_link' do
+                before do
+                    root = ::SDF::Root.load(
+                        expand_fixture_world('simple_model.world'),
+                        flatten: false
+                    )
+                    @world = root.each_world.first
+                    @robot_sdf = @world.each_model.first
+                    device = @robot_model.expose_gazebo_model(@robot_sdf, 'prefix')
+
+                    @link_device = @robot_model.sdf_export_link(
+                        device,
+                        as: 'some_links',
+                        from_frame: 'prefix::root',
+                        to_frame: 'prefix::child'
+                    )
+                end
+
+                it 'creates a device with the relevant link_export dynamic service' do
+                    plan = Roby::Plan.new
+                    assert_equal 'prefix::root', @link_device.frame_transform.from
+                    assert_equal 'prefix::child', @link_device.frame_transform.to
+                    srv = @link_device.to_instance_requirements.instanciate(plan)
+                    assert_equal 'some_links',
+                                 srv.link_state_samples_port.to_actual_port.name
+                end
+            end
+
+            describe '#sdf_export_joint' do
+                before do
+                    root = ::SDF::Root.load(
+                        expand_fixture_world('simple_model.world'),
+                        flatten: false
+                    )
+                    @world = root.each_world.first
+                    @robot_sdf = @world.each_model.first
+                    @device = @robot_model.expose_gazebo_model(@robot_sdf, 'prefix')
+
+                    @joint_device = @robot_model.sdf_export_joint(
+                        @device,
+                        as: 'some_links', joint_names: ['prefix::j1']
+                    )
+                end
+
+                it 'creates a device with the relevant joint_export dynamic service' do
+                    plan = Roby::Plan.new
+                    srv = @joint_device.to_instance_requirements.instanciate(plan)
+                    assert_equal ['prefix::j1'],
+                                 srv.model.dynamic_service_options[:joint_names]
+                end
+
+                it 'sets ignore_joint_names to false by default' do
+                    plan = Roby::Plan.new
+                    srv = @joint_device.to_instance_requirements.instanciate(plan)
+                    refute srv.model.dynamic_service_options[:ignore_joint_names]
+                end
+
+                it 'passes a ignore_joint_names flag' do
+                    plan = Roby::Plan.new
+                    joint_device = @robot_model.sdf_export_joint(
+                        @device,
+                        as: 'other_links', joint_names: ['prefix::j1'],
+                        ignore_joint_names: true
+                    )
+                    srv = joint_device.to_instance_requirements.instanciate(plan)
+                    assert srv.model.dynamic_service_options[:ignore_joint_names]
                 end
             end
         end

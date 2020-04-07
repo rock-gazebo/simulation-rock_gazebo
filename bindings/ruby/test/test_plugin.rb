@@ -73,6 +73,7 @@ describe 'The Rock/Gazebo plugin' do
 
             it 'allows commanding the joints' do
                 cmd = Types.base.samples.Joints.new(
+                    names: %w[m::j_00 m::j_01 m::child::j_00 m::child::j_01],
                     elements: [Types.base.JointState.Effort(-1),
                                Types.base.JointState.Effort(1),
                                Types.base.JointState.Effort(-1),
@@ -146,6 +147,7 @@ describe 'The Rock/Gazebo plugin' do
 
             it 'gives command access to a subset of the joints' do
                 cmd = Types.base.samples.Joints.new(
+                    names: %w[m::child::j_00 m::j_01],
                     elements: [Types.base.JointState.Effort(-1),
                                Types.base.JointState.Effort(1)]
                 )
@@ -153,7 +155,76 @@ describe 'The Rock/Gazebo plugin' do
                 task.exported_joints = [Types.rock_gazebo.JointExport.new(
                     port_name: 'test', prefix: '',
                     joints: %w[m::child::j_00 m::j_01],
-                    port_period: Time.at(0)
+                    port_period: Time.at(0),
+                    ignore_joint_names: false
+                )]
+
+                task.configure
+                task.start
+                reader = task.port('test_samples').reader
+                writer = task.port('test_cmd').writer
+                poll_until do
+                    writer.write(cmd)
+                    if (joints = reader.read_new)
+                        (0.39..0.41).include?(joints.elements[0].position) &&
+                            (0.29..0.31).include?(joints.elements[1].position)
+                    end
+                end
+            end
+
+            it 'validates the joint name size' do
+                cmd = Types.base.samples.Joints.new(
+                    names: %w[m::child::j_01],
+                    elements: [Types.base.JointState.Effort(-1),
+                               Types.base.JointState.Effort(1)]
+                )
+
+                task.exported_joints = [Types.rock_gazebo.JointExport.new(
+                    port_name: 'test', prefix: '',
+                    joints: %w[m::child::j_00 m::j_01],
+                    port_period: Time.at(0),
+                    ignore_joint_names: false
+                )]
+
+                task.configure
+                task.start
+                writer = task.port('test_cmd').writer
+                writer.write(cmd)
+                poll_until { task.state == :INVALID_JOINT_COMMAND }
+            end
+
+            it 'validates the joint names' do
+                cmd = Types.base.samples.Joints.new(
+                    names: %w[m::child::j_01 m::j_02],
+                    elements: [Types.base.JointState.Effort(-1),
+                               Types.base.JointState.Effort(1)]
+                )
+
+                task.exported_joints = [Types.rock_gazebo.JointExport.new(
+                    port_name: 'test', prefix: '',
+                    joints: %w[m::child::j_00 m::j_01],
+                    port_period: Time.at(0),
+                    ignore_joint_names: false
+                )]
+
+                task.configure
+                task.start
+                writer = task.port('test_cmd').writer
+                writer.write(cmd)
+                poll_until { task.state == :INVALID_JOINT_COMMAND }
+            end
+
+            it 'optionally ignores the names of the joints in the incoming command' do
+                cmd = Types.base.samples.Joints.new(
+                    elements: [Types.base.JointState.Effort(-1),
+                               Types.base.JointState.Effort(1)]
+                )
+
+                task.exported_joints = [Types.rock_gazebo.JointExport.new(
+                    port_name: 'test', prefix: '',
+                    joints: %w[m::child::j_00 m::j_01],
+                    port_period: Time.at(0),
+                    ignore_joint_names: true
                 )]
 
                 task.configure

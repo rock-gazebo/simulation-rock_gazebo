@@ -64,6 +64,29 @@ module RockGazebo
                 end
             end
 
+            # Create a device that provides access to a subset of the joints
+            #
+            # Use it for instance, to get a simulated actuator
+            def sdf_export_joint(
+                model_dev,
+                as: nil, joint_names: [],
+                ignore_joint_names: false
+            )
+                driver_def = model_dev.to_instance_requirements.to_component_model.dup
+                driver_m = OroGen::RockGazebo::ModelTask.specialize
+                driver_srv = driver_m.require_dynamic_service(
+                    'joint_export',
+                    as: as, joint_names: joint_names,
+                    ignore_joint_names: ignore_joint_names
+                )
+
+                driver_def.add_models([driver_m])
+                driver_def.select_service(driver_srv)
+
+                device(CommonModels::Devices::Gazebo::Joint,
+                       as: as, using: driver_def)
+            end
+
             # Setup a link export feature of rock_gazebo::ModelTask
             #
             # @param [Syskit::Robot::MasterDeviceInstance] model_dev the model
@@ -304,75 +327,134 @@ module RockGazebo
                 if (prefix = sdf_model.full_name(root: root_device.sdf))
                     frame_prefix = "#{normalize_name(prefix)}_"
                 end
+
                 sdf_model.each_link_with_name do |l, l_name|
-                    device_name    = "#{normalize_name(l_name)}_link"
-                    if prefix_device_with_name
-                        device_name = "#{normalize_name(name)}_#{device_name}"
-                    end
-                    if reuse && (existing = reuse.find_device(name))
-                        register_device(name, existing)
-                        next
-                    end
-                    frame_basename = "#{frame_prefix}#{normalize_name(l.name)}"
-
-                    link_frame = link_frame_name(l)
-
-                    link_driver_m = OroGen::RockGazebo::ModelTask.specialize
-                    driver_srv = link_driver_m.require_dynamic_service(
-                        'link_export', as: device_name, frame_basename: frame_basename)
-                    link_driver_m = link_driver_m.to_instance_requirements.
-                        prefer_deployed_tasks(*root_device.
-                            to_instance_requirements.deployment_hints).
-                        with_arguments(model_dev: root_device).
-                        use_frames("#{frame_basename}_source" => link_frame,
-                                   "#{frame_basename}_target" => 'world').
-                        select_service(driver_srv)
-                    device(CommonModels::Devices::Gazebo::Link, as: device_name, using: link_driver_m).
-                        doc("Gazebo: state of the #{l.name} link of #{sdf_model.name}").
-                        frame_transform(link_frame => 'world').
-                        advanced
+                    gazebo_define_link_device(
+                        root_device, sdf_model, l, l_name,
+                        model_name: name, reuse: reuse, frame_prefix: frame_prefix,
+                        prefix_device_with_name: prefix_device_with_name
+                    )
                 end
-                sdf_model.each_sensor do |s|
-                    device_name = "#{normalize_name(s.name)}_sensor"
-                    if prefix_device_with_name
-                        device_name = "#{normalize_name(name)}_#{device_name}"
-                    end
-                    if device = sensors_to_device(s, device_name, link_frame_name(s.parent))
-                        if period = s.update_period
-                            device.period(period)
-                        end
-                        device.doc "Gazebo: #{s.name} sensor of #{sdf_model.full_name}"
 
-                        deployment_name =
-                            root_device.to_instance_requirements.deployment_hints.first
-                        device.sdf(s).
-                            prefer_deployed_tasks("#{deployment_name}:#{normalize_name(s.name)}")
-                    else
-                        RockGazebo.warn "Robot#load_gazebo: don't know how to handle" \
-                            "sensor #{s.full_name} of type #{s.type}"
-                    end
+                sdf_model.each_sensor do |sensor|
+                    gazebo_define_sensor_device(
+                        root_device, sdf_model, sensor,
+                        model_name: name,
+                        prefix_device_with_name: prefix_device_with_name
+                    )
                 end
+
                 sdf_model.each_plugin do |plugin|
-                    device_name = "#{normalize_name(plugin.name)}_plugin"
-                    if prefix_device_with_name
-                        device_name = "#{normalize_name(name)}_#{device_name}"
-                    end
-                    if device = plugins_to_device(plugin, device_name,
-                                                  link_frame_name(plugin.parent))
-                        device.doc "Gazebo: #{plugin.name} plugin of #{sdf_model.full_name}"
-
-                        deployment_name =
-                            root_device.to_instance_requirements.deployment_hints.first
-                        device.sdf(plugin).
-                            prefer_deployed_tasks("#{deployment_name}:#{normalize_name(plugin.name)}")
-                    else
-                        RockGazebo.warn "Robot#load_gazebo: don't know how to handle " \
-                            "plugin #{plugin.full_name}"
-                    end
+                    gazebo_define_plugin_device(
+                        root_device, sdf_model, plugin,
+                        model_name: name,
+                        prefix_device_with_name: prefix_device_with_name
+                    )
                 end
+            end
+
+            def gazebo_define_link_device(
+                root_device, sdf_model, link, link_name,
+                model_name: sdf_model.name, frame_prefix: '',
+                prefix_device_with_name: true, reuse: false
+            )
+                device_name = "#{normalize_name(link_name)}_link"
+                if prefix_device_with_name
+                    device_name = "#{normalize_name(model_name)}_#{device_name}"
+                end
+                if reuse && (existing = reuse.find_device(device_name))
+                    register_device(device_name, existing)
+                    return
+                end
+                frame_basename = "#{frame_prefix}#{normalize_name(link.name)}"
+
+                link_frame = link_frame_name(link)
+
+                link_driver_m = OroGen.rock_gazebo.ModelTask.specialize
+                driver_srv = link_driver_m.require_dynamic_service(
+                    'link_export', as: device_name, frame_basename: frame_basename
+                )
+                link_driver_m =
+                    link_driver_m
+                    .to_instance_requirements
+                    .prefer_deployed_tasks(
+                        *root_device.to_instance_requirements.deployment_hints
+                    )
+                    .with_arguments(model_dev: root_device)
+                    .use_frames("#{frame_basename}_source" => link_frame,
+                                "#{frame_basename}_target" => 'world')
+                    .select_service(driver_srv)
+                device(CommonModels::Devices::Gazebo::Link,
+                       as: device_name, using: link_driver_m)
+                    .doc("Gazebo: state of the #{link.name} link of #{sdf_model.name}")
+                    .frame_transform(link_frame => 'world')
+                    .advanced
+            end
+
+            def gazebo_define_sensor_device(
+                root_device, sdf_model, sensor,
+                model_name: sdf_model.name, prefix_device_with_name: true
+            )
+                device_name = "#{normalize_name(sensor.name)}_sensor"
+                if prefix_device_with_name
+                    device_name = "#{normalize_name(model_name)}_#{device_name}"
+                end
+
+                device = sensors_to_device(
+                    sensor, device_name, link_frame_name(sensor.parent)
+                )
+                unless device
+                    RockGazebo.warn(
+                        "Robot#load_gazebo: don't know how to handle" \
+                        "sensor #{sensor.full_name} of type #{sensor.type}"
+                    )
+                    return
+                end
+
+                if (period = sensor.update_period)
+                    device.period(period)
+                end
+                device.doc "Gazebo: #{sensor.name} sensor of #{sdf_model.full_name}"
+
+                deployment_name =
+                    root_device.to_instance_requirements.deployment_hints.first
+                device
+                    .sdf(sensor)
+                    .prefer_deployed_tasks(
+                        "#{deployment_name}:#{normalize_name(sensor.name)}"
+                    )
+            end
+
+            def gazebo_define_plugin_device(
+                root_device, sdf_model, plugin,
+                model_name: sdf_model.name, prefix_device_with_name: true
+            )
+                device_name = "#{normalize_name(plugin.name)}_plugin"
+                if prefix_device_with_name
+                    device_name = "#{normalize_name(model_name)}_#{device_name}"
+                end
+
+                device = plugins_to_device(
+                    plugin, device_name, link_frame_name(plugin.parent)
+                )
+
+                unless device
+                    RockGazebo.warn(
+                        "Robot#load_gazebo: don't know how to handle " \
+                        "plugin #{plugin.full_name}"
+                    )
+                    return
+                end
+
+                device.doc "Gazebo: #{plugin.name} plugin of #{sdf_model.full_name}"
+                deployment_name =
+                    root_device.to_instance_requirements.deployment_hints.first
+                device.sdf(plugin)
+                      .prefer_deployed_tasks(
+                          "#{deployment_name}:#{normalize_name(plugin.name)}"
+                      )
             end
         end
         ::Syskit::Robot::RobotDefinition.include RobotDefinitionExtension
     end
 end
-

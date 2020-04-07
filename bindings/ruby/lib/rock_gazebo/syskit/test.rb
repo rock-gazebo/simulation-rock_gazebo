@@ -1,8 +1,9 @@
+# frozen_string_literal: true
+
 require 'rock/bundles'
 rock_bundle = Rock::Bundles.each_bundle.find { |b| b.name == 'common_models' }
-if !rock_bundle
-    raise LoadError, "cannot find the common_models bundle"
-end
+raise LoadError, 'cannot find the common_models bundle' unless rock_bundle
+
 $LOAD_PATH.unshift File.dirname(rock_bundle.path)
 $LOAD_PATH.unshift rock_bundle.path
 Roby.app.search_path << rock_bundle.path
