@@ -398,6 +398,26 @@ module RockGazebo
                     srv = joint_device.to_instance_requirements.instanciate(plan)
                     assert srv.model.dynamic_service_options[:ignore_joint_names]
                 end
+
+                it 'sets position_offsets to empty by default' do
+                    plan = Roby::Plan.new
+                    srv = @joint_device.to_instance_requirements.instanciate(plan)
+                    assert_equal [], srv.model.dynamic_service_options[:position_offsets]
+                end
+
+                it 'passes a position_offsets array' do
+                    # NOTE: the dynamic service is expected to do the necessary
+                    # validation
+                    plan = Roby::Plan.new
+                    joint_device = @robot_model.sdf_export_joint(
+                        @device,
+                        as: 'other_links', joint_names: ['prefix::j1'],
+                        ignore_joint_names: true,
+                        position_offsets: [10]
+                    )
+                    srv = joint_device.to_instance_requirements.instanciate(plan)
+                    assert srv.model.dynamic_service_options[:position_offsets]
+                end
             end
         end
     end
