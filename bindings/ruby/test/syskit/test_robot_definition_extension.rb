@@ -6,6 +6,8 @@ require_relative '../helpers'
 module RockGazebo
     module Syskit
         describe RobotDefinitionExtension do
+            include Helpers
+
             before do
                 @robot_model = ::Syskit::Robot::RobotDefinition.new
                 Roby.app.using_task_library 'rock_gazebo'

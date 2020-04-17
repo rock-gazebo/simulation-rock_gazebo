@@ -6,6 +6,8 @@ require_relative '../helpers'
 module RockGazebo
     module Syskit
         describe ProfileExtension do
+            include Helpers
+
             before do
                 Roby.app.using_task_library 'rock_gazebo'
                 require 'models/orogen/rock_gazebo'

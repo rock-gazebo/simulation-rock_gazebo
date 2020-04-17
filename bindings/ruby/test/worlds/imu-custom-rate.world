@@ -1,0 +1,12 @@
+<sdf version="1.6">
+<world name="w">
+    <model name="m">
+        <link name="l">
+            <sensor name="i" type="imu">
+            <update_rate>10</update_rate>
+            </sensor>
+        </link>
+    </model>
+</world>
+</sdf>
+

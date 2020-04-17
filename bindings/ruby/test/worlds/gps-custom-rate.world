@@ -1,10 +1,5 @@
 <sdf version="1.6">
 <world name="w">
-    <physics type="ode" default="1">
-    <max_step_size>0.02</max_step_size>
-    <real_time_update_rate>50</real_time_update_rate>
-    </physics>
-
     <spherical_coordinates>
     <surface_model>EARTH_WGS84</surface_model>
     <latitude_deg>-22.9068</latitude_deg>
@@ -15,8 +10,11 @@
     <model name="m">
         <static>true</static>
         <link name="l">
-            <sensor name="g" type="gps" />
+            <sensor name="g" type="gps">
+            <update_rate>10</update_rate>
+            </sensor>
         </link>
     </model>
 </world>
 </sdf>
+
