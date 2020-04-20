@@ -11,7 +11,7 @@
         <static>true</static>
         <link name="l">
             <sensor name="g" type="gps">
-            <update_rate>10</update_rate>
+            <update_rate>5</update_rate>
             </sensor>
         </link>
     </model>
