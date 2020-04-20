@@ -216,13 +216,13 @@ module Helpers
                 # Gazebo can't reliably hold the 50 Hz. The IMU gets ~35 to ~38
                 # Checked that it's indeed due to samples not arriving in the
                 # task's callback
-                assert_includes 30...60, count
+                assert_includes 9...11, count
             end
 
             it 'honors the rate set in the SDF file' do
                 @task = gzserver "#{world_basename}-custom-rate.world", task_name
                 count = configure_start_count_samples_and_stop(port_name, 1)
-                assert_includes 9..11, count
+                assert_includes 4..6, count
             end
         end
     end

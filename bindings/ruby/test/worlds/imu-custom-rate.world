@@ -3,7 +3,7 @@
     <model name="m">
         <link name="l">
             <sensor name="i" type="imu">
-            <update_rate>10</update_rate>
+            <update_rate>5</update_rate>
             </sensor>
         </link>
     </model>
