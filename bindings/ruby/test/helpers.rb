@@ -216,7 +216,7 @@ module Helpers
                 # Gazebo can't reliably hold the 50 Hz. The IMU gets ~35 to ~38
                 # Checked that it's indeed due to samples not arriving in the
                 # task's callback
-                assert_includes 9...11, count
+                assert_includes 8..11, count
             end
 
             it 'honors the rate set in the SDF file' do
