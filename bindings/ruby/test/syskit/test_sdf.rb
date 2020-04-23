@@ -71,6 +71,32 @@ module RockGazebo
                         sdf.local_position(48.85805, 2.29465, 43)).norm
                     assert(d < 0.1)
                 end
+
+                it "computes the lat/lon/alt coordinates of a local position" do
+                    sdf = SDF.new
+                    sdf.world = ::SDF::World.from_string(
+                        "<world>
+                            <spherical_coordinates>
+                                <latitude_deg>48.8580</latitude_deg>
+                                <longitude_deg>2.2946</longitude_deg>
+                                <elevation>42</elevation>
+                            </spherical_coordinates>
+                            </world>")
+
+                    lat, lon, alt = sdf.global_position(
+                        Eigen::Vector3.new(0, 0, 0)
+                    )
+                    assert_in_delta lat, 48.8580, 1e-7
+                    assert_in_delta lon, 2.2946, 1e-7
+                    assert_in_delta alt, 42, 1e-8
+
+                    lat, lon, alt = sdf.global_position(
+                        Eigen::Vector3.new(5.52, -3.72, 1)
+                    )
+                    assert_in_delta lat, 48.85805, 1e-7
+                    assert_in_delta lon, 2.29465, 1e-7
+                    assert_in_delta alt, 43, 1e-8
+                end
             end
         end
     end

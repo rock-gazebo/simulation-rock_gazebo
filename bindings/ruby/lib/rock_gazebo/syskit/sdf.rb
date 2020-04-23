@@ -67,9 +67,18 @@ module RockGazebo
                 @global_origin = self.class.utm2nwu(utm_global_origin)
             end
 
-            # Select the UTM zone that contains the global origin
+            # Select the UTM zone number that contains the global origin
             def select_default_utm_zone
                 select_utm_zone(*spherical_coordinates.default_utm_zone)
+            end
+
+            # Return the full UTM zone (number and letter) that contains the
+            # global origin
+            def default_utm_full_zone
+                GeoUtm::UTMZones.calc_utm_default_zone(
+                    spherical_coordinates.latitude_deg,
+                    spherical_coordinates.longitude_deg
+                )
             end
 
             # The currently selected UTM zone
@@ -116,6 +125,14 @@ module RockGazebo
                 Eigen::Vector3.new(utm.y, 1_000_000 - utm.x, utm.z)
             end
 
+            # Converts Rock's NWU coordinates into UTM coordinates
+            #
+            # @param [Eigen::Vector3] nwu
+            # @return [Eigen::Vector3] east (x), north (y) and altitude (z)
+            def self.nwu2utm(nwu)
+                Eigen::Vector3.new(1_000_000 - nwu.y, nwu.x, nwu.z)
+            end
+
             # The local position of the given lat/lon/alt coordinates
             def local_position(latitude, longitude, altitude)
                 zone_letter = GeoUtm::UTMZones.calc_utm_default_letter(latitude)
@@ -125,6 +142,23 @@ module RockGazebo
                     Eigen::Vector3.new(utm.e, utm.n, altitude)
                 )
                 utm_nwu - global_origin
+            end
+
+            # The global (lat/long/alt) coordinates corresponding to the given NWU
+            # coordinates
+            #
+            # @return [(Float,Float,Float)] lat, lon and altitude
+            def global_position(nwu)
+                zone_letter = GeoUtm::UTMZones.calc_utm_default_letter(
+                    spherical_coordinates.latitude_deg
+                )
+                utm_nwu = nwu + global_origin
+                utm_v = self.class.nwu2utm(utm_nwu)
+                altitude = utm_v.z
+                utm = GeoUtm::UTM.new("#{utm_zone}#{zone_letter}", utm_v.x, utm_v.y)
+                latlon = utm.to_lat_lon
+
+                [latlon.lat, latlon.lon, altitude]
             end
 
             def respond_to_missing?(method_name, include_all = false)
