@@ -210,15 +210,6 @@ module Helpers
                 refute reader.read_new
             end
 
-            it 'outputs one sample per cycle by default' do
-                @task = gzserver "#{world_basename}.world", task_name
-                count = configure_start_count_samples_and_stop(port_name, 1)
-                # Gazebo can't reliably hold the 50 Hz. The IMU gets ~35 to ~38
-                # Checked that it's indeed due to samples not arriving in the
-                # task's callback
-                assert_includes 8..11, count
-            end
-
             it 'honors the rate set in the SDF file' do
                 @task = gzserver "#{world_basename}-custom-rate.world", task_name
                 count = configure_start_count_samples_and_stop(port_name, 1)
