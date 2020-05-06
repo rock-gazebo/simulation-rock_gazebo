@@ -10,8 +10,7 @@ describe 'rock_gazebo::ImuTask' do
         self, world_basename: 'imu',
               task_name: '/gazebo:w:m:i',
               port_name: 'orientation_samples',
-              model_name: 'rock_gazebo::ImuTask',
-              skip_one_update_per_cycle_test: true
+              model_name: 'rock_gazebo::ImuTask'
     )
 
     def imu_configure_start_and_read_one_new_sample(world, port_name = 'orientation_samples')

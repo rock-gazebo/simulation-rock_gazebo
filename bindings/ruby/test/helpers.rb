@@ -184,8 +184,7 @@ module Helpers
     end
 
     def self.common_sensor_behavior(
-        ctx, world_basename:, task_name:, port_name:, model_name:,
-             skip_one_update_per_cycle_test: false
+        ctx, world_basename:, task_name:, port_name:, model_name:
     )
         ctx.send(:describe, "common sensor behavior for #{model_name}") do
             it "exports the sensor using #{model_name}" do
@@ -209,14 +208,6 @@ module Helpers
                 reader = @task.port(port_name).reader
                 sleep 0.5
                 refute reader.read_new
-            end
-
-            unless skip_one_update_per_cycle_test
-                it 'outputs one sample per cycle by default' do
-                    @task = gzserver "#{world_basename}.world", task_name
-                    count = configure_start_count_samples_and_stop(port_name, 1)
-                    assert_includes 9..11, count
-                end
             end
 
             it 'honors the rate set in the SDF file' do
