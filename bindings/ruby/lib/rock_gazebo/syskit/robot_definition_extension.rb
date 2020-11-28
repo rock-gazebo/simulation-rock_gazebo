@@ -50,14 +50,33 @@ module RockGazebo
             #   device model and device driver that should be used for this
             #   sensor
             def plugins_to_device(plugin, device_name, _frame_name)
+                has_task = false
+                plugin.xml.elements.to_a("task").each do |task_element|
+                    has_task = true
+                    case task_element.attributes["model"]
+                    when "rock_gazebo::ThrusterTask"
+                        require 'common_models/models/devices/gazebo/thruster'
+                        device(CommonModels::Devices::Gazebo::Thruster,
+                               as: device_name,
+                               using: OroGen.rock_gazebo.ThrusterTask)
+                    when "rock_gazebo::UdnerwaterTask"
+                        require 'common_models/models/devices/gazebo/underwater'
+                        device(CommonModels::Devices::Gazebo::Underwater,
+                               as: device_name,
+                               using: OroGen.rock_gazebo.UnderwaterTask)
+                    end
+                end
+
+                return if has_task
+
                 case plugin.filename
                 when /gazebo_thruster/
-                    require 'common_models/models/devices/gazebo/thruster'
+                    require "common_models/models/devices/gazebo/thruster"
                     device(CommonModels::Devices::Gazebo::Thruster,
                            as: device_name,
                            using: OroGen.rock_gazebo.ThrusterTask)
                 when /gazebo_underwater/
-                    require 'common_models/models/devices/gazebo/underwater'
+                    require "common_models/models/devices/gazebo/underwater"
                     device(CommonModels::Devices::Gazebo::Underwater,
                            as: device_name,
                            using: OroGen.rock_gazebo.UnderwaterTask)

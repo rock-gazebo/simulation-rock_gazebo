@@ -1,7 +1,7 @@
 //======================================================================================
-// Brazilian Institute of Robotics 
+// Brazilian Institute of Robotics
 // Authors: Thomio Watanabe
-//====================================================================================== 
+//======================================================================================
 #ifndef _ROCK_BRIDGE_HPP_
 #define _ROCK_BRIDGE_HPP_
 
@@ -28,7 +28,7 @@ namespace rock_gazebo
         public:
             // Pure virtual function implementation
             virtual void Load(int _argc = 0, char** _argv = NULL);
-            RockBridge(); 
+            RockBridge();
             ~RockBridge();
 
             typedef gazebo::physics::ModelPtr ModelPtr;
@@ -40,6 +40,7 @@ namespace rock_gazebo
             void setupTaskActivity(RTT::TaskContext* task);
 
             void processRockComponentsPlugin(sdf::ElementPtr pluginElement);
+            RTT::TaskContext* instanciateTask(sdf::ElementPtr taskElement);
             void instantiatePluginComponents( sdf::ElementPtr modelElement, ModelPtr model );
             void instantiateSensorComponents( sdf::ElementPtr modelElement, ModelPtr model );
 

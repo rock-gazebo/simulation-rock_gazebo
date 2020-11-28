@@ -116,60 +116,91 @@ module Rock
             Array[env, cmd, '-s', RockGazebo::PATH_TO_PLUGIN, *args]
         end
 
-        def self.process_sdf_world(world_path)
-            sdf = SDF::Root.load(world_path)
+        def self.process_sdf_world(sdf, loader: nil)
+            sdf = SDF::Root.load(sdf) if sdf.respond_to?(:to_str)
+            loader ||= OroGen::Loaders::RTT.new(ENV["OROCOS_TARGET"] || "gnulinux")
 
             # post-process the rock_components info
             sdf.each_world do |w|
-                w.each_plugin do |p|
-                    if p.name == 'rock_components'
-                        normalize_rock_components(p)
+                needed_typekits = Set.new
+                REXML::XPath.each(w.xml, "//plugin") do |plugin_xml|
+                    begin
+                        needed_typekits.merge(
+                            normalize_rock_components(plugin_xml, loader)
+                        )
+
+                    rescue OroGen::NotFound => e
+                        raise e,
+                              "while processing the <task ..> elements of the "\
+                              "#{plugin_xml.attributes['name']} Rock plugin: "\
+                              "#{e.message}", e.backtrace
                     end
                 end
+                ensure_typekits_loaded(w.xml, needed_typekits, loader)
             end
 
             sdf.xml
         end
 
-        def self.normalize_rock_components(plugin)
-            loader = OroGen::Loaders::RTT.new(ENV['OROCOS_TARGET'] || 'gnulinux')
-
+        def self.normalize_rock_components(plugin_xml, loader)
             needed_typekits = Set.new
-            needed_libraries = Set.new
-            plugin.xml.elements.each('task') do |task_xml|
-                model_name = task_xml.attributes['model']
+            plugin_xml.elements.each("task") do |task_xml|
+                model_name = task_xml.attributes["model"]
                 task_model = loader.task_model_from_name(model_name)
-                task_xml.attributes['filename'] = loader.
-                    task_library_path_from_name(task_model.project.name)
+                task_xml.attributes["filename"] =
+                    loader.task_library_path_from_name(task_model.project.name)
                 task_model.each_interface_type do |type|
                     needed_typekits << loader.typekit_for(type)
                 end
             end
+            needed_typekits
+        end
 
+        def self.create_or_update_rock_components(world_xml)
+            existing = REXML::XPath.first(world_xml, "plugin[@name='rock_components']")
+            return existing if existing
+
+            plugin = REXML::Element.new("plugin")
+            plugin.attributes["name"] = "rock_components"
+            plugin.attributes["filename"] = "__default__"
+            world_xml.elements << plugin
+            plugin
+        end
+
+        def self.libraries_needed_by_typekit(typekit, loader)
+            result = Set.new
+            result << loader.typekit_library_path_from_name(typekit.name)
+            %w[typelib mqueue corba].each do |transport|
+                result << loader.transport_library_path_from_name(
+                    typekit.name, transport
+                )
+            end
+            result
+        end
+
+        def self.ensure_typekits_loaded(world_xml, needed_typekits, loader)
+            needed_libraries = Set.new
             needed_typekits.each do |tk|
                 next if tk.virtual?
-                needed_libraries << loader.typekit_library_path_from_name(tk.name)
-                ['typelib', 'mqueue', 'corba'].each do |transport_name|
-                    needed_libraries << loader.transport_library_path_from_name(tk.name, transport_name)
-                end
+
+                needed_libraries.merge(libraries_needed_by_typekit(tk, loader))
             end
 
-            needed_libraries.each do |path|
-                library_element = REXML::Element.new('load')
-                library_element.attributes['path'] = path
-                plugin.xml.elements << library_element
-            end
+            load_libraries(world_xml, needed_libraries)
+        end
 
-        rescue OroGen::NotFound => e
-            raise e, "while processing the rock_components plugin, #{e.message}", e.backtrace
+        def self.load_libraries(world_xml, libraries)
+            rock_components = create_or_update_rock_components(world_xml)
+
+            libraries.each do |path|
+                el = REXML::Element.new("load")
+                el.attributes["path"] = path
+                rock_components.elements << el
+            end
         end
 
         def self.download_path
-            if @download_path
-                @download_path
-            else
-                File.join(Dir.home, '.gazebo', 'models')
-            end
+            @download_path ||= File.join(Dir.home, ".gazebo", "models")
         end
 
         def self.download_path=(path)
