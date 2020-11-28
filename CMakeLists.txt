@@ -1,8 +1,11 @@
 # CMakeLists.txt has to be located in the project folder and cmake has to be
 # executed from 'project/build' with 'cmake ../'.
-cmake_minimum_required(VERSION 2.6)
+cmake_minimum_required(VERSION 3.9)
+project(rock_gazebo
+        VERSION 0.2
+        DESCRIPTION "C++ gazebo plugin that interfaces Gazebo with a Rock system")
 find_package(Rock)
-rock_init(rock_gazebo 0.1)
+rock_init()
 
 option(BUILD_GAZEBO_PLUGIN "build the C++ gazebo plugin" ON)
 if (BUILD_GAZEBO_PLUGIN)
