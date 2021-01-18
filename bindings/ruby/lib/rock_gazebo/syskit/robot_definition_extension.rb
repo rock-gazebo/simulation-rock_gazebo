@@ -55,15 +55,19 @@ module RockGazebo
                     has_task = true
                     case task_element.attributes["model"]
                     when "rock_gazebo::ThrusterTask"
-                        require 'common_models/models/devices/gazebo/thruster'
-                        device(CommonModels::Devices::Gazebo::Thruster,
-                               as: device_name,
-                               using: OroGen.rock_gazebo.ThrusterTask)
+                        require "common_models/models/devices/gazebo/thruster"
+                        return device(
+                            CommonModels::Devices::Gazebo::Thruster,
+                            as: device_name,
+                            using: OroGen.rock_gazebo.ThrusterTask
+                        )
                     when "rock_gazebo::UdnerwaterTask"
-                        require 'common_models/models/devices/gazebo/underwater'
-                        device(CommonModels::Devices::Gazebo::Underwater,
-                               as: device_name,
-                               using: OroGen.rock_gazebo.UnderwaterTask)
+                        require "common_models/models/devices/gazebo/underwater"
+                        return device(
+                            CommonModels::Devices::Gazebo::Underwater,
+                            as: device_name,
+                            using: OroGen.rock_gazebo.UnderwaterTask
+                        )
                     end
                 end
 
