@@ -12,6 +12,7 @@
 #include <base/transports/typelib/TransportPlugin.hpp>
 #include <base/transports/mqueue/TransportPlugin.hpp>
 
+#include <rock_gazebo/ModelPluginTaskI.hpp>
 #include <rock_gazebo/ModelTask.hpp>
 #include <rock_gazebo/WorldTask.hpp>
 #include <rock_gazebo/ThrusterTask.hpp>
@@ -204,26 +205,32 @@ void RockBridge::processRockComponentsPlugin(sdf::ElementPtr pluginElement)
         loadElement = loadElement->GetNextElement("load");
     }
 
-    auto component_loader = RTT::ComponentLoader::Instance();
     sdf::ElementPtr taskElement = pluginElement->GetElement("task");
     while (taskElement)
     {
-        string name  = taskElement->Get<string>("name");
-        string model = taskElement->Get<string>("model");
-        string file  = taskElement->Get<string>("filename");
-
-        if (!file.empty())
-            component_loader->loadLibrary(file);
-
-        RTT::TaskContext* task_context =
-            component_loader->loadComponent(name, model);
-        if (!task_context)
-            gzthrow("rock-gazebo: failed to load task context " + name + " of model " + model + "\n");
-
-        gzmsg << "rock-gazebo: created task " << name << " of model " << model << endl;
+        auto task_context = instanciateTask(taskElement);
         setupTaskActivity(task_context);
         taskElement = taskElement->GetNextElement("task");
     }
+}
+
+RTT::TaskContext* RockBridge::instanciateTask(sdf::ElementPtr taskElement) {
+    string name  = taskElement->Get<string>("name");
+    string model = taskElement->Get<string>("model");
+    string file  = taskElement->Get<string>("filename");
+
+    auto component_loader = RTT::ComponentLoader::Instance();
+
+    if (!file.empty())
+        component_loader->loadLibrary(file);
+
+    RTT::TaskContext* task_context =
+        component_loader->loadComponent(name, model);
+    if (!task_context)
+        gzthrow("rock-gazebo: failed to load task context " + name + " of model " + model + "\n");
+
+    gzmsg << "rock-gazebo: created task " << name << " of model " << model << endl;
+    return task_context;
 }
 
 void RockBridge::setupTaskActivity(RTT::TaskContext* task)
@@ -256,28 +263,35 @@ void RockBridge::updateBegin(common::UpdateInfo const& info)
     }
 }
 
-
 void RockBridge::instantiatePluginComponents(sdf::ElementPtr modelElement, ModelPtr model)
 {
     sdf::ElementPtr pluginElement = modelElement->GetElement("plugin");
     while(pluginElement) {
-        string filename = pluginElement->Get<string>("filename");
-        string name = pluginElement->Get<string>("name");
-        gzmsg << "RockBridge: found plugin name='" << name << "' "
-              << "filename='" << filename << "'" << endl;
+        string filename  = pluginElement->Get<string>("filename");
+        string name      = pluginElement->Get<string>("name");
+        gzmsg << "RockBridge: found plugin " << "name='" << name << std::endl;
 
-        // Add more model plugins testing them here
-        if(filename == "libgazebo_thruster.so")
-        {
-            auto* task = new ThrusterTask();
-            task->setGazeboModel(name, model);
-            setupTaskActivity(task);
+        auto rock_task = pluginElement->GetElement("task");
+        if (rock_task) {
+            auto taskContext = instanciateTask(rock_task);
+            auto modelPluginTask = dynamic_cast<ModelPluginTaskI*>(taskContext);
+            modelPluginTask->setGazeboModel(name, model);
+            setupTaskActivity(taskContext);
         }
-        else if(filename == "libgazebo_underwater.so")
-        {
-            auto* task = new UnderwaterTask();
-            task->setGazeboModel(name, model);
-            setupTaskActivity(task);
+        else { // backward compatibility
+            // Add more model plugins testing them here
+            if (filename == "libgazebo_thruster.so")
+            {
+                auto* task = new ThrusterTask();
+                task->setGazeboModel(name, model);
+                setupTaskActivity(task);
+            }
+            else if (filename == "libgazebo_underwater.so")
+            {
+                auto* task = new UnderwaterTask();
+                task->setGazeboModel(name, model);
+                setupTaskActivity(task);
+            }
         }
 
         pluginElement = pluginElement->GetNextElement("plugin");
@@ -303,6 +317,8 @@ void RockBridge::instantiateSensorComponents(sdf::ElementPtr modelElement, Model
         while( sensorElement ){
             string sensorName = sensorElement->Get<string>("name");
             string sensorType = sensorElement->Get<string>("type");
+            gzmsg << "RockGazebo: looking for a Rock interface for sensor"
+                  << sensorName << " of type " << sensorType << endl;
 
             if (sensorType == "ray")
                 setupSensorTask<LaserScanTask>(model, sensorElement);
