@@ -18,25 +18,25 @@ module RockGazebo
                     require 'common_models/models/devices/gazebo/ray'
                     device(CommonModels::Devices::Gazebo::Ray,
                            as: device_name,
-                           using: OroGen::RockGazebo::LaserScanTask)
+                           using: OroGen.rock_gazebo.LaserScanTask)
                         .frame(frame_name)
                 when 'imu'
                     require 'common_models/models/devices/gazebo/imu'
                     device(CommonModels::Devices::Gazebo::Imu,
                            as: device_name,
-                           using: OroGen::RockGazebo::ImuTask)
+                           using: OroGen.rock_gazebo.ImuTask)
                         .frame_transform(frame_name => 'world')
                 when 'camera'
                     require 'common_models/models/devices/gazebo/camera'
                     device(CommonModels::Devices::Gazebo::Camera,
                            as: device_name,
-                           using: OroGen::RockGazebo::CameraTask)
+                           using: OroGen.rock_gazebo.CameraTask)
                         .frame(frame_name)
                 when 'gps'
                     require 'common_models/models/devices/gazebo/gps'
                     device(CommonModels::Devices::Gazebo::GPS,
                            as: device_name,
-                           using: OroGen::RockGazebo::GPSTask)
+                           using: OroGen.rock_gazebo.GPSTask)
                         .frame_transform(frame_name => 'world')
                 end
             end
@@ -97,7 +97,7 @@ module RockGazebo
                 position_offsets: []
             )
                 driver_def = model_dev.to_instance_requirements.to_component_model.dup
-                driver_m = OroGen::RockGazebo::ModelTask.specialize
+                driver_m = OroGen.rock_gazebo.ModelTask.specialize
                 driver_srv = driver_m.require_dynamic_service(
                     'joint_export',
                     as: as, joint_names: joint_names,
@@ -142,7 +142,7 @@ module RockGazebo
                 end
 
                 link_driver = model_dev.to_instance_requirements.to_component_model.dup
-                link_driver_m = OroGen::RockGazebo::ModelTask.specialize
+                link_driver_m = OroGen.rock_gazebo.ModelTask.specialize
                 link_driver_srv = link_driver_m.require_dynamic_service(
                     'link_export',
                     as: as, frame_basename: as,
@@ -192,7 +192,7 @@ module RockGazebo
 
             def define_submodel_device(name, enclosing_device, actual_sdf_model)
                 normalized_name = normalize_name(name)
-                submodel_driver_m = OroGen::RockGazebo::ModelTask.specialize
+                submodel_driver_m = OroGen.rock_gazebo.ModelTask.specialize
                 driver_srv = submodel_driver_m.require_dynamic_service(
                     'submodel_export',
                     as: normalized_name, frame_basename: normalized_name
