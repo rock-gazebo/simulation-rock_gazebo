@@ -146,7 +146,7 @@ module RockGazebo
                         driver_m = sensor_driver_m.to_component_model
                         assert_equal ['gazebo:included_model:g'],
                                      sensor_driver_m.deployment_hints.to_a
-                        assert_equal OroGen::RockGazebo::GPSTask, driver_m.model
+                        assert_equal OroGen.rock_gazebo.GPSTask, driver_m.model
                         driver_m.find_transform_of_port(driver_m.position_samples_port)
 
                         assert_equal 'included_model::root', device.frame_transform.from
@@ -211,7 +211,7 @@ module RockGazebo
                 device = @robot_model.find_device('renamed_model_g_sensor')
                 sensor_driver_m = device.to_instance_requirements
                 driver_m = sensor_driver_m.to_component_model
-                assert_equal OroGen::RockGazebo::GPSTask, driver_m.model
+                assert_equal OroGen.rock_gazebo.GPSTask, driver_m.model
                 transform = driver_m.find_transform_of_port(
                     driver_m.position_samples_port
                 )
