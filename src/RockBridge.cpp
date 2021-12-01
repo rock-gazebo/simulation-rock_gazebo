@@ -235,6 +235,13 @@ RTT::TaskContext* RockBridge::instanciateTask(sdf::ElementPtr taskElement) {
 
 void RockBridge::setupTaskActivity(RTT::TaskContext* task)
 {
+    // Create and start sequential task activities
+    RTT::extras::SlaveActivity* activity =
+        new RTT::extras::SlaveActivity(task->engine());
+    activity->start();
+    activities.push_back(activity);
+    tasks.push_back(task);
+
     // Export the component interface on CORBA to Ruby access the component
     RTT::corba::TaskContextServer::Create( task );
 #if RTT_VERSION_GTE(2,8,99)
@@ -243,13 +250,6 @@ void RockBridge::setupTaskActivity(RTT::TaskContext* task)
 #else
     RTT::corba::CorbaDispatcher::Instance(task->ports(), ORO_SCHED_OTHER, RTT::os::LowestPriority);
 #endif
-
-    // Create and start sequential task activities
-    RTT::extras::SlaveActivity* activity =
-        new RTT::extras::SlaveActivity(task->engine());
-    activity->start();
-    activities.push_back(activity);
-    tasks.push_back(task);
 }
 
 // Callback method triggered every update begin
