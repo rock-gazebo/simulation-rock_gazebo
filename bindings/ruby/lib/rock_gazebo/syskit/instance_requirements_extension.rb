@@ -16,9 +16,9 @@ module RockGazebo
                 end
                 self
             end
-
-            ::Syskit::InstanceRequirements.include InstanceRequirementsExtension
         end
+
+        ::Syskit::InstanceRequirements.include InstanceRequirementsExtension
     end
 end
 
