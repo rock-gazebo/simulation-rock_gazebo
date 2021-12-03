@@ -98,6 +98,7 @@ describe 'rock_gazebo::ModelTask' do
     describe 'the joints export' do
         before do
             @task = gzserver 'joints_export.world', '/gazebo:w:m'
+            @state_reader = @task.state_reader
         end
 
         it 'exports a set of joints in the specified order' do
@@ -189,7 +190,7 @@ describe 'rock_gazebo::ModelTask' do
             task.start
             writer = task.port('test_cmd').writer
             writer.write(cmd)
-            poll_until { task.state == :INVALID_JOINT_COMMAND }
+            poll_until { @state_reader.read_new == :INVALID_JOINT_COMMAND }
         end
 
         it 'validates the joint names' do
@@ -210,7 +211,7 @@ describe 'rock_gazebo::ModelTask' do
             task.start
             writer = task.port('test_cmd').writer
             writer.write(cmd)
-            poll_until { task.state == :INVALID_JOINT_COMMAND }
+            poll_until { @state_reader.read_new == :INVALID_JOINT_COMMAND }
         end
 
         it 'optionally ignores the names of the joints in the incoming command' do
