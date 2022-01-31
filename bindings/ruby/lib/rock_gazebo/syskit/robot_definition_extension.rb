@@ -41,6 +41,16 @@ module RockGazebo
                 end
             end
 
+            @plugin_device_mappings = {}
+            def self.plugin_device_mappings
+                @plugin_device_mappings ||= {}
+            end
+
+            # Registers a device model by a plugin task model
+            def self.register_device_by_plugin_task_model(task_model, device_model)
+                @plugin_device_mappings[task_model] = device_model
+            end
+
             # Given a gazebo plugin, returns the device and device driver model that
             # should be used to handle it
             #
@@ -49,9 +59,17 @@ module RockGazebo
             #   rock-gazebo plugin or by the syskit integration (yet), or the
             #   device model and device driver that should be used for this
             #   sensor
-            def plugins_to_device(plugin, device_name, _frame_name)
+            def plugins_to_device(plugin, device_name)
                 has_task = false
                 plugin.xml.elements.to_a("task").each do |task_element|
+                    task_model_name = task_element.attributes["model"]
+                    task_model = ::Syskit::TaskContext.find_model_from_orogen_name(task_model_name)
+                    if (device = RobotDefinitionExtension.plugin_device_mappings[task_model])
+                        return device(device,
+                                      as: device_name,
+                                      using: task_model)
+                    end
+                    # Maintain the old version for compatibility
                     has_task = true
                     case task_element.attributes["model"]
                     when "rock_gazebo::ThrusterTask"
@@ -61,7 +79,7 @@ module RockGazebo
                             as: device_name,
                             using: OroGen.rock_gazebo.ThrusterTask
                         )
-                    when "rock_gazebo::UdnerwaterTask"
+                    when "rock_gazebo::UnderwaterTask"
                         require "common_models/models/devices/gazebo/underwater"
                         return device(
                             CommonModels::Devices::Gazebo::Underwater,
@@ -70,7 +88,6 @@ module RockGazebo
                         )
                     end
                 end
-
                 return if has_task
 
                 case plugin.filename
@@ -460,7 +477,7 @@ module RockGazebo
                 end
 
                 device = plugins_to_device(
-                    plugin, device_name, link_frame_name(plugin.parent)
+                    plugin, device_name
                 )
 
                 unless device
