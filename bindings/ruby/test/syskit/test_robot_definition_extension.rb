@@ -70,6 +70,29 @@ module RockGazebo
                 end
             end
 
+            describe 'plugin model' do
+                before do
+                    @robot_sdf =
+                        ::SDF::Root.load('model://model_with_plugin', flatten: false)
+                                   .each_model.first
+                    @robot_model.load_gazebo(
+                        @robot_sdf, 'gazebo', name: 'renamed_model'
+                    )
+                    @plugin = @robot_sdf.each_plugin.first
+                    @device = @robot_model.find_device('g_sensor').model
+                    @task_model = OroGen.rock_gazebo.GPSTask
+                end
+
+                it 'registers device to a task model defined by a plugin' do
+                    RockGazebo::Syskit::RobotDefinitionExtension
+                        .register_device_by_plugin_task_model(@task_model, @device)
+                    registered_device = @robot_model
+                                        .plugins_to_device(@plugin, "gps_test")
+                    assert_equal @robot_model.devices["gps_test"], registered_device
+                    assert_equal registered_device.requirements, @task_model.with_arguments(gps_dev: registered_device)
+                end
+            end
+
             describe 'root model' do
                 before do
                     root = ::SDF::Root.load expand_fixture_world('simple_model.world')
