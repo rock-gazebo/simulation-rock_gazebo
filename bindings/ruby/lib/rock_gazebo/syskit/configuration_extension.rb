@@ -23,16 +23,56 @@ module RockGazebo
                 if Conf.sdf.world_file_path
                     raise LoadError, "use_sdf_world already called"
                 elsif Conf.sdf.has_profile_loaded?
-                    raise LoadError, "you need to call #use_sdf_world before require'ing any profile that uses #use_sdf_model"
+                    raise LoadError,
+                          "you need to call #use_sdf_world before require'ing any "\
+                          "profile that uses #use_sdf_model"
                 end
 
                 if Conf.sdf.world_path
                     override_path = Conf.sdf.world_path
-                    Robot.info "world_file_path set on Conf.sdf.world_path with value #{override_path}, overriding the parameter #{File.join(*path)} given to #use_sdf_world"
+                    Robot.info <<~MSG
+                        world_file_path set on Conf.sdf.world_path with value
+                        #{override_path}, overriding the parameter #{File.join(*path)}
+                        given to #use_sdf_world
+                    MSG
                     path = override_path
                 end
 
-                Conf.sdf.load_sdf(*path, world_name: world_name)
+                setup_gazebo_model_path
+                full_path = resolve_world_path(*path)
+                Robot.info "loading world from #{full_path}"
+                Conf.sdf.load_sdf(full_path, world_name: world_name)
+            end
+
+            # Add all models/sdf folders in our dependent bundles
+            def setup_gazebo_model_path
+                roby_paths = Roby.app.find_dirs(
+                    "models", "sdf", all: true, order: :specific_first
+                )
+                Rock::Gazebo.model_path = (roby_paths + Rock::Gazebo.model_path).uniq
+            end
+
+            # Find the path to the world file, using the Roby search path if needed
+            def resolve_world_path(*path)
+                full_path = File.join(*path)
+                return full_path if File.exist?(full_path)
+
+                full_path = File.join(*path, "#{path.last}.world")
+                return full_path if File.exist?(full_path)
+
+                if path.size == 1
+                    name = path.first
+                    full_path = Roby.app.find_file(
+                        "scenes", name, "#{name}.world",
+                        all: false, order: :specific_first
+                    )
+                    return full_path if full_path
+                end
+
+                raise ArgumentError,
+                      "cannot find world #{File.join(*path)}. It is not the path of an "\
+                      "existing file, and cannot be found in Roby search path "\
+                      "#{Roby.app.search_path.join(' ')}"
             end
 
             # Sets up Syskit to use gazebo configured to use the given world
