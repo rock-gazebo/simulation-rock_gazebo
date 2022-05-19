@@ -83,25 +83,31 @@ module RockGazebo
                 world = use_sdf_world(*path, world_name: world_name)
                 deployment_model = ConfigurationExtension.world_to_orogen(world)
 
-                if !has_process_server?('gazebo')
-                    if localhost
-                        options = Hash[host_id: 'localhost']
-                    else
-                        options = Hash.new
-                    end
+                unless has_process_server?("gazebo")
+                    options =
+                        if localhost
+                            Hash[host_id: "localhost"]
+                        else
+                            {}
+                        end
+
                     ::Syskit.conf.register_process_server(
-                        'gazebo', ::Syskit::RobyApp::UnmanagedTasksManager.new, app.log_dir, **options)
+                        "gazebo", ::Syskit::RobyApp::UnmanagedTasksManager.new,
+                        app.log_dir, **options
+                    )
                 end
 
                 process_server_config =
                     if app.simulation?
-                        sim_process_server('gazebo')
+                        sim_process_server("gazebo")
                     else
-                        process_server_config_for('gazebo')
+                        process_server_config_for("gazebo")
                     end
 
-                configured_deployment = ::Syskit::Models::ConfiguredDeployment.
-                    new(process_server_config.name, deployment_model, Hash[], "gazebo:#{world.name}", Hash.new)
+                configured_deployment =
+                    ::Syskit::Models::ConfiguredDeployment
+                    .new(process_server_config.name, deployment_model,
+                         {}, "gazebo:#{world.name}", {})
                 register_configured_deployment(configured_deployment)
                 configured_deployment
             end
