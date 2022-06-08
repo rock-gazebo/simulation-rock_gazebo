@@ -87,7 +87,7 @@ module RockGazebo
             def use_gazebo_world(*path,
                                  world_name: nil,
                                  localhost: Conf.gazebo.localhost?,
-                                 read_only: [])
+                                 read_only: false)
                 world = use_sdf_world(*path, world_name: world_name)
                 deployment_model = ConfigurationExtension.world_to_orogen(world)
 
@@ -115,7 +115,7 @@ module RockGazebo
                 configured_deployment =
                     ::Syskit::Models::ConfiguredDeployment
                     .new(process_server_config.name, deployment_model,
-                         {}, "gazebo:#{world.name}", {}, read_only)
+                         {}, "gazebo:#{world.name}", {}, read_only: read_only)
                 register_configured_deployment(configured_deployment)
                 configured_deployment
             end
