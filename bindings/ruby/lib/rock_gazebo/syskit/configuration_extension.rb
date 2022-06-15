@@ -78,16 +78,17 @@ module RockGazebo
             # Sets up Syskit to use gazebo configured to use the given world. One can set
             # some of entities in the world as read only, meaning they won't be configured
             # at startup, instead they will wait for another instance of syskit to do it.
-            # The `read_only` argument expects a string that is a part of the entity's
-            # name. If one wants to make all the entities read only, just set
-            # read_only: ["gazebo"]
+            #
+            # @param [Boolean|#===|Array<#===>] read_only expects a string that is a part
+            # of the entity's name.
             #
             # @return [Syskit::Deployment] a deployment object that represents
             #   gazebo itself
             def use_gazebo_world(*path,
                                  world_name: nil,
                                  localhost: Conf.gazebo.localhost?,
-                                 read_only: false)
+                                 read_only: false,
+                                 logger_name: nil)
                 world = use_sdf_world(*path, world_name: world_name)
                 deployment_model = ConfigurationExtension.world_to_orogen(world)
 
@@ -115,7 +116,8 @@ module RockGazebo
                 configured_deployment =
                     ::Syskit::Models::ConfiguredDeployment
                     .new(process_server_config.name, deployment_model,
-                         {}, "gazebo:#{world.name}", {}, read_only: read_only)
+                         {}, "gazebo:#{world.name}", {}, read_only: read_only,
+                         logger_name: logger_name)
                 register_configured_deployment(configured_deployment)
                 configured_deployment
             end
