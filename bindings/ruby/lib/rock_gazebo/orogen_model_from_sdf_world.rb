@@ -57,7 +57,7 @@ module RockGazebo
 
         world.each_plugin do |plugin|
             if plugin.name == "rock_components"
-                setup_orogen_model_from_rock_components_plugin(plugin)
+                setup_orogen_model_from_rock_components_plugin(deployment, plugin)
             end
         end
 
@@ -71,7 +71,9 @@ module RockGazebo
     # @param [OroGen::Spec::Deployment] deployment the deployment model to modify
     # @param [SDF::Plugin] the plugin
     # @param [Float] period the task's period in seconds
-    def self.setup_orogen_model_from_components_plugin(deployment, plugin, period: 0.1)
+    def self.setup_orogen_model_from_rock_components_plugin(
+        deployment, plugin, period: 0.1
+    )
         plugin.xml.elements.each("task") do |el|
             deployment.task(el.attributes["name"], el.attributes["model"])
                       .periodic(period)
