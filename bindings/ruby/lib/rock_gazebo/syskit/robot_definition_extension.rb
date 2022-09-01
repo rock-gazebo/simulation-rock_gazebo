@@ -361,6 +361,38 @@ module RockGazebo
 
             # @api private
             #
+            # Describes recursively all sensors and plugins in the model
+            def load_gazebo_robot_submodel(
+                sdf_model, root_device,
+                name: sdf_model.name, prefix_device_with_name: true
+            )
+
+                sdf_model.each_sensor do |sensor|
+                    gazebo_define_sensor_device(
+                        root_device, sdf_model, sensor,
+                        model_name: name,
+                        prefix_device_with_name: prefix_device_with_name
+                    )
+                end
+
+                sdf_model.each_plugin do |plugin|
+                    gazebo_define_plugin_device(
+                        root_device, sdf_model, plugin,
+                        model_name: name,
+                        prefix_device_with_name: prefix_device_with_name
+                    )
+                end
+
+                sdf_model.each_model do |sdf_submodel|
+                    load_gazebo_robot_submodel(
+                        sdf_submodel, root_device,
+                        name: name + "_" + sdf_submodel.name, prefix_device_with_name: prefix_device_with_name
+                    )
+                end
+            end
+
+            # @api private
+            #
             # Define devices for all links and sensors in the model
             def load_gazebo_robot_model(
                 sdf_model, root_device,
@@ -378,21 +410,10 @@ module RockGazebo
                     )
                 end
 
-                sdf_model.each_sensor do |sensor|
-                    gazebo_define_sensor_device(
-                        root_device, sdf_model, sensor,
-                        model_name: name,
-                        prefix_device_with_name: prefix_device_with_name
-                    )
-                end
-
-                sdf_model.each_plugin do |plugin|
-                    gazebo_define_plugin_device(
-                        root_device, sdf_model, plugin,
-                        model_name: name,
-                        prefix_device_with_name: prefix_device_with_name
-                    )
-                end
+                load_gazebo_robot_submodel(
+                    sdf_model, root_device,
+                    name: sdf_model.name, prefix_device_with_name: prefix_device_with_name
+                )
             end
 
             def gazebo_define_link_device(
