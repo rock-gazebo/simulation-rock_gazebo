@@ -362,7 +362,7 @@ module RockGazebo
             # @api private
             #
             # Describes recursively all sensors and plugins in the model
-            def load_gazebo_robot_submodel(
+            def load_gazebo_robot_submodels(
                 sdf_model, root_device,
                 name: sdf_model.name, prefix_device_with_name: true
             )
@@ -384,7 +384,7 @@ module RockGazebo
                 end
 
                 sdf_model.each_model do |sdf_submodel|
-                    load_gazebo_robot_submodel(
+                    load_gazebo_robot_submodels(
                         sdf_submodel, root_device,
                         name: name + "_" + sdf_submodel.name, prefix_device_with_name: prefix_device_with_name
                     )
@@ -410,7 +410,7 @@ module RockGazebo
                     )
                 end
 
-                load_gazebo_robot_submodel(
+                load_gazebo_robot_submodels(
                     sdf_model, root_device,
                     name: sdf_model.name, prefix_device_with_name: prefix_device_with_name
                 )
