@@ -112,22 +112,31 @@ module RockGazebo
     # @param [String] prefix the string to be put before the plugin name in
     #   the generated task name
     # @param [Float] period the task's period in seconds
-    def self.setup_orogen_submodel_from_sdf_model(deployment, model, prefix: "", period: 0.1)
+    def self.setup_orogen_submodel_from_sdf_model(
+        deployment, model,
+        prefix: "", period: 0.1, is_sub_model: false
+    )
         model.each_sensor do |sensor|
             setup_orogen_model_from_sdf_model_sensor(
-                deployment, sensor, prefix: "#{prefix}#{model.name}:", period: period
+                deployment, sensor,
+                prefix: is_sub_model ? prefix : "#{prefix}#{model.name}:",
+                period: period
             )
         end
 
         model.each_plugin do |plugin|
             setup_orogen_model_from_sdf_model_plugin(
-                deployment, plugin, prefix: "#{prefix}#{model.name}:", period: period
+                deployment, plugin,
+                prefix: is_sub_model ? prefix : "#{prefix}#{model.name}:",
+                period: period
             )
         end
 
         model.each_model do |submodel|
             setup_orogen_submodel_from_sdf_model(
-                deployment, submodel, prefix: "#{prefix}#{model.name}:", period: period
+                deployment, submodel,
+                prefix: is_sub_model ? prefix : "#{prefix}#{model.name}:",
+                period: period, is_sub_model: true
             )
         end
     end
