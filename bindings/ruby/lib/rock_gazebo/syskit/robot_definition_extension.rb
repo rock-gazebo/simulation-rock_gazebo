@@ -412,7 +412,7 @@ module RockGazebo
 
                 load_gazebo_robot_submodels(
                     sdf_model, root_device,
-                    name: sdf_model.name, prefix_device_with_name: prefix_device_with_name
+                    name: name, prefix_device_with_name: prefix_device_with_name
                 )
             end
 
