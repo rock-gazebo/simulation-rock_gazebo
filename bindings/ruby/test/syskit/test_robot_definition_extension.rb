@@ -241,6 +241,52 @@ module RockGazebo
                 [device, sensor_driver_m, driver_m, transform]
             end
 
+            describe 'model with submodels' do
+                before do
+                    root = ::SDF::Root.load(
+                        expand_fixture_world('attached_model_with_submodel.world'),
+                        flatten: false
+                    )
+                    @world = root.each_world.first
+                    @robot_sdf = @world.each_model.first.each_model.first
+                    @robot_model.load_gazebo(
+                        @robot_sdf, 'gazebo',
+                        name: 'renamed_model',
+                        prefix_device_with_name: true
+                    )
+                end
+                it 'defines the enclosing device' do
+                    assert @robot_model.find_device('attachment')
+                end
+
+                it 'sets up the device transform on the submodel device, '\
+                   'using the submodel\'s root link as root frame' do
+                    device = @robot_model.find_device('renamed_model')
+                    assert_equal 'included_model::simple_model::root', device.frame_transform.from
+                    assert_equal 'world', device.frame_transform.to
+                end
+
+                it 'defines a device that exposes the submodel' do
+                    device = @robot_model.find_device('renamed_model')
+                    submodel_driver_m = device.to_instance_requirements
+                    assert_equal 'included_model::simple_model::root',
+                                 submodel_driver_m.frame_mappings['renamed_model_source']
+                end
+
+                it "sets up the transforms on the submodel's sensors" do
+                    device, = common_sensor_export_behavior
+                    assert_equal 'included_model::simple_model::root', device.frame_transform.from
+                    assert_equal 'world', device.frame_transform.to
+                end
+
+                it 'exposes the sensors from the submodel' do
+                    _, sensor_driver_m, = common_sensor_export_behavior
+
+                    assert_equal ['gazebo:attachment:g'],
+                                 sensor_driver_m.deployment_hints.to_a
+                end
+            end
+
             describe 'model-in-model' do
                 before do
                     root = ::SDF::Root.load(

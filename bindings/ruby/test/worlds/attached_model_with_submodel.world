@@ -1,0 +1,15 @@
+<sdf version="1.6">
+    <world name="test">
+        <model name="attachment">
+            <link name="in_attachment" />
+            <include>
+                <name>included_model</name>
+                <uri>model://model_with_submodel</uri>
+            </include>
+        </model>
+
+        <model name="other_model">
+            <link name="l" />
+        </model>
+    </world>
+</sdf>
