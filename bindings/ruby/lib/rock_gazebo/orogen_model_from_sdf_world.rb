@@ -99,7 +99,7 @@ module RockGazebo
                   .periodic(period)
 
         setup_orogen_submodel_from_sdf_model(
-            deployment, model, prefix: prefix, period: period
+            deployment, model, prefix: "#{prefix}#{model.name}:", period: period
         )
     end
 
@@ -114,12 +114,12 @@ module RockGazebo
     # @param [Float] period the task's period in seconds
     def self.setup_orogen_submodel_from_sdf_model(
         deployment, model,
-        prefix: "", period: 0.1, is_sub_model: false
+        prefix: "", period: 0.1
     )
         model.each_sensor do |sensor|
             setup_orogen_model_from_sdf_model_sensor(
                 deployment, sensor,
-                prefix: is_sub_model ? prefix : "#{prefix}#{model.name}:",
+                prefix: prefix,
                 period: period
             )
         end
@@ -127,7 +127,7 @@ module RockGazebo
         model.each_plugin do |plugin|
             setup_orogen_model_from_sdf_model_plugin(
                 deployment, plugin,
-                prefix: is_sub_model ? prefix : "#{prefix}#{model.name}:",
+                prefix: prefix,
                 period: period
             )
         end
@@ -135,8 +135,8 @@ module RockGazebo
         model.each_model do |submodel|
             setup_orogen_submodel_from_sdf_model(
                 deployment, submodel,
-                prefix: is_sub_model ? prefix : "#{prefix}#{model.name}:",
-                period: period, is_sub_model: true
+                prefix: "#{prefix}#{submodel.name}::",
+                period: period
             )
         end
     end

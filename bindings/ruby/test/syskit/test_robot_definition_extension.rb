@@ -241,7 +241,7 @@ module RockGazebo
                 [device, sensor_driver_m, driver_m, transform]
             end
 
-            describe 'model with submodels' do
+            describe 'model with submodel' do
                 before do
                     root = ::SDF::Root.load(
                         expand_fixture_world('attached_model_with_submodel.world'),
@@ -282,7 +282,7 @@ module RockGazebo
                 it 'exposes the sensors from the submodel' do
                     _, sensor_driver_m, = common_sensor_export_behavior
 
-                    assert_equal ['gazebo:attachment:g'],
+                    assert_equal ['gazebo:attachment:included_model::g'],
                                  sensor_driver_m.deployment_hints.to_a
                 end
             end
@@ -352,7 +352,7 @@ module RockGazebo
                 it 'exposes the sensors from the submodel' do
                     _, sensor_driver_m, = common_sensor_export_behavior
 
-                    assert_equal ['gazebo:attachment:g'],
+                    assert_equal ['gazebo:attachment:included_model::g'],
                                  sensor_driver_m.deployment_hints.to_a
                 end
             end
