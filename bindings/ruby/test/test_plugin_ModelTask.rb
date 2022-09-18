@@ -10,7 +10,7 @@ describe 'rock_gazebo::ModelTask' do
 
     describe 'creation by the plugin' do
         before do
-            @task = gzserver 'model.world', '/gazebo:w:m'
+            @task = gzserver 'model.world', '/gazebo::w::m'
         end
 
         it 'exports the model using a ModelTask' do
@@ -20,7 +20,7 @@ describe 'rock_gazebo::ModelTask' do
 
     describe 'the pose samples' do
         before do
-            @task = gzserver 'model.world', '/gazebo:w:m'
+            @task = gzserver 'model.world', '/gazebo::w::m'
         end
 
         it "exports the model's pose" do
@@ -57,7 +57,7 @@ describe 'rock_gazebo::ModelTask' do
 
     describe "the model's joints" do
         before do
-            @task = gzserver 'joints_export.world', '/gazebo:w:m'
+            @task = gzserver 'joints_export.world', '/gazebo::w::m'
         end
 
         it 'exports the state of all the non-fixed joints' do
@@ -97,7 +97,7 @@ describe 'rock_gazebo::ModelTask' do
 
     describe 'the joints export' do
         before do
-            @task = gzserver 'joints_export.world', '/gazebo:w:m'
+            @task = gzserver 'joints_export.world', '/gazebo::w::m'
             @state_reader = @task.state_reader
         end
 
@@ -293,7 +293,7 @@ describe 'rock_gazebo::ModelTask' do
         describe 'RBS export' do
             describe 'general properties' do
                 before do
-                    @task = gzserver 'model.world', '/gazebo:w:m'
+                    @task = gzserver 'model.world', '/gazebo::w::m'
                 end
 
                 it 'uses the link names as frames by default' do
@@ -350,7 +350,7 @@ describe 'rock_gazebo::ModelTask' do
 
             describe 'pose' do
                 before do
-                    @task = gzserver 'model.world', '/gazebo:w:m'
+                    @task = gzserver 'model.world', '/gazebo::w::m'
                 end
 
                 it 'exports a link\'s pose' do
@@ -370,7 +370,7 @@ describe 'rock_gazebo::ModelTask' do
 
             describe 'velocity' do
                 before do
-                    @task = gzserver 'freefall.world', '/gazebo:w:m'
+                    @task = gzserver 'freefall.world', '/gazebo::w::m'
                 end
 
                 it 'exports a link\'s linear velocity' do
@@ -446,7 +446,7 @@ describe 'rock_gazebo::ModelTask' do
 
         describe 'acceleration export' do
             before do
-                @task = gzserver 'freefall.world', '/gazebo:w:m'
+                @task = gzserver 'freefall.world', '/gazebo::w::m'
             end
 
             it 'exports a link\'s linear acceleration' do
@@ -528,7 +528,7 @@ describe 'rock_gazebo::ModelTask' do
 
         describe 'wrench export' do
             before do
-                @task = gzserver 'wrench.world', '/gazebo:w:m'
+                @task = gzserver 'wrench.world', '/gazebo::w::m'
                 Orocos.load_typekit 'base'
             end
 
@@ -595,7 +595,7 @@ describe 'rock_gazebo::ModelTask' do
 
         describe 'common features' do
             before do
-                @task = gzserver 'model.world', '/gazebo:w:m'
+                @task = gzserver 'model.world', '/gazebo::w::m'
                 Orocos.load_typekit 'base'
             end
 
