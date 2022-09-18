@@ -304,6 +304,7 @@ module RockGazebo
                     EOMSG
                 end
 
+                deployment_prefix += "::"
                 if enclosing_model != model
                     create_frame_mappings_for_used_model(model)
                     enclosing_device = expose_gazebo_model(
@@ -312,8 +313,7 @@ module RockGazebo
                     )
                     model_device = define_submodel_device(name, enclosing_device, model)
                     prefix_device_with_name = true
-                    is_submodel = true
-                    deployment_prefix += ":" + enclosing_model.name + ":" + model.name
+                    deployment_prefix += enclosing_model.name + "::" + model.name + "::"
                 else
                     enclosing_device = expose_gazebo_model(
                         enclosing_model, deployment_prefix,
@@ -321,14 +321,12 @@ module RockGazebo
                     )
                     model_device = enclosing_device
                     enclosing_device.advanced = false
-                    is_submodel = false
-                    deployment_prefix = deployment_prefix + ":" + model.name
+                    deployment_prefix += model.name + "::"
                 end
                 load_gazebo_robot_model(model, enclosing_device,
                                         name: name, reuse: reuse,
                                         prefix_device_with_name: prefix_device_with_name,
-                                        deployment_prefix: deployment_prefix,
-                                        is_submodel: is_submodel
+                                        deployment_prefix: deployment_prefix
                 )
                 model_device
             end
@@ -351,7 +349,7 @@ module RockGazebo
                        as: device_name,
                        using: OroGen.rock_gazebo.ModelTask)
                     .prefer_deployed_tasks(
-                        "#{deployment_prefix}:#{normalize_name(sdf.name)}"
+                        "#{deployment_prefix}#{normalize_name(sdf.name)}"
                     )
                     .frame_transform(link_frame_name(sdf) => 'world')
                     .advanced
@@ -363,7 +361,7 @@ module RockGazebo
             #
             # Normalize a Gazebo name to use in Syskit models
             def normalize_name(name)
-                name.gsub(/:+/, '_')
+                name.gsub(/::+/, '_')
             end
 
             # @api private
@@ -372,8 +370,7 @@ module RockGazebo
             def load_gazebo_robot_submodels(
                 sdf_model,
                 name: sdf_model.name, prefix_device_with_name: true,
-                deployment_prefix: "",
-                is_submodel: false
+                deployment_prefix: ""
             )
 
                 sdf_model.each_sensor do |sensor|
@@ -381,7 +378,7 @@ module RockGazebo
                         sdf_model, sensor,
                         model_name: name,
                         prefix_device_with_name: prefix_device_with_name,
-                        deployment_prefix: is_submodel ? deployment_prefix + ":" : deployment_prefix
+                        deployment_prefix: deployment_prefix
                     )
                 end
 
@@ -390,7 +387,7 @@ module RockGazebo
                         sdf_model, plugin,
                         model_name: name,
                         prefix_device_with_name: prefix_device_with_name,
-                        deployment_prefix: is_submodel ? deployment_prefix + ":" : deployment_prefix
+                        deployment_prefix: deployment_prefix
                     )
                 end
 
@@ -399,8 +396,7 @@ module RockGazebo
                         sdf_submodel,
                         name: name + "_" + sdf_submodel.name,
                         prefix_device_with_name: true,
-                        deployment_prefix: deployment_prefix + ":" + sdf_submodel.name,
-                        is_submodel: true
+                        deployment_prefix: deployment_prefix + sdf_submodel.name + "::"
                     )
                 end
             end
@@ -411,7 +407,7 @@ module RockGazebo
             def load_gazebo_robot_model(
                 sdf_model, root_device,
                 reuse: nil, name: sdf_model.name, prefix_device_with_name: true,
-                deployment_prefix: "", is_submodel: false
+                deployment_prefix: ""
             )
                 if (prefix = sdf_model.full_name(root: root_device.sdf))
                     frame_prefix = "#{normalize_name(prefix)}_"
@@ -428,7 +424,7 @@ module RockGazebo
                 load_gazebo_robot_submodels(
                     sdf_model,
                     name: name, prefix_device_with_name: prefix_device_with_name,
-                    deployment_prefix: deployment_prefix, is_submodel: is_submodel
+                    deployment_prefix: deployment_prefix
                 )
             end
 
@@ -499,7 +495,7 @@ module RockGazebo
                 device
                     .sdf(sensor)
                     .prefer_deployed_tasks(
-                        "#{deployment_prefix}:#{normalize_name(sensor.name)}"
+                        "#{deployment_prefix}#{normalize_name(sensor.name)}"
                     )
             end
 
@@ -528,7 +524,7 @@ module RockGazebo
                 device.doc "Gazebo: #{plugin.name} plugin of #{sdf_model.full_name}"
                 device.sdf(plugin)
                       .prefer_deployed_tasks(
-                          "#{deployment_prefix}:#{normalize_name(plugin.name)}"
+                          "#{deployment_prefix}#{normalize_name(plugin.name)}"
                       )
             end
         end

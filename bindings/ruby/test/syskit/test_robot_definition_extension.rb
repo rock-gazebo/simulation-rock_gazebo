@@ -117,7 +117,7 @@ module RockGazebo
                     end
 
                     it 'sets up the deployment name' do
-                        assert_equal ['gazebo:included_model'],
+                        assert_equal ['gazebo::included_model'],
                                      @model_driver_m.deployment_hints.to_a
                     end
 
@@ -146,7 +146,7 @@ module RockGazebo
                         device = @robot_model.find_device('child_link')
                         link_driver_m = device.to_instance_requirements
                         driver_m = link_driver_m.to_component_model
-                        assert_equal ['gazebo:included_model'],
+                        assert_equal ['gazebo::included_model'],
                                      link_driver_m.deployment_hints.to_a
                         assert_equal(
                             driver_m.child_link_port,
@@ -167,7 +167,7 @@ module RockGazebo
                         device = @robot_model.find_device('g_sensor')
                         sensor_driver_m = device.to_instance_requirements
                         driver_m = sensor_driver_m.to_component_model
-                        assert_equal ['gazebo:included_model:g'],
+                        assert_equal ['gazebo::included_model::g'],
                                      sensor_driver_m.deployment_hints.to_a
                         assert_equal OroGen.rock_gazebo.GPSTask, driver_m.model
                         driver_m.find_transform_of_port(driver_m.position_samples_port)
@@ -199,7 +199,7 @@ module RockGazebo
                             common_link_export_behavior
 
                         link_driver_m = device.to_instance_requirements
-                        assert_equal ['gazebo:included_model'],
+                        assert_equal ['gazebo::included_model'],
                                      link_driver_m.deployment_hints.to_a
                         assert_equal 'included_model::child',
                                      link_driver_m.frame_mappings['child_source']
@@ -211,7 +211,7 @@ module RockGazebo
                         device, sensor_driver_m, =
                             common_sensor_export_behavior
 
-                        assert_equal ['gazebo:included_model:g'],
+                        assert_equal ['gazebo::included_model::g'],
                                      sensor_driver_m.deployment_hints.to_a
                         assert_equal 'included_model::root', device.frame_transform.from
                         assert_equal 'world', device.frame_transform.to
@@ -282,7 +282,7 @@ module RockGazebo
                 it 'exposes the sensors from the submodel' do
                     _, sensor_driver_m, = common_sensor_export_behavior
 
-                    assert_equal ['gazebo:attachment:included_model::g'],
+                    assert_equal ['gazebo::attachment::included_model::g'],
                                  sensor_driver_m.deployment_hints.to_a
                 end
             end
@@ -333,7 +333,7 @@ module RockGazebo
                 it 'exposes the links from the submodel' do
                     _, link_driver_m, _, transform = common_link_export_behavior
 
-                    assert_equal ['gazebo:attachment'],
+                    assert_equal ['gazebo::attachment'],
                                  link_driver_m.deployment_hints.to_a
                     assert_equal(
                         'included_model::child',
@@ -352,7 +352,7 @@ module RockGazebo
                 it 'exposes the sensors from the submodel' do
                     _, sensor_driver_m, = common_sensor_export_behavior
 
-                    assert_equal ['gazebo:attachment:included_model::g'],
+                    assert_equal ['gazebo::attachment::included_model::g'],
                                  sensor_driver_m.deployment_hints.to_a
                 end
             end
@@ -382,7 +382,7 @@ module RockGazebo
                     _, link_driver_m, _, transform =
                         common_link_export_behavior 'included_model_child'
 
-                    assert_equal ['gazebo:attachment'],
+                    assert_equal ['gazebo::attachment'],
                                  link_driver_m.deployment_hints.to_a
                     assert_equal 'attachment::included_model::child',
                                  link_driver_m.frame_mappings['child_source']
@@ -393,7 +393,7 @@ module RockGazebo
                 it 'exposes the sensors from the submodel' do
                     device, sensor_driver_m, = common_sensor_export_behavior
 
-                    assert_equal ['gazebo:attachment:g'],
+                    assert_equal ['gazebo::attachment::g'],
                                  sensor_driver_m.deployment_hints.to_a
                     assert_equal 'attachment::included_model::root',
                                  device.frame_transform.from

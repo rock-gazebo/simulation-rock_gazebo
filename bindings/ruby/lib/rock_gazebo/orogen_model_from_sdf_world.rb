@@ -44,14 +44,14 @@ module RockGazebo
     #
     # @see {.orogen_model_from_sdf_world}
     def self.setup_orogen_model_from_sdf_world(deployment, world, period: 0.1)
-        deployment.task("gazebo:#{world.name}", "rock_gazebo::WorldTask")
+        deployment.task("gazebo::#{world.name}", "rock_gazebo::WorldTask")
                   .periodic(period)
-        deployment.task("gazebo:#{world.name}_Logger", "logger::Logger")
+        deployment.task("gazebo::#{world.name}_Logger", "logger::Logger")
                   .periodic(period)
 
         world.each_model do |model|
             setup_orogen_model_from_sdf_model(
-                deployment, model, prefix: "gazebo:#{world.name}:", period: period
+                deployment, model, prefix: "gazebo::#{world.name}::", period: period
             )
         end
 
@@ -99,7 +99,7 @@ module RockGazebo
                   .periodic(period)
 
         setup_orogen_submodel_from_sdf_model(
-            deployment, model, prefix: "#{prefix}#{model.name}:", period: period
+            deployment, model, prefix: "#{prefix}#{model.name}::", period: period
         )
     end
 

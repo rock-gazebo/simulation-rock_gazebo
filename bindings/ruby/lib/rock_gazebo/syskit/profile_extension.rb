@@ -130,7 +130,7 @@ module RockGazebo
                 model_in_world = resolve_model_in_world
 
                 # Load the model in the syskit subsystems
-                robot.load_gazebo(model_in_world, "gazebo:#{sdf_world.name}",
+                robot.load_gazebo(model_in_world, "gazebo::#{sdf_world.name}",
                                   reuse: reuse,
                                   prefix_device_with_name: prefix_device_with_name)
 
@@ -149,7 +149,7 @@ module RockGazebo
                 reuse = reuse.robot if reuse.respond_to?(:robot)
                 sdf_world.each_model do |model|
                     if model != enclosing_model
-                        robot.expose_gazebo_model(model, "gazebo:#{sdf_world.name}",
+                        robot.expose_gazebo_model(model, "gazebo::#{sdf_world.name}::",
                             reuse: reuse)
                     end
                 end
