@@ -34,7 +34,7 @@ module RockGazebo
                 'gazebo_world_test', world, period: expected_period
             )
 
-            %w[gazebo::underwater gazebo::underwater::flat_fish gazebo::underwater:oil_rig]
+            %w[gazebo::underwater gazebo::underwater::flat_fish gazebo::underwater::oil_rig]
                 .each do |task_name|
                     task = model.find_task_by_name(task_name)
                     assert_in_delta expected_period, task.period, 0.00001
