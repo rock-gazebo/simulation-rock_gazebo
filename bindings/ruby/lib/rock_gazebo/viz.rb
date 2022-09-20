@@ -98,7 +98,7 @@ module RockGazebo
         end
 
         def self.default_task_name_mapping
-            lambda { |model| "gazebo:#{model.full_name.gsub('::', ':')}" }
+            lambda { |model| "gazebo::#{model.full_name}" }
         end
 
         # @api private

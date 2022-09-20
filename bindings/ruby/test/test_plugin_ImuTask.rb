@@ -8,13 +8,13 @@ describe 'rock_gazebo::ImuTask' do
 
     Helpers.common_sensor_behavior(
         self, world_basename: 'imu',
-              task_name: '/gazebo:w:m:i',
+              task_name: '/gazebo::w::m::i',
               port_name: 'orientation_samples',
               model_name: 'rock_gazebo::ImuTask'
     )
 
     def imu_configure_start_and_read_one_new_sample(world, port_name = 'orientation_samples')
-        @task = gzserver world, '/gazebo:w:m:i'
+        @task = gzserver world, '/gazebo::w::m::i'
         yield(@task) if block_given?
         configure_start_and_read_one_new_sample(port_name)
     end

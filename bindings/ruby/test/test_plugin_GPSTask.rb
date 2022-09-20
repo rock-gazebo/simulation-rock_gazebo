@@ -8,13 +8,13 @@ describe 'rock_gazebo::GPSTask' do
 
     Helpers.common_sensor_behavior(
         self, world_basename: 'gps',
-                task_name: '/gazebo:w:m:g',
+                task_name: '/gazebo::w::m::g',
                 port_name: 'gps_solution',
                 model_name: 'rock_gazebo::GPSTask'
     )
 
     def gps_configure_start_and_read_one_sample(world, port = 'gps_solution')
-        @task = gzserver world, '/gazebo:w:m:g'
+        @task = gzserver world, '/gazebo::w::m::g'
         yield(@task) if block_given?
         configure_start_and_read_one_new_sample(port)
     end

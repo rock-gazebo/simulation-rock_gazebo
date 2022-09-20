@@ -128,7 +128,7 @@ void RockBridge::worldCreated(string const& worldName)
 
     // Create the logger component and start the activity
     logger::Logger* logger_task = new logger::Logger();
-    logger_task->provides()->setName("gazebo:" + worldName +"_Logger");
+    logger_task->provides()->setName("gazebo::" + worldName +"_Logger");
     // RTT::Activity runs the task in separate thread
     RTT::Activity* logger_activity = new RTT::Activity( logger_task->engine() );
     RTT::corba::TaskContextServer::Create( logger_task );

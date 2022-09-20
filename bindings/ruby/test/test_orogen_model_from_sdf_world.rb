@@ -17,13 +17,13 @@ module RockGazebo
         it 'creates a deployment that represents the rock_gazebo plugin behaviour' do
             world = SDF::Root.load(File.join(data_dir, 'test.world')).each_world.first
             model = RockGazebo.orogen_model_from_sdf_world('gazebo_world_test', world)
-            assert(world_task = model.find_task_by_name('gazebo:underwater'),
+            assert(world_task = model.find_task_by_name('gazebo::underwater'),
                    "cannot find task gazebo:underwater in #{model}, "\
                    "tasks are: #{model.each_task.map(&:name).join(', ')}")
             assert_equal 'rock_gazebo::WorldTask', world_task.task_model.name
-            assert(model_task = model.find_task_by_name('gazebo:underwater:flat_fish'))
+            assert(model_task = model.find_task_by_name('gazebo::underwater::flat_fish'))
             assert_equal 'rock_gazebo::ModelTask', model_task.task_model.name
-            assert(model_task = model.find_task_by_name('gazebo:underwater:oil_rig'))
+            assert(model_task = model.find_task_by_name('gazebo::underwater::oil_rig'))
             assert_equal 'rock_gazebo::ModelTask', model_task.task_model.name
         end
 
@@ -34,7 +34,7 @@ module RockGazebo
                 'gazebo_world_test', world, period: expected_period
             )
 
-            %w[gazebo:underwater gazebo:underwater:flat_fish gazebo:underwater:oil_rig]
+            %w[gazebo::underwater gazebo::underwater::flat_fish gazebo::underwater::oil_rig]
                 .each do |task_name|
                     task = model.find_task_by_name(task_name)
                     assert_in_delta expected_period, task.period, 0.00001

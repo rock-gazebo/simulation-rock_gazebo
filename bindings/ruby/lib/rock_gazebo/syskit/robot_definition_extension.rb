@@ -304,6 +304,7 @@ module RockGazebo
                     EOMSG
                 end
 
+                deployment_prefix += "::"
                 if enclosing_model != model
                     create_frame_mappings_for_used_model(model)
                     enclosing_device = expose_gazebo_model(
@@ -312,6 +313,7 @@ module RockGazebo
                     )
                     model_device = define_submodel_device(name, enclosing_device, model)
                     prefix_device_with_name = true
+                    deployment_prefix += enclosing_model.name + "::" + model.name + "::"
                 else
                     enclosing_device = expose_gazebo_model(
                         enclosing_model, deployment_prefix,
@@ -319,10 +321,13 @@ module RockGazebo
                     )
                     model_device = enclosing_device
                     enclosing_device.advanced = false
+                    deployment_prefix += model.name + "::"
                 end
                 load_gazebo_robot_model(model, enclosing_device,
                                         name: name, reuse: reuse,
-                                        prefix_device_with_name: prefix_device_with_name)
+                                        prefix_device_with_name: prefix_device_with_name,
+                                        deployment_prefix: deployment_prefix
+                )
                 model_device
             end
 
@@ -344,7 +349,7 @@ module RockGazebo
                        as: device_name,
                        using: OroGen.rock_gazebo.ModelTask)
                     .prefer_deployed_tasks(
-                        "#{deployment_prefix}:#{normalize_name(sdf.name)}"
+                        "#{deployment_prefix}#{normalize_name(sdf.name)}"
                     )
                     .frame_transform(link_frame_name(sdf) => 'world')
                     .advanced
@@ -356,7 +361,44 @@ module RockGazebo
             #
             # Normalize a Gazebo name to use in Syskit models
             def normalize_name(name)
-                name.gsub(/:+/, '_')
+                name.gsub(/::+/, '_')
+            end
+
+            # @api private
+            #
+            # Describes recursively all sensors and plugins in the model
+            def load_gazebo_robot_submodels(
+                sdf_model,
+                name: sdf_model.name, prefix_device_with_name: true,
+                deployment_prefix: ""
+            )
+
+                sdf_model.each_sensor do |sensor|
+                    gazebo_define_sensor_device(
+                        sdf_model, sensor,
+                        model_name: name,
+                        prefix_device_with_name: prefix_device_with_name,
+                        deployment_prefix: deployment_prefix
+                    )
+                end
+
+                sdf_model.each_plugin do |plugin|
+                    gazebo_define_plugin_device(
+                        sdf_model, plugin,
+                        model_name: name,
+                        prefix_device_with_name: prefix_device_with_name,
+                        deployment_prefix: deployment_prefix
+                    )
+                end
+
+                sdf_model.each_model do |sdf_submodel|
+                    load_gazebo_robot_submodels(
+                        sdf_submodel,
+                        name: name + "_" + sdf_submodel.name,
+                        prefix_device_with_name: true,
+                        deployment_prefix: deployment_prefix + sdf_submodel.name + "::"
+                    )
+                end
             end
 
             # @api private
@@ -364,7 +406,8 @@ module RockGazebo
             # Define devices for all links and sensors in the model
             def load_gazebo_robot_model(
                 sdf_model, root_device,
-                reuse: nil, name: sdf_model.name, prefix_device_with_name: true
+                reuse: nil, name: sdf_model.name, prefix_device_with_name: true,
+                deployment_prefix: ""
             )
                 if (prefix = sdf_model.full_name(root: root_device.sdf))
                     frame_prefix = "#{normalize_name(prefix)}_"
@@ -378,21 +421,11 @@ module RockGazebo
                     )
                 end
 
-                sdf_model.each_sensor do |sensor|
-                    gazebo_define_sensor_device(
-                        root_device, sdf_model, sensor,
-                        model_name: name,
-                        prefix_device_with_name: prefix_device_with_name
-                    )
-                end
-
-                sdf_model.each_plugin do |plugin|
-                    gazebo_define_plugin_device(
-                        root_device, sdf_model, plugin,
-                        model_name: name,
-                        prefix_device_with_name: prefix_device_with_name
-                    )
-                end
+                load_gazebo_robot_submodels(
+                    sdf_model,
+                    name: name, prefix_device_with_name: prefix_device_with_name,
+                    deployment_prefix: deployment_prefix
+                )
             end
 
             def gazebo_define_link_device(
@@ -434,8 +467,9 @@ module RockGazebo
             end
 
             def gazebo_define_sensor_device(
-                root_device, sdf_model, sensor,
-                model_name: sdf_model.name, prefix_device_with_name: true
+                sdf_model, sensor,
+                model_name: sdf_model.name, prefix_device_with_name: true,
+                deployment_prefix: ""
             )
                 device_name = "#{normalize_name(sensor.name)}_sensor"
                 if prefix_device_with_name
@@ -458,18 +492,17 @@ module RockGazebo
                 end
                 device.doc "Gazebo: #{sensor.name} sensor of #{sdf_model.full_name}"
 
-                deployment_name =
-                    root_device.to_instance_requirements.deployment_hints.first
                 device
                     .sdf(sensor)
                     .prefer_deployed_tasks(
-                        "#{deployment_name}:#{normalize_name(sensor.name)}"
+                        "#{deployment_prefix}#{normalize_name(sensor.name)}"
                     )
             end
 
             def gazebo_define_plugin_device(
-                root_device, sdf_model, plugin,
-                model_name: sdf_model.name, prefix_device_with_name: true
+                sdf_model, plugin,
+                model_name: sdf_model.name, prefix_device_with_name: true,
+                deployment_prefix: ""
             )
                 device_name = "#{normalize_name(plugin.name)}_plugin"
                 if prefix_device_with_name
@@ -489,11 +522,9 @@ module RockGazebo
                 end
 
                 device.doc "Gazebo: #{plugin.name} plugin of #{sdf_model.full_name}"
-                deployment_name =
-                    root_device.to_instance_requirements.deployment_hints.first
                 device.sdf(plugin)
                       .prefer_deployed_tasks(
-                          "#{deployment_name}:#{normalize_name(plugin.name)}"
+                          "#{deployment_prefix}#{normalize_name(plugin.name)}"
                       )
             end
         end

@@ -1,0 +1,9 @@
+<?xml version="1.0" ?>
+<sdf version="1.6">
+  <model name="model_with_submodel">
+    <include>
+      <name>simple_model</name>
+      <uri>model://simple_model</uri>
+    </include>
+  </model>
+</sdf>
