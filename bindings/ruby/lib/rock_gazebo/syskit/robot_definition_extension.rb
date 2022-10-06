@@ -64,10 +64,12 @@ module RockGazebo
                 plugin.xml.elements.to_a("task").each do |task_element|
                     task_model_name = task_element.attributes["model"]
                     task_model = ::Syskit::TaskContext.find_model_from_orogen_name(task_model_name)
+                    task_name = task_element.attributes["name"]
                     if (device = RobotDefinitionExtension.plugin_device_mappings[task_model])
-                        return device(device,
-                                      as: device_name,
-                                      using: task_model)
+                        return device(device, as: device_name, using: task_model)
+                               .prefer_deployed_tasks(
+                                   task_name
+                               )
                     end
                     # Maintain the old version for compatibility
                     has_task = true
@@ -504,7 +506,8 @@ module RockGazebo
                 model_name: sdf_model.name, prefix_device_with_name: true,
                 deployment_prefix: ""
             )
-                device_name = "#{normalize_name(plugin.name)}_plugin"
+                plugin_name = normalize_name(plugin.name.split(/__/)[-1])
+                device_name = "#{plugin_name}_plugin"
                 if prefix_device_with_name
                     device_name = "#{normalize_name(model_name)}_#{device_name}"
                 end
@@ -520,11 +523,10 @@ module RockGazebo
                     )
                     return
                 end
-
-                device.doc "Gazebo: #{plugin.name} plugin of #{sdf_model.full_name}"
+                device.doc "Gazebo: #{plugin_name} plugin of #{sdf_model.full_name}"
                 device.sdf(plugin)
                       .prefer_deployed_tasks(
-                          "#{deployment_prefix}#{normalize_name(plugin.name)}"
+                          "#{deployment_prefix}#{plugin_name}"
                       )
             end
         end

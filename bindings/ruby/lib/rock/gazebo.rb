@@ -116,6 +116,9 @@ module Rock
             Array[env, cmd, '-s', RockGazebo::PATH_TO_PLUGIN, *args]
         end
 
+        # Perform Rock-specific post-processing of the SDF world
+        #
+        # This is essentially required for the handling of orogen tasks
         def self.process_sdf_world(sdf, loader: nil)
             sdf = SDF::Root.load(sdf) if sdf.respond_to?(:to_str)
             loader ||= OroGen::Loaders::RTT.new(ENV["OROCOS_TARGET"] || "gnulinux")
@@ -125,9 +128,12 @@ module Rock
                 needed_typekits = Set.new
                 REXML::XPath.each(w.xml, "//plugin") do |plugin_xml|
                     begin
+                        scope = resolve_plugin_full_name(w.xml, plugin_xml)
                         needed_typekits.merge(
-                            normalize_rock_components(plugin_xml, loader)
+                            normalize_rock_components(scope, plugin_xml, loader)
                         )
+                        plugin_xml.attributes["name"] =
+                            scope.gsub(/[^\w]/, "_")
 
                     rescue OroGen::NotFound => e
                         raise e,
@@ -142,9 +148,22 @@ module Rock
             sdf.xml
         end
 
-        def self.normalize_rock_components(plugin_xml, loader)
+        def self.resolve_plugin_full_name(world_xml, plugin_xml)
+            parts = []
+            element = plugin_xml
+            while world_xml != element
+                parts << element.attributes["name"]
+                element = element.parent
+            end
+            (["gazebo", world_xml.attributes["name"]] + parts.reverse).join("::")
+        end
+
+        def self.normalize_rock_components(scope, plugin_xml, loader)
             needed_typekits = Set.new
             plugin_xml.elements.each("task") do |task_xml|
+                full_name = task_xml.attributes["name"] || scope
+
+                task_xml.attributes["name"] = full_name
                 model_name = task_xml.attributes["model"]
                 task_model = loader.task_model_from_name(model_name)
                 task_xml.attributes["filename"] =

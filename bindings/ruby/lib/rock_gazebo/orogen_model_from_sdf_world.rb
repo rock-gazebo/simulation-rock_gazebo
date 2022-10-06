@@ -182,15 +182,14 @@ module RockGazebo
     def self.setup_orogen_model_from_sdf_model_plugin(
         deployment, plugin, prefix: "", period: 0.1
     )
-        task_model =
+        task_name, task_model =
             if (task_xml = plugin.xml.elements["task"])
-                task_xml.attributes["model"]
+                [task_xml.attributes["name"], task_xml.attributes["model"]]
             else
-                PLUGIN_TASK_MODELS.find { |k, _| k === plugin.filename }&.last
+                [plugin.name, PLUGIN_TASK_MODELS.find { |k, _| k === plugin.filename }&.last]
             end
 
         return unless task_model
-
-        deployment.task("#{prefix}#{plugin.name}", task_model).periodic(period)
+        deployment.task(task_name, task_model).periodic(period)
     end
 end
