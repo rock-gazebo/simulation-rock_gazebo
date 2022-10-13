@@ -67,9 +67,7 @@ module RockGazebo
                     task_name = task_element.attributes["name"]
                     if (device = RobotDefinitionExtension.plugin_device_mappings[task_model])
                         return device(device, as: device_name, using: task_model)
-                               .prefer_deployed_tasks(
-                                   task_name
-                               )
+                               .prefer_deployed_tasks(task_name)
                     end
                     # Maintain the old version for compatibility
                     has_task = true
