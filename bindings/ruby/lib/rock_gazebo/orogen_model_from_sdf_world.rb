@@ -186,7 +186,7 @@ module RockGazebo
             if (task_xml = plugin.xml.elements["task"])
                 [task_xml.attributes["name"], task_xml.attributes["model"]]
             else
-                [plugin.name, PLUGIN_TASK_MODELS.find { |k, _| k === plugin.filename }&.last]
+                [plugin.name.gsub(/__/, '::'), PLUGIN_TASK_MODELS.find { |k, _| k === plugin.filename }&.last]
             end
 
         return unless task_model
