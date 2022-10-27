@@ -23,6 +23,20 @@ module Rock
                 assert_equal "some::Task_project_path", task.attributes["filename"]
             end
 
+            it "resolve the 'name' argument of a <plugin> element of a model inside a model "\
+                "in <plugin ...>" do
+                sdf = ::SDF::Root.from_string(
+                    <<~SDF
+                    <sdf><world name="world"><model name= "model_A"><model name= "model_B"><plugin name="plugin_A">
+                    </plugin></model></model></world></sdf>
+                    SDF
+                )
+                xml = Gazebo.process_sdf_world(sdf)
+                plugin = REXML::XPath.first(xml, "//plugin")
+                assert_equal "gazebo__world__model_A__model_B__plugin_A",
+                                plugin.attributes["name"]
+            end
+
             it "auto-loads a task's dependent typekits" do
                 loader = flexmock
                 tk_a = create_typekit_mock(loader, "tk_a")
