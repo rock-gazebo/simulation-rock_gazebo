@@ -135,7 +135,9 @@ module RockGazebo
             # @raise ArgumentError if the SDF file has more than one world and
             #   none match the name provided as world_name
             def self.world_from_path(path, world_name: nil)
-                worlds = ::SDF::Root.load(path, flatten: false).each_world.to_a
+                sdf = ::SDF::Root.load(path, flatten: false)
+                Rock::Gazebo.process_sdf_world(sdf)
+                worlds = sdf.each_world.to_a
                 if world_name
                     world = worlds.find { |w| w.name == world_name }
                     if !world

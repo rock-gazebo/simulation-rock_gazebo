@@ -273,22 +273,30 @@ void RockBridge::instantiatePluginComponents(sdf::ElementPtr modelElement, Model
 
         auto rock_task = pluginElement->GetElement("task");
         if (rock_task) {
+            string rock_task_name = rock_task->Get<string>("name");
             auto taskContext = instanciateTask(rock_task);
             auto modelPluginTask = dynamic_cast<ModelPluginTaskI*>(taskContext);
+            modelPluginTask->setGazeboPluginTaskName(rock_task_name);
             modelPluginTask->setGazeboModel(name, model);
             setupTaskActivity(taskContext);
         }
         else { // backward compatibility
             // Add more model plugins testing them here
+            string worldName = GzGet((*(model->GetWorld())), Name, ());
+            string taskName = "gazebo::" + worldName + "::" + model->GetName() + "::";
             if (filename == "libgazebo_thruster.so")
             {
+                taskName += "thrusters";
                 auto* task = new ThrusterTask();
+                task->setGazeboPluginTaskName(taskName);
                 task->setGazeboModel(name, model);
                 setupTaskActivity(task);
             }
             else if (filename == "libgazebo_underwater.so")
             {
+                taskName += "hydrodynamics";
                 auto* task = new UnderwaterTask();
+                task->setGazeboPluginTaskName(taskName);
                 task->setGazeboModel(name, model);
                 setupTaskActivity(task);
             }
