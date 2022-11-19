@@ -11,7 +11,7 @@ module RockGazebo
             # configuration's use_sdf_world
             attr_predicate :has_profile_loaded?, true
 
-            # The loaded world
+            # @return [SDF::World] The loaded world
             attr_accessor :world
 
             # The world name that should be or has been loaded
@@ -24,24 +24,77 @@ module RockGazebo
                 @world = ::SDF::World.empty
             end
 
+            # Load a SDF file and sets it as the current file on self
+            #
+            # @param [Array<String>] path elements of the path to the file
+            # @param [String,nil] world_name if given, the method will look for
+            #   a world of the given name in the loaded file. Otherwise, the loaded
+            #   file must have a single world
+            # @return [SDF::World]
             def load_sdf(*path, world_name: nil)
                 path = File.join(*path)
-                _, resolved_paths = Rock::Gazebo
-                                    .resolve_worldfiles_and_models_arguments([path])
+                _, resolved_paths =
+                    Rock::Gazebo.resolve_worldfiles_and_models_arguments([path])
                 full_path = resolved_paths.first
-                unless File.file?(full_path)
-                    unless File.file?(model_sdf = File.join(full_path, 'model.sdf'))
-                        raise ArgumentError, "#{path} cannot be resolved to a SDF file"
-                    end
-
-                    full_path = model_sdf
-                end
+                full_path = autodetect_sdf_file_path(full_path)
                 ::SDF::XML.model_path = Rock::Gazebo.model_path
-                world = ConfigurationExtension
-                        .world_from_path(full_path, world_name: world_name)
+                world = sdf_world_from_path(full_path, world_name: world_name)
+
                 @world_file_path = full_path
                 @sdf = world.parent
                 @world = world
+            end
+
+            # @api private
+            #
+            # Try to turn a path into the path of a SDF file
+            #
+            # The method tries ${path} and ${path}/model.sdf to match SDF model
+            # directories
+            #
+            # @param [String] path
+            # @return [String]
+            def autodetect_sdf_file_path(path)
+                return path if File.file?(path)
+
+                model_sdf = File.join(path, "model.sdf")
+                return model_sdf if File.file?(model_sdf)
+
+                raise ArgumentError, "#{path} cannot be resolved to a SDF file"
+            end
+
+            # @api private
+            #
+            # Resolves a world from a SDF file, which may have more than one
+            #
+            # @param [String] path path to the world file
+            # @param [String] world_name if not nil, the expected world name
+            # @return [World]
+            # @raise ArgumentError if the SDF file does not define a world
+            # @raise ArgumentError if the SDF file has more than one world and
+            #   world_name is not set
+            # @raise ArgumentError if the SDF file has more than one world and
+            #   none match the name provided as world_name
+            def sdf_world_from_path(path, world_name: nil)
+                sdf = ::SDF::Root.load(path, flatten: false)
+                Rock::Gazebo.process_sdf_file(sdf)
+                worlds = sdf.each_world.to_a
+                if world_name
+                    world = worlds.find { |w| w.name == world_name }
+                    unless world
+                        raise ArgumentError,
+                              "cannot find a world named #{world_name} in #{path}"
+                    end
+                    world
+                elsif worlds.size == 1
+                    worlds.first
+                elsif worlds.empty?
+                    raise ArgumentError, "no worlds declared in #{path}"
+                else
+                    raise ArgumentError,
+                          "more than one world declared in #{path}, select one "\
+                          "explicitely by providing the world_name argument"
+                end
             end
 
             # Find all the models that have been included in the loaded world

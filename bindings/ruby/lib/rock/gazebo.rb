@@ -93,9 +93,9 @@ module Rock
             @tempfiles ||= Array.new
             args = args.map do |arg|
                 if arg =~ /\.sdf$|\.world$/
-                    world_xml = process_sdf_world(arg)
+                    world = process_gazebo_file(arg)
                     processed_world = Tempfile.new
-                    processed_world.write(world_xml.to_s)
+                    processed_world.write(world.xml.to_s)
                     processed_world.flush
                     @tempfiles << processed_world
                     processed_world.path
@@ -118,34 +118,81 @@ module Rock
 
         # Perform Rock-specific post-processing of the SDF world
         #
-        # This is essentially required for the handling of orogen tasks
-        def self.process_sdf_world(sdf, loader: nil)
+        # This method handles use-cases that do not involve gazebo. Use
+        # {.process_gazebo_world} when using with gazebo
+        #
+        # @param [SDF::Root,String] sdf the preloaded SDF world, or a string that
+        #   describes a SDF file (either a path, or a model:// URI)
+        # @return [SDF::Root]
+        def self.process_sdf_file(sdf)
             sdf = SDF::Root.load(sdf) if sdf.respond_to?(:to_str)
-            loader ||= OroGen::Loaders::RTT.new(ENV["OROCOS_TARGET"] || "gnulinux")
+            sdf
+        end
+
+        # @api private
+        #
+        # Create a fresh oroGen RTT loader
+        #
+        # @return [OroGen::Loaders::RTT]
+        def self.create_rtt_loader
+            OroGen::Loaders::RTT.new(ENV["OROCOS_TARGET"] || "gnulinux")
+        end
+
+        # Load a SDF world file for use in a Rock and Gazebo context
+        #
+        # This method handles use-cases that involves gazebo. It mainly normalizes
+        # component definitions inside the SDF
+        #
+        # @param [SDF::Root,String] sdf the preloaded SDF world, or a string that
+        #   describes a SDF file (either a path, or a model:// URI)
+        # @return [SDF::Root]
+        # @see process_sdf_file
+        def self.process_gazebo_file(sdf, loader: create_rtt_loader)
+            sdf = process_sdf_file(sdf)
 
             # post-process the rock_components info
-            sdf.each_world do |w|
-                needed_typekits = Set.new
-                REXML::XPath.each(w.xml, "//plugin") do |plugin_xml|
-                    begin
-                        scope = resolve_plugin_full_name(w.xml, plugin_xml)
-                        needed_typekits.merge(
-                            normalize_rock_components(scope, plugin_xml, loader)
-                        )
-                        plugin_xml.attributes["name"] =
-                            scope.gsub(/[^\w]/, "_")
+            sdf.each_world { |w| process_gazebo_world(w, loader: loader) }
+            sdf
+        end
 
-                    rescue OroGen::NotFound => e
-                        raise e,
-                              "while processing the <task ..> elements of the "\
-                              "#{plugin_xml.attributes['name']} Rock plugin: "\
-                              "#{e.message}", e.backtrace
-                    end
-                end
-                ensure_typekits_loaded(w.xml, needed_typekits, loader)
+        # Perform Rock-specific post-processing of a single SDF world
+        #
+        # @param [SDF::World] sdf
+        # @param [OroGen::Loaders::Base] loader
+        # @return [void]
+        def self.process_gazebo_world(world, loader: create_rtt_loader)
+            needed_typekits = Set.new
+            REXML::XPath.each(world.xml, "//plugin") do |plugin_xml|
+                needed_typekits.merge(
+                    process_gazebo_plugin(world, plugin_xml, loader: loader)
+                )
             end
+            ensure_typekits_loaded(world.xml, needed_typekits, loader)
+        end
 
-            sdf.xml
+        # @api private
+        #
+        # Perform Rock-specific post-processing of a plugin tag within a world
+        #
+        # @param [SDF::World] world
+        # @param [REXML::Element] plugin_xml
+        # @param [OroGen::Loaders::Base] loader
+        # @return [Set<String>] the set of typekits that are needed by the tasks
+        #   within this plugin need
+        def self.process_gazebo_plugin(world, plugin_xml, loader:)
+            scope = resolve_plugin_full_name(world.xml, plugin_xml)
+            typekits = normalize_rock_components(scope, plugin_xml, loader)
+            plugin_xml.attributes["name"] = scope.gsub(/[^\w]/, "_")
+            typekits
+        rescue OroGen::NotFound => e
+            plugin_name = plugin_xml.attributes["name"]
+            raise e, "while processing the <task ..> elements of the #{plugin_name} "\
+                     "Rock plugin: #{e.message}", e.backtrace
+        end
+
+        # @deprecated use either {#process_sdf_file} or {#process_gazebo_file}
+        def self.process_sdf_world(sdf, loader: create_rtt_loader)
+            process_gazebo_file(sdf, loader: loader).xml
         end
 
         def self.resolve_plugin_full_name(world_xml, plugin_xml)

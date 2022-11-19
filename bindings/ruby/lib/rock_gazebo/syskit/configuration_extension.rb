@@ -84,12 +84,12 @@ module RockGazebo
             #
             # @return [Syskit::Deployment] a deployment object that represents
             #   gazebo itself
-            def use_gazebo_world(*path,
-                                 world_name: nil,
-                                 localhost: Conf.gazebo.localhost?,
-                                 read_only: false,
-                                 logger_name: nil)
+            def use_gazebo_world(
+                *path, world_name: nil, localhost: Conf.gazebo.localhost?,
+                read_only: false, logger_name: nil
+            )
                 world = use_sdf_world(*path, world_name: world_name)
+                Rock::Gazebo.process_gazebo_world(world)
                 deployment_model = ConfigurationExtension.world_to_orogen(world)
 
                 unless has_process_server?("gazebo")
@@ -120,37 +120,6 @@ module RockGazebo
                          logger_name: logger_name)
                 register_configured_deployment(configured_deployment)
                 configured_deployment
-            end
-
-            # @api private
-            #
-            # Resolves a world from a SDF file, which may have more than one
-            #
-            # @param [String] path path to the world file
-            # @param [String] world_name if not nil, the expected world name
-            # @return [World]
-            # @raise ArgumentError if the SDF file does not define a world
-            # @raise ArgumentError if the SDF file has more than one world and
-            #   world_name is not set
-            # @raise ArgumentError if the SDF file has more than one world and
-            #   none match the name provided as world_name
-            def self.world_from_path(path, world_name: nil)
-                sdf = ::SDF::Root.load(path, flatten: false)
-                Rock::Gazebo.process_sdf_world(sdf)
-                worlds = sdf.each_world.to_a
-                if world_name
-                    world = worlds.find { |w| w.name == world_name }
-                    if !world
-                        raise ArgumentError, "cannot find a world named #{world_name} in #{path}"
-                    end
-                    return world
-                elsif worlds.size == 1
-                    return worlds.first
-                elsif worlds.empty?
-                    raise ArgumentError, "no worlds declared in #{path}"
-                else
-                    raise ArgumentError, "more than one world declared in #{path}, select one explicitely by providing the world_name argument"
-                end
             end
 
             def self.world_to_orogen(world)
