@@ -80,7 +80,7 @@ Rock::Gazebo.download_missing_models(scene)
 
 if parse_sdf_only
     args.each do |path|
-        xml = Rock::Gazebo.process_sdf_world(path)
+        xml = Rock::Gazebo.process_gazebo_file(path)
         xml.write(STDOUT, 2)
     end
     exit 0
