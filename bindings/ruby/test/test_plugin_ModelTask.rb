@@ -134,14 +134,16 @@ describe 'rock_gazebo::ModelTask' do
             assert (4..6).include?(samples.size)
         end
 
-        it 'fails if the joint is given relative to the model' do
+        it "handles joints given relatively to the model" do
             task.exported_joints = [Types.rock_gazebo.JointExport.new(
-                port_name: 'test', prefix: '',
-                joints: %w[child::j_00],
+                port_name: "test", prefix: "",
+                joints: %w[child::j_00 j_01],
                 port_period: Time.at(0)
             )]
-            assert_raises(Orocos::StateTransitionFailed) do
-                task.configure
+            configure_start_read_samples_and_stop "test_samples", 0.5 do |joints|
+                joints.names == %w[m::child::j_00 m::j_01] &&
+                    (0.39..0.51).include?(joints.elements[0].position) &&
+                    (0.19..0.31).include?(joints.elements[1].position)
             end
         end
 
