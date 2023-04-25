@@ -39,8 +39,15 @@ module RockGazebo
                 full_path = autodetect_sdf_file_path(full_path)
                 ::SDF::XML.model_path = Rock::Gazebo.model_path
                 world = sdf_world_from_path(full_path, world_name: world_name)
+                use_sdf_world(world, path: full_path)
+            end
 
-                @world_file_path = full_path
+            # Directly pass a SDF world object to be used for Syskit
+            #
+            # @param [SDF::World] world the SDF world
+            # @param [String] path path to the SDF file, for debugging reasons
+            def use_sdf_world(world, path: nil)
+                @world_file_path = path
                 @sdf = world.parent
                 @world = world
             end
