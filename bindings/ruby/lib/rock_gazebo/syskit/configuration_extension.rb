@@ -46,10 +46,8 @@ module RockGazebo
 
             # Add all models/sdf folders in our dependent bundles
             def setup_gazebo_model_path
-                roby_paths = Roby.app.find_dirs(
-                    "models", "sdf", all: true, order: :specific_first
-                )
-                Rock::Gazebo.model_path = (roby_paths + Rock::Gazebo.model_path).uniq
+                Rock::Gazebo.model_path =
+                    Rock::Gazebo.default_model_path(path_resolver: Roby.app)
             end
 
             # Find the path to the world file, using the Roby search path if needed

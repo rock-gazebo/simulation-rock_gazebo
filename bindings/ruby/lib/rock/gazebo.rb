@@ -10,14 +10,18 @@ module Rock
         extend Logger::Root('rock-gazebo', Logger::WARN)
         extend Logger::Forward
 
-        def self.default_model_path
-            Bundles.find_dirs('models', 'sdf', all: true, order: :specific_first) +
+        def self.default_model_path(path_resolver: default_path_resolver)
+            path_resolver.find_dirs('models', 'sdf', all: true, order: :specific_first) +
                 (ENV['GAZEBO_MODEL_PATH']||"").split(':') +
                 [File.join(Dir.home, '.gazebo', 'models')]
         end
 
-        def self.model_path
-            @model_path || default_model_path
+        def self.model_path(path_resolver: default_path_resolver)
+            @model_path || default_model_path(path_resolver: path_resolver)
+        end
+
+        def self.default_path_resolver
+            Bundles if defined? Bundles
         end
 
         def self.model_path=(model_path)
