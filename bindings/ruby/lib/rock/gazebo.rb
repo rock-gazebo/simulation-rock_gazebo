@@ -1,4 +1,4 @@
-require 'rock/bundles'
+require 'rock/bundles' unless ENV["SYSKIT_USE_ROCK_BUNDLES"] == "0"
 require 'rock_gazebo/path_to_plugin'
 require 'sdf'
 require 'minitar'
