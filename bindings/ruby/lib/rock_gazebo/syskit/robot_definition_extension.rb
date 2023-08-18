@@ -104,6 +104,19 @@ module RockGazebo
                 end
             end
 
+            # Registers a device as one of the exported joint devices
+            def register_exported_joint_device(dev)
+                @exported_joints ||= []
+                @exported_joints << dev
+            end
+
+            # Iterate over exported joints
+            def each_exported_joint
+                return enum_for(__method__) unless block_given?
+
+                @exported_joints&.each { yield _1 }
+            end
+
             # Create a device that provides access to a subset of the joints
             #
             # Use it for instance, to get a simulated actuator
@@ -125,8 +138,23 @@ module RockGazebo
                 driver_def.add_models([driver_m])
                 driver_def.select_service(driver_srv)
 
-                device(CommonModels::Devices::Gazebo::Joint,
-                       as: as, using: driver_def)
+                dev = device(CommonModels::Devices::Gazebo::Joint,
+                             as: as, using: driver_def)
+                register_exported_joint_device(dev)
+                dev
+            end
+
+            # Registers a device as one of the exported link devices
+            def register_exported_link_device(dev)
+                @exported_links ||= []
+                @exported_links << dev
+            end
+
+            # Iterate over exported links
+            def each_exported_link
+                return enum_for(__method__) unless block_given?
+
+                @exported_links&.each { yield _1 }
             end
 
             # Setup a link export feature of rock_gazebo::ModelTask
@@ -177,6 +205,7 @@ module RockGazebo
                 dev = device(CommonModels::Devices::Gazebo::Link,
                              as: as, using: link_driver)
                 dev.frame_transform(from_frame => to_frame) if from_frame != to_frame
+                register_exported_link_device(dev)
                 dev
             end
 
