@@ -428,6 +428,10 @@ module RockGazebo
                     assert_equal 'some_links',
                                  srv.link_state_samples_port.to_actual_port.name
                 end
+
+                it "records all the exported links" do
+                    assert_equal [@link_device], @robot_model.each_exported_link.to_a
+                end
             end
 
             describe '#sdf_export_joint' do
@@ -488,6 +492,10 @@ module RockGazebo
                     )
                     srv = joint_device.to_instance_requirements.instanciate(plan)
                     assert srv.model.dynamic_service_options[:position_offsets]
+                end
+
+                it "records all the exported joints" do
+                    assert_equal [@joint_device], @robot_model.each_exported_joint.to_a
                 end
             end
         end
