@@ -3,18 +3,22 @@
 require 'test/helpers'
 
 describe 'rock_gazebo::GPSTask' do
-    include Orocos::Test::Component
+    include Runkit::Test::Component
     include Helpers
+
+    before do
+        Runkit.load_typekit "gps_base"
+    end
 
     Helpers.common_sensor_behavior(
         self, world_basename: 'gps',
-                task_name: '/gazebo::w::m::g',
-                port_name: 'gps_solution',
-                model_name: 'rock_gazebo::GPSTask'
+              task_name: 'gazebo::w::m::g',
+              port_name: 'gps_solution',
+              model_name: 'rock_gazebo::GPSTask'
     )
 
     def gps_configure_start_and_read_one_sample(world, port = 'gps_solution')
-        @task = gzserver world, '/gazebo::w::m::g'
+        @task = gzserver world, 'gazebo::w::m::g', "rock_gazebo::GPSTask"
         yield(@task) if block_given?
         configure_start_and_read_one_new_sample(port)
     end
@@ -153,9 +157,9 @@ describe 'rock_gazebo::GPSTask' do
                 task.nwu_frame = 'nwu_test'
                 task.use_proper_utm_conversion = false
                 task.latitude_origin =
-                    Types.base.Angle.new(rad: -22.9068 * Math::PI / 180)
+                    { rad: -22.9068 * Math::PI / 180 }
                 task.longitude_origin =
-                    Types.base.Angle.new(rad: -43.1729 * Math::PI / 180)
+                    { rad: -43.1729 * Math::PI / 180 }
                 yield task if block_given?
             end
         end

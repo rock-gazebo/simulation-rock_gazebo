@@ -1,12 +1,13 @@
 # frozen_string_literal: true
 
-require 'rock/bundles'
-rock_bundle = Rock::Bundles.each_bundle.find { |b| b.name == 'common_models' }
-raise LoadError, 'cannot find the common_models bundle' unless rock_bundle
+require "roby"
 
-$LOAD_PATH.unshift File.dirname(rock_bundle.path)
-$LOAD_PATH.unshift rock_bundle.path
-Roby.app.search_path << rock_bundle.path
+common_models_path = ENV["ROCK_GAZEBO_TESTS_COMMON_MODELS_PATH"]
+raise LoadError, 'cannot find the common_models bundle' unless common_models_path
+
+$LOAD_PATH.unshift File.dirname(common_models_path)
+$LOAD_PATH.unshift common_models_path
+Roby.app.search_path << common_models_path
 
 require 'rock_gazebo/root_logger'
 

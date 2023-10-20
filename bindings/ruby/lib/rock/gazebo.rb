@@ -65,14 +65,14 @@ module Rock
                     filtered_argv << File.join(model_dir, filename)
                 elsif File.extname(arg) == '.world'
                     worldname = File.basename(arg, '.world')
-                    if resolved_path = Bundles.find_file('scenes', worldname, arg, order: :specific_first)
+                    if defined?(Bundles) && (resolved_path = Bundles.find_file('scenes', worldname, arg, order: :specific_first))
                         filtered_argv << resolved_path
                     else
                         filtered_argv << arg
                     end
-                elsif resolved_path = Bundles.find_file('scenes', arg, "#{arg}.world", order: :specific_first)
+                elsif defined?(Bundles) && (resolved_path = Bundles.find_file('scenes', arg, "#{arg}.world", order: :specific_first))
                     filtered_argv << resolved_path
-                elsif resolved_path = Bundles.find_file(arg, "#{arg}.world", order: :specific_first)
+                elsif defined?(Bundles) && (resolved_path = Bundles.find_file(arg, "#{arg}.world", order: :specific_first))
                     filtered_argv << resolved_path
                 else
                     filtered_argv << arg

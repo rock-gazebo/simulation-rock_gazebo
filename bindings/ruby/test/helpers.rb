@@ -1,14 +1,16 @@
 # frozen_string_literal: true
 
 require 'minitest/autorun'
-require 'orocos/test/component'
 require 'minitest/spec'
+require 'runkit/test/component'
 require 'rock/gazebo'
 require 'sdf'
 
 module Helpers
     def setup
-        Orocos.initialize unless Orocos.initialized?
+        Runkit.initialize unless Runkit.initialized?
+
+        @name_service = Runkit::NameServices::CORBA.new
         @gazebo_output = Tempfile.open 'rock_gazebo'
         Rock::Gazebo.model_path = [File.expand_path('models', __dir__)]
         super
@@ -40,7 +42,7 @@ module Helpers
                          File.join(__dir__, 'models'))
     end
 
-    def gzserver(world_file, expected_task_name, timeout: 10)
+    def gzserver(world_file, expected_task_name, model_name, timeout: 10)
         raise '@gazebo_output is nil, have you overriden #setup ?' unless @gazebo_output
 
         @gazebo_pid = Rock::Gazebo.spawn(
@@ -50,28 +52,31 @@ module Helpers
             err: @gazebo_output
         )
 
+        model = Runkit.default_loader.task_model_from_name(model_name)
+
         deadline = Time.now + timeout
         loop do
             sleep 0.01
-            begin return Orocos.get(expected_task_name)
-            rescue Orocos::NotFound # rubocop:disable Lint/SuppressedException
+            begin
+                return @name_service.get(expected_task_name, model: model)
+            rescue Runkit::NotFound, Runkit::ComError # rubocop:disable Lint/SuppressedException
             end
             begin
                 if Process.waitpid(@gazebo_pid, Process::WNOHANG)
                     gazebo_flunk(
                         "gzserver terminated before '#{expected_task_name}' "\
-                        'could be reached'
+                        "could be reached"
                     )
                 end
             rescue Errno::ECHILD
-                gazebo_flunk('gzserver failed to start')
+                gazebo_flunk("gzserver failed to start")
             end
 
             break if Time.now > deadline
         end
         gazebo_flunk("failed to gazebo_reach task '#{expected_task_name}'" \
                      "within #{timeout} seconds, available tasks: "\
-                     "#{Orocos.name_service.names.join(', ')}")
+                     "#{Runkit.name_service.names.join(', ')}")
     end
 
     def gazebo_flunk(message)
@@ -188,12 +193,12 @@ module Helpers
     )
         ctx.send(:describe, "common sensor behavior for #{model_name}") do
             it "exports the sensor using #{model_name}" do
-                task = gzserver "#{world_basename}.world", task_name
+                task = gzserver "#{world_basename}.world", task_name, model_name
                 assert_equal model_name, task.model.name
             end
 
             it 'does not output anything while the component is only configured' do
-                @task = gzserver "#{world_basename}.world", task_name
+                @task = gzserver "#{world_basename}.world", task_name, model_name
                 reader = @task.port(port_name).reader
                 @task.configure
                 sleep 0.5
@@ -201,7 +206,7 @@ module Helpers
             end
 
             it 'does not output anything after the component is stopped' do
-                @task = gzserver "#{world_basename}.world", task_name
+                @task = gzserver "#{world_basename}.world", task_name, model_name
                 @task.configure
                 @task.start
                 @task.stop
@@ -211,7 +216,9 @@ module Helpers
             end
 
             it 'honors the rate set in the SDF file' do
-                @task = gzserver "#{world_basename}-custom-rate.world", task_name
+                @task = gzserver(
+                    "#{world_basename}-custom-rate.world", task_name, model_name
+                )
                 count = configure_start_count_samples_and_stop(port_name, 1)
                 assert_includes 4..6, count
             end
