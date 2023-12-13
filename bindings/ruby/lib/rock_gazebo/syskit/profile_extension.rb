@@ -20,7 +20,9 @@ module RockGazebo
                     # Assume this is a SDF::Model object
                     path.first
                 else
-                    _, resolved_paths = Rock::Gazebo.resolve_worldfiles_and_models_arguments([File.join(*path)])
+                    _, resolved_paths = Rock::Gazebo.resolve_worldfiles_and_models_arguments(
+                        [File.join(*path)], path_resolver: Roby.app
+                    )
                     full_path = resolved_paths.first
                     if !File.file?(full_path)
                         if File.file?(File.join(full_path, 'model.config'))

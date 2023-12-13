@@ -30,8 +30,10 @@ module Rock
             ENV['GAZEBO_MODEL_PATH'] = model_path.join(":")
         end
 
-        def self.resolve_worldfiles_and_models_arguments(argv)
-            model_path = self.model_path
+        def self.resolve_worldfiles_and_models_arguments(
+            argv, path_resolver: default_path_resolver
+        )
+            model_path = self.model_path(path_resolver: path_resolver)
             filtered_argv = Array.new
             argv = argv.dup
             while !argv.empty?
