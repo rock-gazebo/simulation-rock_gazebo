@@ -10,7 +10,7 @@ module RockGazebo
     #   to create the tasks
     # @return [OroGen::Spec::Deployment]
     def self.orogen_model_from_sdf_world(
-        name, world, loader: Orocos.default_loader, period: 0.1
+        name, world, loader: Runkit.default_loader, period: 0.1
     )
         project = OroGen::Spec::Project.new(loader)
         project.using_task_library "logger"

@@ -3,14 +3,18 @@
 require 'test/helpers'
 
 describe 'rock_gazebo::ModelTask' do
-    include Orocos::Test::Component
+    include Runkit::Test::Component
     include Helpers
 
     attr_reader :task
 
+    before do
+        Roby.app.import_types_from "rock_gazebo"
+    end
+
     describe 'creation by the plugin' do
         before do
-            @task = gzserver 'model.world', '/gazebo::w::m'
+            @task = gzserver 'model.world', 'gazebo::w::m', "rock_gazebo::ModelTask"
         end
 
         it 'exports the model using a ModelTask' do
@@ -20,7 +24,7 @@ describe 'rock_gazebo::ModelTask' do
 
     describe 'the pose samples' do
         before do
-            @task = gzserver 'model.world', '/gazebo::w::m'
+            @task = gzserver 'model.world', 'gazebo::w::m', "rock_gazebo::ModelTask"
         end
 
         it "exports the model's pose" do
@@ -57,7 +61,8 @@ describe 'rock_gazebo::ModelTask' do
 
     describe "the model's joints" do
         before do
-            @task = gzserver 'joints_export.world', '/gazebo::w::m'
+            @task = gzserver 'joints_export.world', 'gazebo::w::m',
+                             "rock_gazebo::ModelTask"
         end
 
         it 'exports the state of all the non-fixed joints' do
@@ -97,7 +102,8 @@ describe 'rock_gazebo::ModelTask' do
 
     describe 'the joints export' do
         before do
-            @task = gzserver 'joints_export.world', '/gazebo::w::m'
+            @task = gzserver 'joints_export.world', 'gazebo::w::m',
+                             "rock_gazebo::ModelTask"
             @state_reader = @task.state_reader
         end
 
@@ -249,7 +255,7 @@ describe 'rock_gazebo::ModelTask' do
                     joints: %w[m::child::j_00 m::j_01],
                     port_period: Time.at(0)
                 )]
-                assert_raises(Orocos::StateTransitionFailed) do
+                assert_raises(Runkit::StateTransitionFailed) do
                     task.configure
                 end
             end
@@ -275,8 +281,8 @@ describe 'rock_gazebo::ModelTask' do
             )]
             task.configure
             task.cleanup
-            refute task.has_port?('test_cmd')
-            refute task.has_port?('test_samples')
+            refute task.port?('test_cmd')
+            refute task.port?('test_samples')
         end
 
         it 'fails to configure if a joint does not exist' do
@@ -285,7 +291,7 @@ describe 'rock_gazebo::ModelTask' do
                 joints: %w[does_not_exist m::j_01],
                 port_period: Time.at(0)
             )]
-            assert_raises(Orocos::StateTransitionFailed) do
+            assert_raises(Runkit::StateTransitionFailed) do
                 task.configure
             end
         end
@@ -295,7 +301,8 @@ describe 'rock_gazebo::ModelTask' do
         describe 'RBS export' do
             describe 'general properties' do
                 before do
-                    @task = gzserver 'model.world', '/gazebo::w::m'
+                    @task = gzserver 'model.world', 'gazebo::w::m',
+                                     "rock_gazebo::ModelTask"
                 end
 
                 it 'uses the link names as frames by default' do
@@ -352,7 +359,8 @@ describe 'rock_gazebo::ModelTask' do
 
             describe 'pose' do
                 before do
-                    @task = gzserver 'model.world', '/gazebo::w::m'
+                    @task = gzserver 'model.world', 'gazebo::w::m',
+                                     "rock_gazebo::ModelTask"
                 end
 
                 it 'exports a link\'s pose' do
@@ -372,7 +380,8 @@ describe 'rock_gazebo::ModelTask' do
 
             describe 'velocity' do
                 before do
-                    @task = gzserver 'freefall.world', '/gazebo::w::m'
+                    @task = gzserver 'freefall.world', 'gazebo::w::m',
+                                     "rock_gazebo::ModelTask"
                 end
 
                 it 'exports a link\'s linear velocity' do
@@ -448,7 +457,8 @@ describe 'rock_gazebo::ModelTask' do
 
         describe 'acceleration export' do
             before do
-                @task = gzserver 'freefall.world', '/gazebo::w::m'
+                @task = gzserver 'freefall.world', 'gazebo::w::m',
+                                 "rock_gazebo::ModelTask"
             end
 
             it 'exports a link\'s linear acceleration' do
@@ -530,8 +540,9 @@ describe 'rock_gazebo::ModelTask' do
 
         describe 'wrench export' do
             before do
-                @task = gzserver 'wrench.world', '/gazebo::w::m'
-                Orocos.load_typekit 'base'
+                @task = gzserver 'wrench.world', 'gazebo::w::m',
+                                 "rock_gazebo::ModelTask"
+                Runkit.load_typekit 'base'
             end
 
             it 'allows to send a force command to its source link' do
@@ -597,8 +608,9 @@ describe 'rock_gazebo::ModelTask' do
 
         describe 'common features' do
             before do
-                @task = gzserver 'model.world', '/gazebo::w::m'
-                Orocos.load_typekit 'base'
+                @task = gzserver 'model.world', 'gazebo::w::m',
+                                 "rock_gazebo::ModelTask"
+                Runkit.load_typekit 'base'
             end
 
             it 'knows how to export a link in a nested model' do
@@ -635,7 +647,7 @@ describe 'rock_gazebo::ModelTask' do
                     source_link: 'does_not_exist', target_link: 'root',
                     port_period: Time.at(0)
                 )]
-                assert_raises(Orocos::StateTransitionFailed) do
+                assert_raises(Runkit::StateTransitionFailed) do
                     task.configure
                 end
             end
@@ -646,7 +658,7 @@ describe 'rock_gazebo::ModelTask' do
                     source_link: 'l', target_link: 'does_not_exist',
                     port_period: Time.at(0)
                 )]
-                assert_raises(Orocos::StateTransitionFailed) do
+                assert_raises(Runkit::StateTransitionFailed) do
                     task.configure
                 end
             end
@@ -662,7 +674,7 @@ describe 'rock_gazebo::ModelTask' do
                         port_period: Time.at(0)
                     )
                 ]
-                assert_raises(Orocos::StateTransitionFailed) do
+                assert_raises(Runkit::StateTransitionFailed) do
                     task.configure
                 end
             end

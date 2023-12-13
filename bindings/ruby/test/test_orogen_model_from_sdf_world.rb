@@ -6,8 +6,7 @@ require 'rock_gazebo/orogen_model_from_sdf_world'
 module RockGazebo
     describe 'orogen_model_from_sdf_world' do
         before do
-            require 'orocos'
-            Orocos.load unless Orocos.loaded?
+            Runkit.load unless Runkit.loaded?
         end
 
         def data_dir

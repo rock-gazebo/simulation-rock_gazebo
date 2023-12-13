@@ -19,5 +19,6 @@
   <depend_optional package="bundles/common_models" />
 
   <test_depend package="tools/syskit" />
+  <test_depend package="tools/runkit" />
   <test_depend package="bundles/common_models" />
 </package>
