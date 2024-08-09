@@ -84,11 +84,12 @@ module RockGazebo
             #   gazebo itself
             def use_gazebo_world(
                 *path, world_name: nil, localhost: Conf.gazebo.localhost?,
-                read_only: false, logger_name: nil
+                read_only: false, logger_name: nil, period: 0.1
             )
                 world = use_sdf_world(*path, world_name: world_name)
                 Rock::Gazebo.process_gazebo_world(world)
-                deployment_model = ConfigurationExtension.world_to_orogen(world)
+                deployment_model =
+                    ConfigurationExtension.world_to_orogen(world, period: period)
 
                 unless has_process_server?("gazebo")
                     options =
@@ -120,11 +121,13 @@ module RockGazebo
                 configured_deployment
             end
 
-            def self.world_to_orogen(world)
+            def self.world_to_orogen(world, period: 0.1)
                 ::Syskit::Deployment.new_submodel(
                     name: "Deployment::Gazebo::#{world.name}"
                 ) do
-                    RockGazebo.setup_orogen_model_from_sdf_world(self, world)
+                    RockGazebo.setup_orogen_model_from_sdf_world(
+                        self, world, period: period
+                    )
                 end
             end
         end
