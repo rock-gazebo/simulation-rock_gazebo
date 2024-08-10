@@ -99,10 +99,16 @@ module RockGazebo
                             {}
                         end
 
-                    ::Syskit.conf.register_process_server(
-                        "gazebo", ::Syskit::RobyApp::UnmanagedTasksManager.new,
-                        app.log_dir, **options
-                    )
+                    if ::Syskit.conf.respond_to?(:register_unmanaged_manager)
+                        ::Syskit.conf.register_unmanaged_manager(
+                            "gazebo", log_dir: app.log_dir, **options
+                        )
+                    else
+                        ::Syskit.conf.register_process_server(
+                            "gazebo", ::Syskit::RobyApp::UnmanagedTasksManager.new,
+                            app.log_dir, **options
+                        )
+                    end
                 end
 
                 process_server_config =
