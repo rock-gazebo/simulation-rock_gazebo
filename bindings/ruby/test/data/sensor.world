@@ -1,0 +1,9 @@
+<sdf version="1.5">
+    <world name="underwater">
+        <model name="flat_fish">
+            <link name="strawberry_lidar">
+                <sensor name="pineaple" type="ray">
+            </link>
+        <model name="oil_rig">
+    </world>
+</sdf>

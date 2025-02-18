@@ -27,6 +27,17 @@ module RockGazebo
             assert_equal 'rock_gazebo::ModelTask', model_task.task_model.name
         end
 
+        it 'creates a deployment that represents the rock_gazebo sensor behaviour' do
+            world = SDF::Root.load(File.join(data_dir, 'sensor.world')).each_world.first
+            model = RockGazebo.orogen_model_from_sdf_world('gazebo_world_test', world)
+            assert(model_task = model.find_task_by_name(
+                'gazebo::underwater::flat_fish::strawberry_lidar::pineaple'
+            ))
+            assert_equal 'rock_gazebo::LaserScanTask', model_task.task_model.name
+            assert(model_task = model.find_task_by_name('gazebo::underwater::oil_rig'))
+            assert_equal 'rock_gazebo::ModelTask', model_task.task_model.name
+        end
+
         it "allows to override the task's periodicity" do
             world = SDF::Root.load(File.join(data_dir, 'test.world')).each_world.first
             expected_period = 0.1
