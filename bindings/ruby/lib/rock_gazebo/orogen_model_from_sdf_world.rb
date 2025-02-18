@@ -159,7 +159,8 @@ module RockGazebo
     )
         return unless (task_model = SENSORS_TASK_MODELS[sensor.type])
 
-        deployment.task("#{prefix}#{sensor.name}", task_model)
+        sensor_link_name = sensor.parent.name
+        deployment.task("#{prefix}#{sensor_link_name}::#{sensor.name}", task_model)
                   .periodic(period)
     end
 
