@@ -116,7 +116,7 @@ module RockGazebo
         deployment, model,
         prefix: "", period: 0.1
     )
-        model.each_sensor do |sensor|
+        model.each_direct_sensor do |sensor|
             setup_orogen_model_from_sdf_model_sensor(
                 deployment, sensor,
                 prefix: prefix,
@@ -159,7 +159,8 @@ module RockGazebo
     )
         return unless (task_model = SENSORS_TASK_MODELS[sensor.type])
 
-        deployment.task("#{prefix}#{sensor.name}", task_model)
+        sensor_link_name = sensor.parent.name
+        deployment.task("#{prefix}#{sensor_link_name}::#{sensor.name}", task_model)
                   .periodic(period)
     end
 
@@ -186,10 +187,11 @@ module RockGazebo
             if (task_xml = plugin.xml.elements["task"])
                 [task_xml.attributes["name"], task_xml.attributes["model"]]
             else
-                [plugin.name.gsub(/__/, '::'), PLUGIN_TASK_MODELS.find { |k, _| k === plugin.filename }&.last]
+                [plugin.name.gsub(/__/, "::"), PLUGIN_TASK_MODELS.find { |k, _| k === plugin.filename }&.last]
             end
 
         return unless task_model
+
         deployment.task(task_name, task_model).periodic(period)
     end
 end

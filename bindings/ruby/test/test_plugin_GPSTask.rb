@@ -8,13 +8,15 @@ describe 'rock_gazebo::GPSTask' do
 
     Helpers.common_sensor_behavior(
         self, world_basename: 'gps',
-                task_name: '/gazebo::w::m::g',
+                task_name: '/gazebo::w::m::l::g',
                 port_name: 'gps_solution',
                 model_name: 'rock_gazebo::GPSTask'
     )
 
-    def gps_configure_start_and_read_one_sample(world, port = 'gps_solution')
-        @task = gzserver world, '/gazebo::w::m::g'
+    def gps_configure_start_and_read_one_sample(
+        world, port = 'gps_solution', nested_models_prefix: ""
+    )
+        @task = gzserver world, "/gazebo::w::m::#{nested_models_prefix}l::g"
         yield(@task) if block_given?
         configure_start_and_read_one_new_sample(port)
     end
@@ -30,7 +32,10 @@ describe 'rock_gazebo::GPSTask' do
     end
 
     it 'properly resolves the topic in a SDF file that uses nested model' do
-        sample = gps_configure_start_and_read_one_sample('gps-nested.world')
+        sample = gps_configure_start_and_read_one_sample(
+            'gps-nested.world',
+            nested_models_prefix: "nested::"
+        )
         # Values in the SDF file are in degrees, convert to radians and
         # give a good precision (1e-9 is around 1mm)
         assert_in_epsilon(-22.9068, sample.latitude, 1e-9)

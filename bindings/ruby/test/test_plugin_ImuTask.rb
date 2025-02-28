@@ -8,13 +8,15 @@ describe 'rock_gazebo::ImuTask' do
 
     Helpers.common_sensor_behavior(
         self, world_basename: 'imu',
-              task_name: '/gazebo::w::m::i',
+              task_name: '/gazebo::w::m::l::i',
               port_name: 'orientation_samples',
               model_name: 'rock_gazebo::ImuTask'
     )
 
-    def imu_configure_start_and_read_one_new_sample(world, port_name = 'orientation_samples')
-        @task = gzserver world, '/gazebo::w::m::i'
+    def imu_configure_start_and_read_one_new_sample(
+        world, port_name = 'orientation_samples', nested_models_prefix: ""
+    )
+        @task = gzserver world, "/gazebo::w::m::#{nested_models_prefix}l::i"
         yield(@task) if block_given?
         configure_start_and_read_one_new_sample(port_name)
     end
@@ -29,7 +31,7 @@ describe 'rock_gazebo::ImuTask' do
 
     it 'properly resolves the topic in a SDF file that uses nested model' do
         sample = imu_configure_start_and_read_one_new_sample(
-            'imu-nested.world', 'imu_samples'
+            'imu-nested.world', 'imu_samples', nested_models_prefix: "nested::"
         )
         assert(sample.time.to_f > 0 && sample.time.to_f < 10)
         assert(sample.acc.norm < 1e-6)
