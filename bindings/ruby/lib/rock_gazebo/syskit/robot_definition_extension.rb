@@ -141,6 +141,7 @@ module RockGazebo
                 dev = device(CommonModels::Devices::Gazebo::Joint,
                              as: as, using: driver_def)
                 register_exported_joint_device(dev)
+                model_dev.gazebo_root_model.register_exported_joint(dev)
                 dev
             end
 
@@ -205,6 +206,7 @@ module RockGazebo
                 dev = device(CommonModels::Devices::Gazebo::Link,
                              as: as, using: link_driver)
                 dev.frame_transform(from_frame => to_frame) if from_frame != to_frame
+                model_dev.gazebo_root_model.register_exported_link(dev)
                 register_exported_link_device(dev)
                 dev
             end
@@ -260,12 +262,15 @@ module RockGazebo
                     .use_frames("#{normalized_name}_source" => link_frame,
                                 "#{normalized_name}_target" => 'world')
                     .select_service(driver_srv)
-                device(CommonModels::Devices::Gazebo::Model,
-                       as: normalized_name, using: submodel_driver_m)
+                submodel =
+                    device(CommonModels::Devices::Gazebo::Model,
+                           as: normalized_name, using: submodel_driver_m)
                     .doc("Gazebo: model #{name} inside #{enclosing_device.sdf.full_name}")
-                    .frame_transform(link_frame => 'world')
+                    .frame_transform(link_frame => "world")
                     .sdf(actual_sdf_model)
                     .advanced
+                enclosing_device.register_submodel(submodel)
+                submodel
             end
 
             # @api private
