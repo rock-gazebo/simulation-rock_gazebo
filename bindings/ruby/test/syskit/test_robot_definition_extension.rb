@@ -70,6 +70,203 @@ module RockGazebo
                 end
             end
 
+            describe 'sensor model' do
+                describe "prefix_device_with_name: false" do
+                    before do
+                        @world = ::SDF::Root.load(
+                            expand_fixture_world('attached_simple_model.world'),
+                            flatten: false
+                        ).each_world.first
+                        @robot_sdf = @world.each_model.first
+                        @robot_model.load_gazebo(@robot_sdf, 'gazebo::test')
+                    end
+
+                    it "defines a sensor device based on the sensor name only" do
+                        assert @robot_model.find_device("g_sensor")
+                    end
+
+                    it "attaches the sensor device to an existing deployment" do
+                        device = @robot_model.find_device("g_sensor")
+                        hint = device.to_instance_requirements.deployment_hints.first
+                        deployment_m = RockGazebo.orogen_model_from_sdf_world(
+                            "gazebo", @world
+                        )
+                        assert_equal "gazebo::test::attachment::included_model::root::g",
+                                     hint
+                        assert deployment_m.find_task_by_name(hint),
+                               "hint is #{hint}, available deployments: " \
+                               "#{deployment_m.each_task.map(&:name).sort.join(", ")}"
+                    end
+                end
+
+                describe "prefix_device_with_name: true and " \
+                         "!scope_device_name_with_links_and_submodels" do
+                    before do
+                        @__scope_flag = Syskit.scope_device_name_with_links_and_submodels
+                        Syskit.scope_device_name_with_links_and_submodels = false
+                    end
+                    after do
+                        Syskit.scope_device_name_with_links_and_submodels = @__scope_flag
+                    end
+                    describe "loading the root model" do
+                        before do
+                            @world = ::SDF::Root.load(
+                                expand_fixture_world('attached_simple_model.world'),
+                                flatten: false
+                            ).each_world.first
+                            @robot_sdf = @world.each_model.first
+                            @robot_model.load_gazebo(
+                                @robot_sdf, 'gazebo::test', prefix_device_with_name: true
+                            )
+                        end
+
+                        it "defines a sensor device based on the root model " \
+                           "and sensor name" do
+                            assert @robot_model.find_device("attachment_g_sensor")
+                        end
+
+                        it "attaches the sensor device to an existing deployment" do
+                            device = @robot_model.find_device("attachment_g_sensor")
+                            hint = device.to_instance_requirements.deployment_hints.first
+                            deployment_m = RockGazebo.orogen_model_from_sdf_world(
+                                "gazebo", @world
+                            )
+                            assert_equal(
+                                "gazebo::test::attachment::included_model::root::g",
+                                hint
+                            )
+                            assert deployment_m.find_task_by_name(hint),
+                                "hint is #{hint}, available deployments: " \
+                                "#{deployment_m.each_task.map(&:name).sort.join(", ")}"
+                        end
+                    end
+
+                    describe "loading a submodel" do
+                        before do
+                            @world = ::SDF::Root.load(
+                                expand_fixture_world('attached_simple_model.world'),
+                                flatten: false
+                            ).each_world.first
+                            @root_model_sdf = @world.each_model.first
+                            @robot_sdf = @root_model_sdf.each_model.first
+                            @robot_model.load_gazebo(
+                                @robot_sdf, 'gazebo::test',
+                                prefix_device_with_name: true
+                            )
+                        end
+
+                        it "defines a sensor device based on the root model " \
+                           "and sensor name" do
+                            assert @robot_model.find_device("included_model_g_sensor")
+                        end
+
+                        it "attaches the sensor device to an existing deployment" do
+                            device = @robot_model.find_device("included_model_g_sensor")
+                            hint = device.to_instance_requirements.deployment_hints.first
+                            deployment_m = RockGazebo.orogen_model_from_sdf_world(
+                                "gazebo", @world
+                            )
+                            assert_equal(
+                                "gazebo::test::attachment::included_model::root::g",
+                                hint
+                            )
+                            assert deployment_m.find_task_by_name(hint),
+                                "hint is #{hint}, available deployments: " \
+                                "#{deployment_m.each_task.map(&:name).sort.join(", ")}"
+                        end
+                    end
+                end
+
+                describe "prefix_device_with_name: true and " \
+                         "scope_device_name_with_links_and_submodels" do
+                    before do
+                        @__scope_flag = Syskit.scope_device_name_with_links_and_submodels
+                        Syskit.scope_device_name_with_links_and_submodels = true
+                    end
+                    after do
+                        Syskit.scope_device_name_with_links_and_submodels = @__scope_flag
+                    end
+
+                    describe "loading the root model" do
+                        before do
+                            @world = ::SDF::Root.load(
+                                expand_fixture_world('attached_simple_model.world'),
+                                flatten: false
+                            ).each_world.first
+                            @robot_sdf = @world.each_model.first
+                            @robot_model.load_gazebo(
+                                @robot_sdf, 'gazebo::test', prefix_device_with_name: true
+                            )
+                        end
+
+                        it "defines a sensor device based on the root model " \
+                           "and sensor name" do
+                            assert @robot_model.find_device(
+                                "attachment_included_model_root_g_sensor"
+                            )
+                        end
+
+                        it "attaches the sensor device to an existing deployment" do
+                            device = @robot_model.find_device(
+                                "attachment_included_model_root_g_sensor"
+                            )
+                            hint = device.to_instance_requirements.deployment_hints.first
+                            deployment_m = RockGazebo.orogen_model_from_sdf_world(
+                                "gazebo", @world
+                            )
+                            assert_equal(
+                                "gazebo::test::attachment::included_model::root::g",
+                                hint
+                            )
+                            assert deployment_m.find_task_by_name(hint),
+                                "hint is #{hint}, available deployments: " \
+                                "#{deployment_m.each_task.map(&:name).sort.join(", ")}"
+                        end
+                    end
+
+                    describe "loading a submodel" do
+                        before do
+                            @world = ::SDF::Root.load(
+                                expand_fixture_world('attached_simple_model.world'),
+                                flatten: false
+                            ).each_world.first
+                            @root_model_sdf = @world.each_model.first
+                            @robot_sdf = @root_model_sdf.each_model.first
+                            @robot_model.load_gazebo(
+                                @robot_sdf, 'gazebo::test',
+                                prefix_device_with_name: true
+                            )
+                        end
+
+                        it "defines a sensor device based on the root model " \
+                           "and sensor name" do
+                            assert @robot_model.find_device("included_model_root_g_sensor")
+                        end
+
+                        it "attaches the sensor device to an existing deployment" do
+                            device = @robot_model.find_device(
+                                "included_model_root_g_sensor"
+                            )
+                            hint = device.to_instance_requirements.deployment_hints.first
+                            deployment_m = RockGazebo.orogen_model_from_sdf_world(
+                                "gazebo", @world
+                            )
+                            assert_equal(
+                                "gazebo::test::attachment::included_model::root::g",
+                                hint
+                            )
+                            assert deployment_m.find_task_by_name(hint),
+                                "hint is #{hint}, available deployments: " \
+                                "#{deployment_m.each_task.map(&:name).sort.join(", ")}"
+                        end
+                    end
+                end
+
+                describe "prefix_device_with_name: true and " \
+                         "scope_device_name_with_links_and_submodels" do
+                end
+            end
+
             describe 'plugin model' do
                 before do
                     @robot_sdf =
@@ -167,7 +364,7 @@ module RockGazebo
                         device = @robot_model.find_device('g_sensor')
                         sensor_driver_m = device.to_instance_requirements
                         driver_m = sensor_driver_m.to_component_model
-                        assert_equal ['gazebo::included_model::g'],
+                        assert_equal ['gazebo::included_model::root::g'],
                                      sensor_driver_m.deployment_hints.to_a
                         assert_equal OroGen.rock_gazebo.GPSTask, driver_m.model
                         driver_m.find_transform_of_port(driver_m.position_samples_port)
@@ -211,7 +408,7 @@ module RockGazebo
                         device, sensor_driver_m, =
                             common_sensor_export_behavior
 
-                        assert_equal ['gazebo::included_model::g'],
+                        assert_equal ['gazebo::included_model::root::g'],
                                      sensor_driver_m.deployment_hints.to_a
                         assert_equal 'included_model::root', device.frame_transform.from
                         assert_equal 'world', device.frame_transform.to
@@ -282,8 +479,10 @@ module RockGazebo
                 it 'exposes the sensors from the submodel' do
                     _, sensor_driver_m, = common_sensor_export_behavior
 
-                    assert_equal ['gazebo::attachment::included_model::g'],
-                                 sensor_driver_m.deployment_hints.to_a
+                    assert_equal(
+                        ['gazebo::attachment::included_model::simple_model::root::g'],
+                        sensor_driver_m.deployment_hints.to_a
+                    )
                 end
             end
 
@@ -352,7 +551,7 @@ module RockGazebo
                 it 'exposes the sensors from the submodel' do
                     _, sensor_driver_m, = common_sensor_export_behavior
 
-                    assert_equal ['gazebo::attachment::included_model::g'],
+                    assert_equal ['gazebo::attachment::included_model::root::g'],
                                  sensor_driver_m.deployment_hints.to_a
                 end
             end
@@ -393,7 +592,7 @@ module RockGazebo
                 it 'exposes the sensors from the submodel' do
                     device, sensor_driver_m, = common_sensor_export_behavior
 
-                    assert_equal ['gazebo::attachment::g'],
+                    assert_equal ['gazebo::attachment::included_model::root::g'],
                                  sensor_driver_m.deployment_hints.to_a
                     assert_equal 'attachment::included_model::root',
                                  device.frame_transform.from
