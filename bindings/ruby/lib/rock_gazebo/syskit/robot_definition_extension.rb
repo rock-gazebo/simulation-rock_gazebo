@@ -2,6 +2,33 @@
 
 module RockGazebo
     module Syskit
+        class << self
+            # Feature flag that corrects how the library generates sensor device names
+            #
+            # When recursive models are used, the library's old behaviour is to
+            # define sensor devices with the root model name and the sensor name,
+            # that is
+            #
+            #     use_gazebo_model model://model_in_model
+            #
+            # will define 'root_gps_sensor' if the XML hierarchy is
+            # root/included_model/link/gps. It will also define
+            # root_included_model_gps_sensor along the way
+            #
+            # This rather obviously starts failing when one wants to include
+            # the same sub-model more than once, or have two sensors of the
+            # same type in the model (the latter could be worked around by
+            # changing the sensor name though)
+            #
+            # This historical behaviour is retained when the flag is false (
+            # this is the default). The new behaviour is to properly scope
+            # sensors by the full path in the XML. In the example above,
+            # the sensor device is root_included_model_link_gps_sensor_dev
+            attr_accessor :scope_device_name_with_links_and_submodels
+        end
+
+        @scope_device_name_with_links_and_submodels = false
+
         # Gazebo-specific extensions to {Syskit::Robot::RobotDefinition}
         module RobotDefinitionExtension
             # Given a sensor, returns the device and device driver model that
@@ -402,7 +429,14 @@ module RockGazebo
                 deployment_prefix: ""
             )
 
-                sdf_model.each_sensor do |sensor|
+                sensors =
+                    if Syskit.scope_device_name_with_links_and_submodels
+                        sdf_model.each_direct_sensor
+                    else
+                        sdf_model.each_sensor
+                    end
+
+                sensors.each do |sensor|
                     gazebo_define_sensor_device(
                         sdf_model, sensor,
                         model_name: name,
@@ -502,6 +536,11 @@ module RockGazebo
             )
                 device_name = "#{normalize_name(sensor.name)}_sensor"
                 if prefix_device_with_name
+                    if Syskit.scope_device_name_with_links_and_submodels
+                        path = sdf_relative_path(sdf_model, sensor)
+                        device_name = "#{normalize_name(path)}_sensor"
+                    end
+
                     device_name = "#{normalize_name(model_name)}_#{device_name}"
                 end
 
@@ -521,11 +560,10 @@ module RockGazebo
                 end
                 device.doc "Gazebo: #{sensor.name} sensor of #{sdf_model.full_name}"
 
+                relative = sdf_relative_path(sdf_model, sensor)
                 device
                     .sdf(sensor)
-                    .prefer_deployed_tasks(
-                        "#{deployment_prefix}#{normalize_name(sensor.name)}"
-                    )
+                    .prefer_deployed_tasks("#{deployment_prefix}#{relative}")
             end
 
             def gazebo_define_plugin_device(
@@ -555,6 +593,16 @@ module RockGazebo
                       .prefer_deployed_tasks(
                           "#{deployment_prefix}#{plugin_name}"
                       )
+            end
+
+            def sdf_relative_path(from, to)
+                elements = []
+                current = to
+                while current != from
+                    elements.unshift current
+                    current = current.parent
+                end
+                elements.map(&:name).join("::")
             end
         end
         ::Syskit::Robot::RobotDefinition.include RobotDefinitionExtension
