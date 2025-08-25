@@ -609,10 +609,10 @@ module RockGazebo
                     )
                     @world = root.each_world.first
                     @robot_sdf = @world.each_model.first
-                    device = @robot_model.expose_gazebo_model(@robot_sdf, 'prefix')
+                    @device = @robot_model.expose_gazebo_model(@robot_sdf, 'prefix')
 
                     @link_device = @robot_model.sdf_export_link(
-                        device,
+                        @device,
                         as: 'some_links',
                         from_frame: 'prefix::root',
                         to_frame: 'prefix::child'
@@ -695,6 +695,85 @@ module RockGazebo
 
                 it "records all the exported joints" do
                     assert_equal [@joint_device], @robot_model.each_exported_joint.to_a
+                end
+            end
+
+            describe "CommonModels::Devices::Gazebo::RootModel" do
+                before do
+                    root = ::SDF::Root.load(
+                        expand_fixture_world("attached_simple_model.world"),
+                        flatten: false
+                    )
+                    @world = root.each_world.first
+                    @robot_sdf = @world.each_model.first
+                end
+
+                describe "on the root model" do
+                    before do
+                        @robot_model.load_gazebo(
+                            @robot_sdf, "gazebo",
+                            name: "renamed_model", prefix_device_with_name: true
+                        )
+
+                        @device = @robot_model.find_device("renamed_model")
+                        @link = @robot_model.sdf_export_link(
+                            @device,
+                            as: "some_links", from_frame: "prefix::root",
+                            to_frame: "prefix::child"
+                        )
+                        @joint = @robot_model.sdf_export_joint(
+                            @device,
+                            as: "some_joints", joint_names: ["prefix::j1"]
+                        )
+                    end
+
+                    it "registers all exported links and joints in the root model" do
+                        assert_equal [@joint],
+                                     @device.gazebo_root_model.each_exported_joint.to_a
+                        assert_equal [@link],
+                                     @device.gazebo_root_model.each_exported_link.to_a
+                    end
+
+                    it "generates an fully instanciated model with all the exported " \
+                       "joints and links" do
+                        ir = @device.fully_instanciated_model
+                        assert_equal [@device, @link, @joint], ir.arguments.values
+                    end
+                end
+
+                describe "on a submodel" do
+                    before do
+                        submodel = @robot_sdf.each_model.first
+                        @robot_model.load_gazebo(
+                            submodel, "gazebo",
+                            name: "renamed_model", prefix_device_with_name: true
+                        )
+
+                        @device = @robot_model.find_device("renamed_model")
+                        @link = @robot_model.sdf_export_link(
+                            @device,
+                            as: "some_links", from_frame: "prefix::root",
+                            to_frame: "prefix::child"
+                        )
+                        @joint = @robot_model.sdf_export_joint(
+                            @device,
+                            as: "some_joints", joint_names: ["prefix::j1"]
+                        )
+                    end
+
+                    it "registers all exported links and joints in the root model" do
+                        root_model = @device.gazebo_root_model
+                        assert_equal [@joint], root_model.each_exported_joint.to_a
+                        assert_equal [@link], root_model.each_exported_link.to_a
+                        assert_equal [@device], root_model.each_submodel.to_a
+                    end
+
+                    it "generates an fully instanciated model with all the exported " \
+                       "joints and links" do
+                        ir = @device.gazebo_root_model.fully_instanciated_model
+                        assert_equal [@device.gazebo_root_model, @device, @link, @joint],
+                                 ir.arguments.values
+                    end
                 end
             end
         end
