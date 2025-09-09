@@ -1,0 +1,11 @@
+<sdf version="1.6">
+    <world name="test">
+        <model name="attachment">
+            <include>
+                <name>included_model</name>
+                <uri>model://model_with_plugin</uri>
+            </include>
+        </model>
+    </world>
+</sdf>
+
