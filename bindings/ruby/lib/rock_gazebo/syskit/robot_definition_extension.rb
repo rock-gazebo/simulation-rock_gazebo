@@ -441,6 +441,13 @@ module RockGazebo
                         sdf_model.each_sensor
                     end
 
+                plugins =
+                    if Syskit.scope_device_name_with_links_and_submodels
+                        sdf_model.each_direct_plugin
+                    else
+                        sdf_model.each_plugin
+                    end
+
                 sensors.each do |sensor|
                     gazebo_define_sensor_device(
                         sdf_model, sensor,
@@ -450,7 +457,7 @@ module RockGazebo
                     )
                 end
 
-                sdf_model.each_plugin do |plugin|
+                plugins.each do |plugin|
                     gazebo_define_plugin_device(
                         sdf_model, plugin,
                         model_name: name,
@@ -579,6 +586,11 @@ module RockGazebo
                 plugin_name = normalize_name(plugin.name.split(/__/)[-1])
                 device_name = "#{plugin_name}_plugin"
                 if prefix_device_with_name
+                    if Syskit.scope_device_name_with_links_and_submodels
+                        path = sdf_relative_path(sdf_model, plugin)
+                        device_name = "#{normalize_name(path)}_plugin"
+                    end
+
                     device_name = "#{normalize_name(model_name)}_#{device_name}"
                 end
 
@@ -594,10 +606,11 @@ module RockGazebo
                     return
                 end
                 device.doc "Gazebo: #{plugin_name} plugin of #{sdf_model.full_name}"
-                device.sdf(plugin)
-                      .prefer_deployed_tasks(
-                          "#{deployment_prefix}#{plugin_name}"
-                      )
+
+                relative = sdf_relative_path(sdf_model, plugin)
+                device
+                    .sdf(plugin)
+                    .prefer_deployed_tasks("#{deployment_prefix}#{relative}")
             end
 
             def sdf_relative_path(from, to)

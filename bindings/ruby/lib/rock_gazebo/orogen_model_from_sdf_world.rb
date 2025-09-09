@@ -124,7 +124,7 @@ module RockGazebo
             )
         end
 
-        model.each_plugin do |plugin|
+        model.each_direct_plugin do |plugin|
             setup_orogen_model_from_sdf_model_plugin(
                 deployment, plugin,
                 prefix: prefix,
