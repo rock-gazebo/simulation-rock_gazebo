@@ -113,13 +113,6 @@ module RockGazebo
                             as: device_name,
                             using: OroGen.rock_gazebo.UnderwaterTask
                         )
-                    when "rock_gazebo::GPSTask"
-                        require "common_models/models/devices/gazebo/gps"
-                        return device(
-                            CommonModels::Devices::Gazebo::GPS,
-                            as: device_name,
-                            using: OroGen.rock_gazebo.GPSTask
-                        )
                     end
                 end
                 return if has_task
@@ -135,11 +128,6 @@ module RockGazebo
                     device(CommonModels::Devices::Gazebo::Underwater,
                            as: device_name,
                            using: OroGen.rock_gazebo.UnderwaterTask)
-                when /gazebo_gps/
-                    require "common_models/models/devices/gazebo/gps"
-                    device(CommonModels::Devices::Gazebo::gps,
-                           as: device_name,
-                           using: OroGen.rock_gazebo.GPSTask)
                 end
             end
 

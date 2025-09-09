@@ -28,8 +28,7 @@ module RockGazebo
 
     PLUGIN_TASK_MODELS = {
         /gazebo_thruster/ => "rock_gazebo::ThrusterTask",
-        /gazebo_underwater/ => "rock_gazebo::UnderwaterTask",
-        /gazebo_gps/ => "rock_gazebo::GPSTask"
+        /gazebo_underwater/ => "rock_gazebo::UnderwaterTask"
     }.freeze
 
     # Add tasks to a deployment, matching the tasks that would be deployed by
