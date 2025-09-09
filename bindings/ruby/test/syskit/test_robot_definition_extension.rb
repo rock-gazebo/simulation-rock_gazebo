@@ -268,25 +268,71 @@ module RockGazebo
             end
 
             describe 'plugin model' do
-                before do
-                    @robot_sdf =
-                        ::SDF::Root.load('model://model_with_plugin', flatten: false)
-                                   .each_model.first
-                    @robot_model.load_gazebo(
-                        @robot_sdf, 'gazebo', name: 'renamed_model'
-                    )
-                    @plugin = @robot_sdf.each_plugin.first
-                    @device = @robot_model.find_device('g_sensor').model
-                    @task_model = OroGen.rock_gazebo.GPSTask
-                end
+                describe "prefix_device_with_name: true and " \
+                         "!scope_device_name_with_links_and_submodels" do
+                    before do
+                        @__scope_flag = Syskit.scope_device_name_with_links_and_submodels
+                        Syskit.scope_device_name_with_links_and_submodels = false
 
-                it 'registers device to a task model defined by a plugin' do
-                    RockGazebo::Syskit::RobotDefinitionExtension
-                        .register_device_by_plugin_task_model(@task_model, @device)
-                    registered_device = @robot_model
-                                        .plugins_to_device(@plugin, "gps_test")
-                    assert_equal @robot_model.devices["gps_test"], registered_device
-                    assert_equal registered_device.requirements, @task_model.with_arguments(gps_dev: registered_device)
+                    end
+
+                    after do
+                        Syskit.scope_device_name_with_links_and_submodels = @__scope_flag
+                    end
+
+                    describe "loading the submodel" do
+                        before do
+                            @robot_sdf =
+                                ::SDF::Root.load(
+                                    'model://model_with_plugin', flatten: false
+                                ).each_model.first
+                            @robot_model.load_gazebo(
+                                    @robot_sdf, 'gazebo', name: 'renamed_model'
+                                )
+                            @plugin = @robot_sdf.each_plugin.first
+                            @device = @robot_model.find_device('g_sensor').model
+                            @task_model = OroGen.rock_gazebo.GPSTask
+                        end
+
+                        it "registers device to a task model defined by a plugin" do
+                            RockGazebo::Syskit::RobotDefinitionExtension
+                                .register_device_by_plugin_task_model(@task_model, @device)
+                            registered_device = @robot_model
+                                                .plugins_to_device(@plugin, "gps_test")
+                            assert_equal @robot_model.devices["gps_test"], registered_device
+                            assert_equal registered_device.requirements,
+                                        @task_model.with_arguments(gps_dev: registered_device)
+                        end
+                    end
+                end
+                describe "prefix_device_with_name: true and " \
+                         "scope_device_name_with_links_and_submodels" do
+                    before do
+                        @__scope_flag = Syskit.scope_device_name_with_links_and_submodels
+                        Syskit.scope_device_name_with_links_and_submodels = true
+                    end
+
+                    after do
+                        Syskit.scope_device_name_with_links_and_submodels = @__scope_flag
+                    end
+
+                    before do
+                        @world = ::SDF::Root.load(
+                            expand_fixture_world('attached_model_with_plugin.world'),
+                            flatten: false
+                        ).each_world.first
+                        @robot_sdf = @world.each_model.first
+                        @robot_model.load_gazebo(
+                            @robot_sdf, 'gazebo::test', prefix_device_with_name: true
+                        )
+                    end
+
+                    it "defines a plugin device based on the root model " \
+                        "and plugin name" do
+                        assert @robot_model.find_device(
+                            "attachment_included_model_gps_test_plugin"
+                        )
+                    end
                 end
             end
 
