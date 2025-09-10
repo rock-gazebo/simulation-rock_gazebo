@@ -11,5 +11,8 @@
           <axis>
           </axis>
       </joint>
+      <plugin name="gps_test">
+        <task model="rock_gazebo::GPSTask"/>
+      </plugin>
   </model>
 </sdf>
