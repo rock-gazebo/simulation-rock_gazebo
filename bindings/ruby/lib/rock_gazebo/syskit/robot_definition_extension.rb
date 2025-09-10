@@ -105,14 +105,14 @@ module RockGazebo
                             CommonModels::Devices::Gazebo::Thruster,
                             as: device_name,
                             using: OroGen.rock_gazebo.ThrusterTask
-                        )
+                        ).prefer_deployed_tasks(task_name)
                     when "rock_gazebo::UnderwaterTask"
                         require "common_models/models/devices/gazebo/underwater"
                         return device(
                             CommonModels::Devices::Gazebo::Underwater,
                             as: device_name,
                             using: OroGen.rock_gazebo.UnderwaterTask
-                        )
+                        ).prefer_deployed_tasks(task_name)
                     end
                 end
                 return if has_task
@@ -123,11 +123,13 @@ module RockGazebo
                     device(CommonModels::Devices::Gazebo::Thruster,
                            as: device_name,
                            using: OroGen.rock_gazebo.ThrusterTask)
+                        .prefer_deployed_tasks(task_name)
                 when /gazebo_underwater/
                     require "common_models/models/devices/gazebo/underwater"
                     device(CommonModels::Devices::Gazebo::Underwater,
                            as: device_name,
                            using: OroGen.rock_gazebo.UnderwaterTask)
+                        .prefer_deployed_tasks(task_name)
                 end
             end
 
@@ -594,9 +596,7 @@ module RockGazebo
                     device_name = "#{normalize_name(model_name)}_#{device_name}"
                 end
 
-                device = plugins_to_device(
-                    plugin, device_name
-                )
+                device = plugins_to_device(plugin, device_name)
 
                 unless device
                     RockGazebo.warn(
@@ -606,11 +606,7 @@ module RockGazebo
                     return
                 end
                 device.doc "Gazebo: #{plugin_name} plugin of #{sdf_model.full_name}"
-
-                relative = sdf_relative_path(sdf_model, plugin)
-                device
-                    .sdf(plugin)
-                    .prefer_deployed_tasks("#{deployment_prefix}#{relative}")
+                device.sdf(plugin)
             end
 
             def sdf_relative_path(from, to)
