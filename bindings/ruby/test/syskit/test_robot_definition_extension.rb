@@ -73,12 +73,11 @@ module RockGazebo
             describe 'sensor model' do
                 describe "prefix_device_with_name: false" do
                     before do
-                        @world = ::SDF::Root.load(
-                            expand_fixture_world('attached_simple_model.world'),
-                            flatten: false
-                        ).each_world.first
+                        @world = load_normalized_world("attached_simple_model.world")
                         @robot_sdf = @world.each_model.first
-                        @robot_model.load_gazebo(@robot_sdf, 'gazebo::test')
+                        @robot_model.load_gazebo(
+                            @robot_sdf, "gazebo::test", prefix_device_with_name: false
+                        )
                     end
 
                     it "defines a sensor device based on the sensor name only" do
@@ -110,13 +109,10 @@ module RockGazebo
                     end
                     describe "loading the root model" do
                         before do
-                            @world = ::SDF::Root.load(
-                                expand_fixture_world('attached_simple_model.world'),
-                                flatten: false
-                            ).each_world.first
+                            @world = load_normalized_world("attached_simple_model.world")
                             @robot_sdf = @world.each_model.first
                             @robot_model.load_gazebo(
-                                @robot_sdf, 'gazebo::test', prefix_device_with_name: true
+                                @robot_sdf, "gazebo::test", prefix_device_with_name: true
                             )
                         end
 
@@ -143,15 +139,11 @@ module RockGazebo
 
                     describe "loading a submodel" do
                         before do
-                            @world = ::SDF::Root.load(
-                                expand_fixture_world('attached_simple_model.world'),
-                                flatten: false
-                            ).each_world.first
+                            @world = load_normalized_world("attached_simple_model.world")
                             @root_model_sdf = @world.each_model.first
                             @robot_sdf = @root_model_sdf.each_model.first
                             @robot_model.load_gazebo(
-                                @robot_sdf, 'gazebo::test',
-                                prefix_device_with_name: true
+                                @robot_sdf, "gazebo::test", prefix_device_with_name: true
                             )
                         end
 
@@ -189,13 +181,10 @@ module RockGazebo
 
                     describe "loading the root model" do
                         before do
-                            @world = ::SDF::Root.load(
-                                expand_fixture_world('attached_simple_model.world'),
-                                flatten: false
-                            ).each_world.first
+                            @world = load_normalized_world("attached_simple_model.world")
                             @robot_sdf = @world.each_model.first
                             @robot_model.load_gazebo(
-                                @robot_sdf, 'gazebo::test', prefix_device_with_name: true
+                                @robot_sdf, "gazebo::test", prefix_device_with_name: true
                             )
                         end
 
@@ -226,15 +215,11 @@ module RockGazebo
 
                     describe "loading a submodel" do
                         before do
-                            @world = ::SDF::Root.load(
-                                expand_fixture_world('attached_simple_model.world'),
-                                flatten: false
-                            ).each_world.first
+                            @world = load_normalized_world("attached_simple_model.world")
                             @root_model_sdf = @world.each_model.first
                             @robot_sdf = @root_model_sdf.each_model.first
                             @robot_model.load_gazebo(
-                                @robot_sdf, 'gazebo::test',
-                                prefix_device_with_name: true
+                                @robot_sdf, "gazebo::test", prefix_device_with_name: true
                             )
                         end
 
