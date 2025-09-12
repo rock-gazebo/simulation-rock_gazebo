@@ -86,7 +86,7 @@ module RockGazebo
             #   rock-gazebo plugin or by the syskit integration (yet), or the
             #   device model and device driver that should be used for this
             #   sensor
-            def plugins_to_device(plugin, device_name)
+            def plugins_to_device(plugin, device_name, deployment_hint)
                 has_task = false
                 plugin.xml.elements.to_a("task").each do |task_element|
                     task_model_name = task_element.attributes["model"]
@@ -123,13 +123,13 @@ module RockGazebo
                     device(CommonModels::Devices::Gazebo::Thruster,
                            as: device_name,
                            using: OroGen.rock_gazebo.ThrusterTask)
-                        .prefer_deployed_tasks(task_name)
+                        .prefer_deployed_tasks(deployment_hint)
                 when /gazebo_underwater/
                     require "common_models/models/devices/gazebo/underwater"
                     device(CommonModels::Devices::Gazebo::Underwater,
                            as: device_name,
                            using: OroGen.rock_gazebo.UnderwaterTask)
-                        .prefer_deployed_tasks(task_name)
+                        .prefer_deployed_tasks(deployment_hint)
                 end
             end
 
@@ -596,7 +596,9 @@ module RockGazebo
                     device_name = "#{normalize_name(model_name)}_#{device_name}"
                 end
 
-                device = plugins_to_device(plugin, device_name)
+                deployment_hint =
+                    "#{deployment_prefix}#{sdf_relative_path(sdf_model, plugin)}"
+                device = plugins_to_device(plugin, device_name, deployment_hint)
 
                 unless device
                     RockGazebo.warn(
