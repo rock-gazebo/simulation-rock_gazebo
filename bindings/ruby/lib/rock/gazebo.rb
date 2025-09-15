@@ -187,7 +187,9 @@ module Rock
         #   within this plugin need
         def self.process_gazebo_plugin(world, plugin_xml, loader:)
             scope = resolve_plugin_full_name(world.xml, plugin_xml)
-            normalize_rock_components(scope, plugin_xml, loader)
+            typekits = normalize_rock_components(scope, plugin_xml, loader)
+            plugin_xml.attributes["name"] = scope.gsub(/[^\w]/, "_")
+            typekits
         rescue OroGen::NotFound => e
             plugin_name = plugin_xml.attributes["name"]
             raise e, "while processing the <task ..> elements of the #{plugin_name} "\
