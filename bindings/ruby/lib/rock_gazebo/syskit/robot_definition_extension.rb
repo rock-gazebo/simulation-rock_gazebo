@@ -81,6 +81,12 @@ module RockGazebo
             # Given a gazebo plugin, returns the device and device driver model that
             # should be used to handle it
             #
+            # @param plugin [Plugin]
+            # @param device_name [String] The desired device name
+            # @param deployment_hint [String] The deployment hint for each of the tasks,
+            #   this must be created using the using the desired `deployment_prefix`
+            #   and the `relative_path` to the plugin.
+            #
             # @return [nil,(Model<Syskit::Device>,Model<Syskit::Component>)]
             #   either nil if this type of sensor is not handled either by the
             #   rock-gazebo plugin or by the syskit integration (yet), or the
@@ -91,6 +97,8 @@ module RockGazebo
                 plugin.xml.elements.to_a("task").each do |task_element|
                     task_model_name = task_element.attributes["model"]
                     task_model = ::Syskit::TaskContext.find_model_from_orogen_name(task_model_name)
+                    # The task name is used to avoid ambiguity between multiple plugins
+                    # originated from the same plugin.
                     task_name = task_element.attributes["name"]
                     if (device = RobotDefinitionExtension.plugin_device_mappings[task_model])
                         return device(device, as: device_name, using: task_model)
