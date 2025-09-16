@@ -589,8 +589,8 @@ module RockGazebo
                 device_name = "#{plugin_name}_plugin"
                 if prefix_device_with_name
                     if Syskit.scope_device_name_with_links_and_submodels
-                        path = sdf_relative_path(sdf_model, plugin)
-                        device_name = "#{normalize_name(path)}_plugin"
+                        path = sdf_relative_path(sdf_model, plugin.parent)
+                        device_name = "#{normalize_name(path)}#{plugin_name}_plugin"
                     end
 
                     device_name = "#{normalize_name(model_name)}_#{device_name}"
