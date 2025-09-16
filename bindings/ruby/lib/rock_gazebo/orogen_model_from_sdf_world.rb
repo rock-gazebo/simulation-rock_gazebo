@@ -132,7 +132,7 @@ module RockGazebo
             )
         end
 
-        model.each_model do |submodel|
+        model.each_direct_model do |submodel|
             setup_orogen_submodel_from_sdf_model(
                 deployment, submodel,
                 prefix: "#{prefix}#{submodel.name}::",
