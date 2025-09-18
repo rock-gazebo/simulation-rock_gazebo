@@ -458,6 +458,13 @@ module RockGazebo
                         sdf_model.each_plugin
                     end
 
+                models =
+                    if Syskit.scope_device_name_with_links_and_submodels
+                        sdf_model.each_direct_model
+                    else
+                        sdf_model.each_model
+                    end
+
                 sensors.each do |sensor|
                     gazebo_define_sensor_device(
                         sdf_model, sensor,
@@ -476,12 +483,12 @@ module RockGazebo
                     )
                 end
 
-                sdf_model.each_model do |sdf_submodel|
+                models.each do |model|
                     load_gazebo_robot_submodels(
-                        sdf_submodel,
-                        name: name + "_" + sdf_submodel.name,
+                        model,
+                        name: name + "_" + model.name,
                         prefix_device_with_name: true,
-                        deployment_prefix: deployment_prefix + sdf_submodel.name + "::"
+                        deployment_prefix: deployment_prefix + model.name + "::"
                     )
                 end
             end
