@@ -81,16 +81,24 @@ module RockGazebo
             # Given a gazebo plugin, returns the device and device driver model that
             # should be used to handle it
             #
+            # @param plugin [Plugin]
+            # @param device_name [String] The desired device name
+            # @param deployment_hint [String] The deployment hint for each of the tasks,
+            #   this must be created using the using the desired `deployment_prefix`
+            #   and the `relative_path` to the plugin.
+            #
             # @return [nil,(Model<Syskit::Device>,Model<Syskit::Component>)]
             #   either nil if this type of sensor is not handled either by the
             #   rock-gazebo plugin or by the syskit integration (yet), or the
             #   device model and device driver that should be used for this
             #   sensor
-            def plugins_to_device(plugin, device_name)
+            def plugins_to_device(plugin, device_name, deployment_hint)
                 has_task = false
                 plugin.xml.elements.to_a("task").each do |task_element|
                     task_model_name = task_element.attributes["model"]
                     task_model = ::Syskit::TaskContext.find_model_from_orogen_name(task_model_name)
+                    # The task name is used to avoid ambiguity between multiple plugins
+                    # originated from the same plugin.
                     task_name = task_element.attributes["name"]
                     if (device = RobotDefinitionExtension.plugin_device_mappings[task_model])
                         return device(device, as: device_name, using: task_model)
@@ -105,14 +113,14 @@ module RockGazebo
                             CommonModels::Devices::Gazebo::Thruster,
                             as: device_name,
                             using: OroGen.rock_gazebo.ThrusterTask
-                        )
+                        ).prefer_deployed_tasks(task_name)
                     when "rock_gazebo::UnderwaterTask"
                         require "common_models/models/devices/gazebo/underwater"
                         return device(
                             CommonModels::Devices::Gazebo::Underwater,
                             as: device_name,
                             using: OroGen.rock_gazebo.UnderwaterTask
-                        )
+                        ).prefer_deployed_tasks(task_name)
                     end
                 end
                 return if has_task
@@ -123,11 +131,13 @@ module RockGazebo
                     device(CommonModels::Devices::Gazebo::Thruster,
                            as: device_name,
                            using: OroGen.rock_gazebo.ThrusterTask)
+                        .prefer_deployed_tasks(deployment_hint)
                 when /gazebo_underwater/
                     require "common_models/models/devices/gazebo/underwater"
                     device(CommonModels::Devices::Gazebo::Underwater,
                            as: device_name,
                            using: OroGen.rock_gazebo.UnderwaterTask)
+                        .prefer_deployed_tasks(deployment_hint)
                 end
             end
 
@@ -441,6 +451,20 @@ module RockGazebo
                         sdf_model.each_sensor
                     end
 
+                plugins =
+                    if Syskit.scope_device_name_with_links_and_submodels
+                        sdf_model.each_direct_plugin
+                    else
+                        sdf_model.each_plugin
+                    end
+
+                models =
+                    if Syskit.scope_device_name_with_links_and_submodels
+                        sdf_model.each_direct_model
+                    else
+                        sdf_model.each_model
+                    end
+
                 sensors.each do |sensor|
                     gazebo_define_sensor_device(
                         sdf_model, sensor,
@@ -450,7 +474,7 @@ module RockGazebo
                     )
                 end
 
-                sdf_model.each_plugin do |plugin|
+                plugins.each do |plugin|
                     gazebo_define_plugin_device(
                         sdf_model, plugin,
                         model_name: name,
@@ -459,12 +483,12 @@ module RockGazebo
                     )
                 end
 
-                sdf_model.each_model do |sdf_submodel|
+                models.each do |model|
                     load_gazebo_robot_submodels(
-                        sdf_submodel,
-                        name: name + "_" + sdf_submodel.name,
+                        model,
+                        name: name + "_" + model.name,
                         prefix_device_with_name: true,
-                        deployment_prefix: deployment_prefix + sdf_submodel.name + "::"
+                        deployment_prefix: deployment_prefix + model.name + "::"
                     )
                 end
             end
@@ -579,12 +603,17 @@ module RockGazebo
                 plugin_name = normalize_name(plugin.name.split(/__/)[-1])
                 device_name = "#{plugin_name}_plugin"
                 if prefix_device_with_name
+                    if Syskit.scope_device_name_with_links_and_submodels
+                        path = sdf_relative_path(sdf_model, plugin.parent)
+                        device_name = "#{normalize_name(path)}#{plugin_name}_plugin"
+                    end
+
                     device_name = "#{normalize_name(model_name)}_#{device_name}"
                 end
 
-                device = plugins_to_device(
-                    plugin, device_name
-                )
+                deployment_hint =
+                    "#{deployment_prefix}#{sdf_relative_path(sdf_model, plugin)}"
+                device = plugins_to_device(plugin, device_name, deployment_hint)
 
                 unless device
                     RockGazebo.warn(
@@ -595,9 +624,6 @@ module RockGazebo
                 end
                 device.doc "Gazebo: #{plugin_name} plugin of #{sdf_model.full_name}"
                 device.sdf(plugin)
-                      .prefer_deployed_tasks(
-                          "#{deployment_prefix}#{plugin_name}"
-                      )
             end
 
             def sdf_relative_path(from, to)

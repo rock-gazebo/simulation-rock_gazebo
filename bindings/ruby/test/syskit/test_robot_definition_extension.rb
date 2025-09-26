@@ -73,12 +73,11 @@ module RockGazebo
             describe 'sensor model' do
                 describe "prefix_device_with_name: false" do
                     before do
-                        @world = ::SDF::Root.load(
-                            expand_fixture_world('attached_simple_model.world'),
-                            flatten: false
-                        ).each_world.first
+                        @world = load_normalized_world("attached_simple_model.world")
                         @robot_sdf = @world.each_model.first
-                        @robot_model.load_gazebo(@robot_sdf, 'gazebo::test')
+                        @robot_model.load_gazebo(
+                            @robot_sdf, "gazebo::test", prefix_device_with_name: false
+                        )
                     end
 
                     it "defines a sensor device based on the sensor name only" do
@@ -110,13 +109,10 @@ module RockGazebo
                     end
                     describe "loading the root model" do
                         before do
-                            @world = ::SDF::Root.load(
-                                expand_fixture_world('attached_simple_model.world'),
-                                flatten: false
-                            ).each_world.first
+                            @world = load_normalized_world("attached_simple_model.world")
                             @robot_sdf = @world.each_model.first
                             @robot_model.load_gazebo(
-                                @robot_sdf, 'gazebo::test', prefix_device_with_name: true
+                                @robot_sdf, "gazebo::test", prefix_device_with_name: true
                             )
                         end
 
@@ -143,15 +139,11 @@ module RockGazebo
 
                     describe "loading a submodel" do
                         before do
-                            @world = ::SDF::Root.load(
-                                expand_fixture_world('attached_simple_model.world'),
-                                flatten: false
-                            ).each_world.first
+                            @world = load_normalized_world("attached_simple_model.world")
                             @root_model_sdf = @world.each_model.first
                             @robot_sdf = @root_model_sdf.each_model.first
                             @robot_model.load_gazebo(
-                                @robot_sdf, 'gazebo::test',
-                                prefix_device_with_name: true
+                                @robot_sdf, "gazebo::test", prefix_device_with_name: true
                             )
                         end
 
@@ -189,13 +181,10 @@ module RockGazebo
 
                     describe "loading the root model" do
                         before do
-                            @world = ::SDF::Root.load(
-                                expand_fixture_world('attached_simple_model.world'),
-                                flatten: false
-                            ).each_world.first
+                            @world = load_normalized_world("attached_simple_model.world")
                             @robot_sdf = @world.each_model.first
                             @robot_model.load_gazebo(
-                                @robot_sdf, 'gazebo::test', prefix_device_with_name: true
+                                @robot_sdf, "gazebo::test", prefix_device_with_name: true
                             )
                         end
 
@@ -226,15 +215,11 @@ module RockGazebo
 
                     describe "loading a submodel" do
                         before do
-                            @world = ::SDF::Root.load(
-                                expand_fixture_world('attached_simple_model.world'),
-                                flatten: false
-                            ).each_world.first
+                            @world = load_normalized_world("attached_simple_model.world")
                             @root_model_sdf = @world.each_model.first
                             @robot_sdf = @root_model_sdf.each_model.first
                             @robot_model.load_gazebo(
-                                @robot_sdf, 'gazebo::test',
-                                prefix_device_with_name: true
+                                @robot_sdf, "gazebo::test", prefix_device_with_name: true
                             )
                         end
 
@@ -262,31 +247,195 @@ module RockGazebo
                     end
                 end
 
-                describe "prefix_device_with_name: true and " \
-                         "scope_device_name_with_links_and_submodels" do
-                end
-            end
+                describe "plugin model" do
+                    require "common_models/models/devices/gazebo/gps"
 
-            describe 'plugin model' do
-                before do
-                    @robot_sdf =
-                        ::SDF::Root.load('model://model_with_plugin', flatten: false)
-                                   .each_model.first
-                    @robot_model.load_gazebo(
-                        @robot_sdf, 'gazebo', name: 'renamed_model'
-                    )
-                    @plugin = @robot_sdf.each_plugin.first
-                    @device = @robot_model.find_device('g_sensor').model
-                    @task_model = OroGen.rock_gazebo.GPSTask
-                end
+                    before do
+                        @task_model = OroGen.rock_gazebo.GPSTask
+                        RockGazebo::Syskit::RobotDefinitionExtension
+                            .register_device_by_plugin_task_model(
+                                @task_model, CommonModels::Devices::Gazebo::GPS
+                            )
+                    end
 
-                it 'registers device to a task model defined by a plugin' do
-                    RockGazebo::Syskit::RobotDefinitionExtension
-                        .register_device_by_plugin_task_model(@task_model, @device)
-                    registered_device = @robot_model
-                                        .plugins_to_device(@plugin, "gps_test")
-                    assert_equal @robot_model.devices["gps_test"], registered_device
-                    assert_equal registered_device.requirements, @task_model.with_arguments(gps_dev: registered_device)
+                    describe "prefix_device_with_name: false" do
+                        before do
+                            @world = load_normalized_world("attached_simple_model.world")
+                            @robot_sdf = @world.each_model.first
+                            @robot_model.load_gazebo(@robot_sdf, "gazebo::test")
+                        end
+
+                        it "defines a plugin device based on the plugin name only" do
+                            assert @robot_model.find_device("gps_test_plugin")
+                        end
+
+                        it "attaches the plugin device to an existing deployment" do
+                            device = @robot_model.find_device("gps_test_plugin")
+                            hint = device.to_instance_requirements.deployment_hints.first
+                            deployment_m = RockGazebo.orogen_model_from_sdf_world(
+                                "gazebo", @world
+                            )
+                            assert_equal "gazebo::test::attachment::included_model::gps_test",
+                                         hint
+                            assert deployment_m.find_task_by_name(hint),
+                                   "hint is #{hint}, available deployments: " \
+                                   "#{deployment_m.each_task.map(&:name).sort.join(', ')}"
+                        end
+                    end
+
+                    describe "prefix_device_with_name: true and " \
+                             "!scope_device_name_with_links_and_submodels" do
+                        before do
+                            @__scope_flag = Syskit.scope_device_name_with_links_and_submodels
+                            Syskit.scope_device_name_with_links_and_submodels = false
+                        end
+
+                        after do
+                            Syskit.scope_device_name_with_links_and_submodels = @__scope_flag
+                        end
+
+                        describe "loading the root model" do
+                            before do
+                                @world = load_normalized_world("attached_simple_model.world")
+                                @robot_sdf = @world.each_model.first
+                                @robot_model.load_gazebo(
+                                    @robot_sdf, "gazebo::test", prefix_device_with_name: true
+                                )
+                            end
+
+                            it "defines a plugin device based on the root model " \
+                               "and sensor name" do
+                                assert @robot_model.find_device("attachment_gps_test_plugin")
+                            end
+
+                            it "attaches the plugin device to an existing deployment" do
+                                device =
+                                    @robot_model.find_device("attachment_gps_test_plugin")
+                                hint = device.to_instance_requirements.deployment_hints.first
+                                deployment_m =
+                                    RockGazebo.orogen_model_from_sdf_world("gazebo", @world)
+                                assert_equal(
+                                    "gazebo::test::attachment::included_model::gps_test",
+                                    hint
+                                )
+                                assert deployment_m.find_task_by_name(hint),
+                                       "hint is #{hint}, available deployments: " \
+                                       "#{deployment_m.each_task.map(&:name).sort.join(', ')}"
+                            end
+                        end
+
+                        describe "loading a submodel" do
+                            before do
+                                @world = load_normalized_world("attached_simple_model.world")
+                                @root_model_sdf = @world.each_model.first
+                                @robot_sdf = @root_model_sdf.each_model.first
+                                @robot_model.load_gazebo(
+                                    @robot_sdf, "gazebo::test", prefix_device_with_name: true
+                                )
+                            end
+
+                            it "defines a plugin device based on the root model " \
+                               "and sensor name" do
+                                device = @robot_model
+                                         .find_device("included_model_gps_test_plugin")
+                                assert device
+                            end
+
+                            it "attaches the plugin device to an existing deployment" do
+                                device =
+                                    @robot_model.find_device("included_model_gps_test_plugin")
+                                hint = device.to_instance_requirements.deployment_hints.first
+                                deployment_m = RockGazebo.orogen_model_from_sdf_world(
+                                    "gazebo", @world
+                                )
+                                assert_equal(
+                                    "gazebo::test::attachment::included_model::gps_test",
+                                    hint
+                                )
+                                assert deployment_m.find_task_by_name(hint),
+                                       "hint is #{hint}, available deployments: " \
+                                       "#{deployment_m.each_task.map(&:name).sort.join(', ')}"
+                            end
+                        end
+                    end
+                    describe "prefix_device_with_name: true and " \
+                             "scope_device_name_with_links_and_submodels" do
+                        before do
+                            @__scope_flag = Syskit.scope_device_name_with_links_and_submodels
+                            Syskit.scope_device_name_with_links_and_submodels = true
+                            @world = load_normalized_world("attached_simple_model.world")
+                        end
+
+                        after do
+                            Syskit.scope_device_name_with_links_and_submodels = @__scope_flag
+                        end
+
+                        describe "loading the root model" do
+                            before do
+                                @robot_sdf = @world.each_model.first
+                                @robot_model.load_gazebo(
+                                    @robot_sdf, "gazebo::test", prefix_device_with_name: true
+                                )
+                            end
+
+                            it "defines a plugin device based on the root model " \
+                               "and sensor name" do
+                                assert @robot_model.find_device(
+                                    "attachment_included_model_gps_test_plugin"
+                                )
+                            end
+
+                            it "attaches the plugin device to an existing deployment" do
+                                device = @robot_model.find_device(
+                                    "attachment_included_model_gps_test_plugin"
+                                )
+                                hint = device.to_instance_requirements.deployment_hints.first
+                                deployment_m = RockGazebo.orogen_model_from_sdf_world(
+                                    "gazebo", @world
+                                )
+                                assert_equal(
+                                    "gazebo::test::attachment::included_model::gps_test",
+                                    hint
+                                )
+                                assert deployment_m.find_task_by_name(hint),
+                                       "hint is #{hint}, available deployments: " \
+                                       "#{deployment_m.each_task.map(&:name).sort.join(', ')}"
+                            end
+                        end
+
+                        describe "loading a submodel" do
+                            before do
+                                @root_model_sdf = @world.each_model.first
+                                @robot_sdf = @root_model_sdf.each_model.first
+                                @robot_model.load_gazebo(
+                                    @robot_sdf, "gazebo::test", prefix_device_with_name: true
+                                )
+                            end
+
+                            it "defines a plugin device based on the root model " \
+                               "and sensor name" do
+                                assert \
+                                    @robot_model.find_device("included_model_gps_test_plugin")
+                            end
+
+                            it "attaches the plugin device to an existing deployment" do
+                                device = @robot_model.find_device(
+                                    "included_model_gps_test_plugin"
+                                )
+                                hint = device.to_instance_requirements.deployment_hints.first
+                                deployment_m = RockGazebo.orogen_model_from_sdf_world(
+                                    "gazebo", @world
+                                )
+                                assert_equal(
+                                    "gazebo::test::attachment::included_model::gps_test",
+                                    hint
+                                )
+                                assert deployment_m.find_task_by_name(hint),
+                                       "hint is #{hint}, available deployments: " \
+                                       "#{deployment_m.each_task.map(&:name).sort.join(', ')}"
+                            end
+                        end
+                    end
                 end
             end
 
@@ -775,6 +924,13 @@ module RockGazebo
                                  ir.arguments.values
                     end
                 end
+            end
+
+            def load_normalized_world(world)
+                world = ::SDF::Root.load(expand_fixture_world(world), flatten: false)
+                                   .each_world.first
+                Rock::Gazebo.process_gazebo_world(world)
+                world
             end
         end
     end
