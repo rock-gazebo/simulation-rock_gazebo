@@ -401,7 +401,8 @@ module RockGazebo
                     )
                     model_device = define_submodel_device(name, enclosing_device, model)
                     prefix_device_with_name = true
-                    deployment_prefix += enclosing_model.name + "::" + model.name + "::"
+                    deployment_prefix +=
+                        "#{sdf_relative_path(enclosing_model.parent, model)}::"
                 else
                     enclosing_device = expose_gazebo_model(
                         enclosing_model, deployment_prefix,
