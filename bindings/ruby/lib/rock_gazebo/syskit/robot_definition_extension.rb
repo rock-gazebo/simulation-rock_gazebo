@@ -242,10 +242,27 @@ module RockGazebo
 
                 dev = device(CommonModels::Devices::Gazebo::Link,
                              as: as, using: link_driver)
+                dev.sdf_from_link(sdf_export_resolve_link_sdf(model_dev, from_frame))
+                dev.sdf_to_link(sdf_export_resolve_link_sdf(model_dev, to_frame))
+
                 dev.frame_transform(from_frame => to_frame) if from_frame != to_frame
                 model_dev.gazebo_root_model.register_exported_link(dev)
                 register_exported_link_device(dev)
                 dev
+            end
+
+            def sdf_export_resolve_link_sdf(model_dev, frame_name)
+                if frame_name == "world"
+                    return resolve_enclosing_world(model_dev.sdf_model)
+                end
+
+                relative_link_name = frame_name.split("::")[1..-1].join("::")
+                unless (sdf = model_dev.sdf.find_link_by_name(relative_link_name))
+                    raise ArgumentError,
+                          "cannot find link #{relative_link_name} inferred from frame " \
+                          "#{frame_name}, within model #{model_dev.sdf.name}"
+                end
+                sdf
             end
 
             def find_actual_model(name, candidates)
@@ -443,7 +460,6 @@ module RockGazebo
                 name: sdf_model.name, prefix_device_with_name: true,
                 deployment_prefix: ""
             )
-
                 sensors =
                     if Syskit.scope_device_name_with_links_and_submodels
                         sdf_model.each_direct_sensor
@@ -551,11 +567,18 @@ module RockGazebo
                     .use_frames("#{frame_basename}_source" => link_frame,
                                 "#{frame_basename}_target" => 'world')
                     .select_service(driver_srv)
-                device(CommonModels::Devices::Gazebo::Link,
-                       as: device_name, using: link_driver_m)
+                dev =
+                    device(
+                        CommonModels::Devices::Gazebo::Link,
+                        as: device_name, using: link_driver_m
+                    )
                     .doc("Gazebo: state of the #{link.name} link of #{sdf_model.name}")
                     .frame_transform(link_frame => 'world')
                     .advanced
+
+                dev.sdf_from_link(link)
+                dev.sdf_to_link(resolve_enclosing_world(sdf_model))
+                dev
             end
 
             def gazebo_define_sensor_device(
