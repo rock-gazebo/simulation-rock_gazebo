@@ -776,6 +776,41 @@ module RockGazebo
                 it "records all the exported links" do
                     assert_equal [@link_device], @robot_model.each_exported_link.to_a
                 end
+
+                it "exports the to and from frames as the sdf element of them" do
+                    assert_kind_of ::SDF::Link, @link_device.sdf_from_link
+                    assert_equal "test::included_model::root",
+                                 @link_device.sdf_from_link.full_name
+                    assert_kind_of ::SDF::Link, @link_device.sdf_to_link
+                    assert_equal "test::included_model::child",
+                                 @link_device.sdf_to_link.full_name
+                end
+
+                it "raises when the from frame is not a known link" do
+                    model = @robot_model
+                    dev = @device
+                    assert_raises ArgumentError do
+                        model.sdf_export_link(
+                            dev,
+                            as: "other_links",
+                            from_frame: "banana::apple",
+                            to_frame: "prefix::child"
+                        )
+                    end
+                end
+
+                it "raises when the to frame is not a known link" do
+                    model = @robot_model
+                    dev = @device
+                    assert_raises ArgumentError do
+                        model.sdf_export_link(
+                            dev,
+                            as: "other_links",
+                            from_frame: "prefix::child",
+                            to_frame: "banana::apple"
+                        )
+                    end
+                end
             end
 
             describe '#sdf_export_joint' do
