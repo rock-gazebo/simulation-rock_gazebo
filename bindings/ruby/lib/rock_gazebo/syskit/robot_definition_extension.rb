@@ -25,9 +25,13 @@ module RockGazebo
             # sensors by the full path in the XML. In the example above,
             # the sensor device is root_included_model_link_gps_sensor_dev
             attr_accessor :scope_device_name_with_links_and_submodels
+
+            # TODO Documentate
+            attr_accessor :use_gazebo_automatic_links_and_joints
         end
 
         @scope_device_name_with_links_and_submodels = false
+        @use_gazebo_automatic_links_and_joints = true
 
         # Gazebo-specific extensions to {Syskit::Robot::RobotDefinition}
         module RobotDefinitionExtension
@@ -513,6 +517,9 @@ module RockGazebo
             # @api private
             #
             # Define devices for all links and sensors in the model
+            #
+            # @param [SDF::Model] sdf_model SDF model of this profile's robot,
+            #   as included in the current gazebo world
             def load_gazebo_robot_model(
                 sdf_model, root_device,
                 reuse: nil, name: sdf_model.name, prefix_device_with_name: true,
@@ -522,12 +529,14 @@ module RockGazebo
                     frame_prefix = "#{normalize_name(prefix)}_"
                 end
 
-                sdf_model.each_link_with_name do |l, l_name|
-                    gazebo_define_link_device(
-                        root_device, sdf_model, l, l_name,
-                        model_name: name, reuse: reuse, frame_prefix: frame_prefix,
-                        prefix_device_with_name: prefix_device_with_name
-                    )
+                if Syskit.use_gazebo_automatic_links_and_joints
+                    sdf_model.each_link_with_name do |l, l_name|
+                        gazebo_define_link_device(
+                            root_device, sdf_model, l, l_name,
+                            model_name: name, reuse: reuse, frame_prefix: frame_prefix,
+                            prefix_device_with_name: prefix_device_with_name
+                        )
+                    end
                 end
 
                 load_gazebo_robot_submodels(
