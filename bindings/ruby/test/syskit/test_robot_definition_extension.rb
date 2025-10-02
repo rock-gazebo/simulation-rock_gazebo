@@ -752,11 +752,7 @@ module RockGazebo
 
             describe '#sdf_export_link' do
                 before do
-                    root = ::SDF::Root.load(
-                        expand_fixture_world('simple_model.world'),
-                        flatten: false
-                    )
-                    @world = root.each_world.first
+                    @world = load_normalized_world("simple_model.world")
                     @robot_sdf = @world.each_model.first
                     @device = @robot_model.expose_gazebo_model(@robot_sdf, 'prefix')
 
@@ -867,12 +863,14 @@ module RockGazebo
                         @device = @robot_model.find_device("renamed_model")
                         @link = @robot_model.sdf_export_link(
                             @device,
-                            as: "some_links", from_frame: "prefix::root",
-                            to_frame: "prefix::child"
+                            as: "some_links",
+                            from_frame: "attachment::included_model::root",
+                            to_frame: "attachment::included_model::child"
                         )
                         @joint = @robot_model.sdf_export_joint(
                             @device,
-                            as: "some_joints", joint_names: ["prefix::j1"]
+                            as: "some_joints",
+                            joint_names: ["attachment::included_model::j1"]
                         )
                     end
 
@@ -901,12 +899,12 @@ module RockGazebo
                         @device = @robot_model.find_device("renamed_model")
                         @link = @robot_model.sdf_export_link(
                             @device,
-                            as: "some_links", from_frame: "prefix::root",
-                            to_frame: "prefix::child"
+                            as: "some_links", from_frame: "included_model::root",
+                            to_frame: "included_model::child"
                         )
                         @joint = @robot_model.sdf_export_joint(
                             @device,
-                            as: "some_joints", joint_names: ["prefix::j1"]
+                            as: "some_joints", joint_names: ["included_model::j1"]
                         )
                     end
 
