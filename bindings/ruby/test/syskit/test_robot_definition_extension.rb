@@ -674,8 +674,14 @@ module RockGazebo
 
                 it 'sets up the transforms on the submodel\'s links' do
                     device, = common_link_export_behavior
-                    assert_equal 'included_model::child', device.frame_transform.from
-                    assert_equal 'world', device.frame_transform.to
+                    assert_equal "included_model::child", device.frame_transform.from
+                    assert_equal "world", device.frame_transform.to
+                end
+
+                it 'provides the link names for the from and to of the link device' do
+                    device, = common_link_export_behavior
+                    assert_equal "included_model::child", device.sdf_from_link
+                    assert_equal "world", device.sdf_to_link
                 end
 
                 it 'exposes the links from the submodel' do
@@ -778,12 +784,10 @@ module RockGazebo
                 end
 
                 it "exports the to and from frames as the sdf element of them" do
-                    assert_kind_of ::SDF::Link, @link_device.sdf_from_link
-                    assert_equal "test::included_model::root",
-                                 @link_device.sdf_from_link.full_name
-                    assert_kind_of ::SDF::Link, @link_device.sdf_to_link
-                    assert_equal "test::included_model::child",
-                                 @link_device.sdf_to_link.full_name
+                    assert_equal "included_model::root",
+                                 @link_device.sdf_from_link
+                    assert_equal "included_model::child",
+                                 @link_device.sdf_to_link
                 end
 
                 it "raises when the from frame is not a known link" do

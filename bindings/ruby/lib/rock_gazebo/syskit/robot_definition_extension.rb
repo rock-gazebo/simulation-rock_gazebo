@@ -267,8 +267,13 @@ module RockGazebo
 
                 dev = device(CommonModels::Devices::Gazebo::Link,
                              as: as, using: link_driver)
-                dev.sdf_from_link(sdf_export_resolve_link_sdf(model_dev, from_frame))
-                dev.sdf_to_link(sdf_export_resolve_link_sdf(model_dev, to_frame))
+                from_link = sdf_export_resolve_link_sdf(model_dev, from_frame)
+                from_link_frame = relative_link_name_from_root_model(model_dev, from_link)
+                dev.sdf_from_link(from_link_frame)
+
+                to_link = sdf_export_resolve_link_sdf(model_dev, to_frame)
+                to_link_frame = relative_link_name_from_root_model(model_dev, to_link)
+                dev.sdf_to_link(to_link_frame)
 
                 dev.frame_transform(from_frame => to_frame) if from_frame != to_frame
                 model_dev.gazebo_root_model.register_exported_link(dev)
@@ -288,6 +293,13 @@ module RockGazebo
                           "#{frame_name}, within model #{model_dev.sdf.name}"
                 end
                 sdf
+            end
+
+            def relative_link_name_from_root_model(model_dev, link)
+                root_model_parent = model_dev.gazebo_root_model.sdf.parent
+                return "world" if link.instance_of?(::SDF::World)
+
+                link.full_name(root: root_model_parent) || link.full_name
             end
 
             def find_actual_model(name, candidates)
@@ -607,8 +619,9 @@ module RockGazebo
                     .frame_transform(link_frame => 'world')
                     .advanced
 
-                dev.sdf_from_link(link)
-                dev.sdf_to_link(resolve_enclosing_world(sdf_model))
+                link_full_name = link.full_name(root: root_device.sdf)
+                dev.sdf_from_link(link_full_name)
+                dev.sdf_to_link("world")
                 dev
             end
 
