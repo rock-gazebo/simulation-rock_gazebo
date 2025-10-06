@@ -171,6 +171,11 @@ module RockGazebo
                 ignore_joint_names: false,
                 position_offsets: []
             )
+                joint_sdfs = sdf_export_resolve_joint_sdf(model_dev, joint_names)
+                joint_names = joint_sdfs.map do |el|
+                    el.full_name(root: model_dev.gazebo_root_model.sdf.parent)
+                end
+
                 driver_def = model_dev.to_instance_requirements.to_component_model.dup
                 driver_m = OroGen.rock_gazebo.ModelTask.specialize
                 driver_srv = driver_m.require_dynamic_service(
@@ -188,6 +193,18 @@ module RockGazebo
                 register_exported_joint_device(dev)
                 model_dev.gazebo_root_model.register_exported_joint(dev)
                 dev
+            end
+
+            def sdf_export_resolve_joint_sdf(model_dev, joint_names)
+                joint_names.map do |joint|
+                    relative_joint_name = joint.split("::")[1..-1].join("::")
+                    unless (sdf = model_dev.sdf.find_joint_by_name(relative_joint_name))
+                        raise ArgumentError,
+                              "cannot find joint #{relative_joint_name} inferred from " \
+                              "frame #{joint}, within model #{model_dev.sdf.name}"
+                    end
+                    sdf
+                end
             end
 
             # Registers a device as one of the exported link devices

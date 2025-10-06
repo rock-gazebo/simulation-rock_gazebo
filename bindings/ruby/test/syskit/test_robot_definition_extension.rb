@@ -825,14 +825,14 @@ module RockGazebo
 
                     @joint_device = @robot_model.sdf_export_joint(
                         @device,
-                        as: 'some_links', joint_names: ['prefix::j1']
+                        as: 'some_links', joint_names: ["included_model::roo2child"]
                     )
                 end
 
                 it 'creates a device with the relevant joint_export dynamic service' do
                     plan = Roby::Plan.new
                     srv = @joint_device.to_instance_requirements.instanciate(plan)
-                    assert_equal ['prefix::j1'],
+                    assert_equal %w[included_model::roo2child],
                                  srv.model.dynamic_service_options[:joint_names]
                 end
 
@@ -846,7 +846,7 @@ module RockGazebo
                     plan = Roby::Plan.new
                     joint_device = @robot_model.sdf_export_joint(
                         @device,
-                        as: 'other_links', joint_names: ['prefix::j1'],
+                        as: "other_links", joint_names: ["included_model::roo2child"],
                         ignore_joint_names: true
                     )
                     srv = joint_device.to_instance_requirements.instanciate(plan)
@@ -865,7 +865,8 @@ module RockGazebo
                     plan = Roby::Plan.new
                     joint_device = @robot_model.sdf_export_joint(
                         @device,
-                        as: 'other_links', joint_names: ['prefix::j1'],
+                        as: "other_links",
+                        joint_names: ["included_model::roo2child"],
                         ignore_joint_names: true,
                         position_offsets: [10]
                     )
@@ -875,6 +876,20 @@ module RockGazebo
 
                 it "records all the exported joints" do
                     assert_equal [@joint_device], @robot_model.each_exported_joint.to_a
+                end
+
+                it "raises when the given joint name is not a known joint" do
+                    model = @robot_model
+                    dev = @device
+                    assert_raises ArgumentError do
+                        model.sdf_export_joint(
+                            dev,
+                            as: "other_links",
+                            joint_names: ["some::absurd::joint_name"],
+                            ignore_joint_names: true,
+                            position_offsets: [10]
+                        )
+                    end
                 end
             end
 
@@ -905,7 +920,7 @@ module RockGazebo
                         @joint = @robot_model.sdf_export_joint(
                             @device,
                             as: "some_joints",
-                            joint_names: ["attachment::included_model::j1"]
+                            joint_names: ["attachment::included_model::roo2child"]
                         )
                     end
 
@@ -939,7 +954,7 @@ module RockGazebo
                         )
                         @joint = @robot_model.sdf_export_joint(
                             @device,
-                            as: "some_joints", joint_names: ["included_model::j1"]
+                            as: "some_joints", joint_names: ["included_model::roo2child"]
                         )
                     end
 
