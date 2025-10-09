@@ -48,7 +48,7 @@ module RockGazebo
             # Setup the transformer based on the given model
             #
             # @return [Model]
-            def use_sdf_model(*path, as: nil)
+            def use_sdf_model(*path, filter: nil, as: nil)
                 if @sdf
                     raise AlreadyLoaded, "SDF model already loaded, loading more than one is not possible"
                 end
@@ -62,10 +62,9 @@ module RockGazebo
 
                 @sdf = resolve_sdf_model(*path)
                 @sdf_model = @sdf.each_model.first
-                if as
-                    @sdf_model.name = as
-                end
-                transformer.parse_sdf_model(@sdf_model)
+                @sdf_model.name = as if as
+                transformer.parse_sdf_model(@sdf_model, filter: filter)
+
                 @sdf_model
             end
 
@@ -127,8 +126,8 @@ module RockGazebo
             #
             # @param [Boolean] use_world whether {#use_gazebo_world} should be
             #   called at the end. You usually want this
-            def use_gazebo_model(*path, as: nil, use_world: true, reuse: nil, prefix_device_with_name: nil)
-                use_sdf_model(*path, as: as)
+            def use_gazebo_model(*path, filter: nil, as: nil, use_world: true, reuse: nil, prefix_device_with_name: nil)
+                use_sdf_model(*path, as: as, filter: filter)
                 model_in_world = resolve_model_in_world
 
                 # Load the model in the syskit subsystems
