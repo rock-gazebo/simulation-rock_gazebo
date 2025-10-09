@@ -18,29 +18,34 @@ module RockGazebo
             def resolve_sdf_model(*path)
                 if path.size == 1 && !path.first.respond_to?(:to_str)
                     # Assume this is a SDF::Model object
-                    path.first
-                else
-                    _, resolved_paths = Rock::Gazebo.resolve_worldfiles_and_models_arguments(
-                        [File.join(*path)], path_resolver: Roby.app
-                    )
-                    full_path = resolved_paths.first
-                    if !File.file?(full_path)
-                        if File.file?(File.join(full_path, 'model.config'))
-                            full_path = ::SDF::XML.model_path_of(full_path)
-                        else
-                            raise ArgumentError, "#{full_path} cannot be resolved to a valid SDF file"
-                        end
-                    end
-
-                    sdf = ::SDF::Root.load(full_path, flatten: false)
-                    models = sdf.each_model.to_a
-                    if models.size > 1
-                        raise ArgumentError, "#{full_path} has more than one top level model, cannot use in use_sdf_model"
-                    elsif models.empty?
-                        raise ArgumentError, "#{full_path} has no top level model, cannot use in use_sdf_model"
-                    end
-                    return sdf
+                    return path.first
                 end
+
+                _, resolved_paths = Rock::Gazebo.resolve_worldfiles_and_models_arguments(
+                    [File.join(*path)], path_resolver: Roby.app
+                )
+                full_path = resolved_paths.first
+                unless File.file?(full_path)
+                    if File.file?(File.join(full_path, "model.config"))
+                        full_path = ::SDF::XML.model_path_of(full_path)
+                    else
+                        raise ArgumentError,
+                              "#{full_path} cannot be resolved to a valid SDF file"
+                    end
+                end
+
+                sdf = ::SDF::Root.load(full_path, flatten: false)
+                models = sdf.each_model.to_a
+                if models.size > 1
+                    raise ArgumentError,
+                          "#{full_path} has more than one top level model, " \
+                          "cannot use in use_sdf_model"
+                elsif models.empty?
+                    raise ArgumentError,
+                          "#{full_path} has no top level model, " \
+                          "cannot use in use_sdf_model"
+                end
+                sdf
             end
 
             class AlreadyLoaded < ArgumentError; end
@@ -50,7 +55,9 @@ module RockGazebo
             # @return [Model]
             def use_sdf_model(*path, filter: nil, as: nil)
                 if @sdf
-                    raise AlreadyLoaded, "SDF model already loaded, loading more than one is not possible"
+                    raise AlreadyLoaded,
+                          "SDF model already loaded, " \
+                          "loading more than one is not possible"
                 end
 
                 # This is a guard used by
