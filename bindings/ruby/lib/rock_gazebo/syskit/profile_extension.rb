@@ -72,16 +72,24 @@ module RockGazebo
             #
             # Find the model given to {#use_sdf_model} into the loaded SDF world
             def resolve_model_in_world
-                includes = sdf_world.root.find_all_included_models(@sdf.metadata['path'])
+                model_path = @sdf.metadata["path"]
+                includes = sdf_world.root.find_all_included_models(model_path)
                 model_in_world = includes.find { |m| m.name == @sdf_model.name }
-                if !model_in_world
-                    if includes.empty?
-                        raise ArgumentError, "cannot find model passed to #use_sdf_model in the current world. The expected model is not included anywhere."
-                    else
-                        raise ArgumentError, "cannot find model passed to #use_sdf_model in the current world. The expected model is included, but no includes have the expected name '#{@sdf_model.name}', found: #{includes.map(&:name).sort.join(", ")}."
-                    end
+                return model_in_world if model_in_world
+
+                if includes.empty?
+                    raise ArgumentError,
+                          "cannot find model #{model_path}, passed to " \
+                          "#use_sdf_model, in the current world #{sdf_world.name}. " \
+                          "The expected model does not seem to be included anywhere."
                 end
-                model_in_world
+
+                found = includes.map(&:name).sort.join(", ")
+                raise ArgumentError,
+                      "cannot find model #{model_path}, passed to " \
+                      "#use_sdf_model, in the current world #{sdf_world.name}. " \
+                      "The expected model is included, but no includes have " \
+                      "the expected name '#{@sdf_model.name}', found: #{found}"
             end
 
             # Configure the transformer to reflect the SDF environment loaded
