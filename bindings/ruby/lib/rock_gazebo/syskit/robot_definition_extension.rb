@@ -25,9 +25,17 @@ module RockGazebo
             # sensors by the full path in the XML. In the example above,
             # the sensor device is root_included_model_link_gps_sensor_dev
             attr_accessor :scope_device_name_with_links_and_submodels
+
+            # Feature flag that toggles the automatic definition of links when
+            # loading a gazebo model.
+            #
+            # This starts failing when one uses more than two levels of submodels as it
+            # quickly gets too complex to manage the automatically generated links names
+            attr_accessor :use_gazebo_automatic_links
         end
 
         @scope_device_name_with_links_and_submodels = false
+        @use_gazebo_automatic_links = true
 
         # Gazebo-specific extensions to {Syskit::Robot::RobotDefinition}
         module RobotDefinitionExtension
@@ -163,6 +171,11 @@ module RockGazebo
                 ignore_joint_names: false,
                 position_offsets: []
             )
+                joint_sdfs = sdf_export_resolve_joint_sdf(model_dev, joint_names)
+                joint_names = joint_sdfs.map do |el|
+                    el.full_name(root: model_dev.gazebo_root_model.sdf.parent)
+                end
+
                 driver_def = model_dev.to_instance_requirements.to_component_model.dup
                 driver_m = OroGen.rock_gazebo.ModelTask.specialize
                 driver_srv = driver_m.require_dynamic_service(
@@ -180,6 +193,18 @@ module RockGazebo
                 register_exported_joint_device(dev)
                 model_dev.gazebo_root_model.register_exported_joint(dev)
                 dev
+            end
+
+            def sdf_export_resolve_joint_sdf(model_dev, joint_names)
+                joint_names.map do |joint|
+                    relative_joint_name = joint.split("::")[1..-1].join("::")
+                    unless (sdf = model_dev.sdf.find_joint_by_name(relative_joint_name))
+                        raise ArgumentError,
+                              "cannot find joint #{relative_joint_name} inferred from " \
+                              "frame #{joint}, within model #{model_dev.sdf.name}"
+                    end
+                    sdf
+                end
             end
 
             # Registers a device as one of the exported link devices
@@ -242,10 +267,39 @@ module RockGazebo
 
                 dev = device(CommonModels::Devices::Gazebo::Link,
                              as: as, using: link_driver)
+                from_link = sdf_export_resolve_link_sdf(model_dev, from_frame)
+                from_link_frame = relative_link_name_from_root_model(model_dev, from_link)
+                dev.sdf_from_link(from_link_frame)
+
+                to_link = sdf_export_resolve_link_sdf(model_dev, to_frame)
+                to_link_frame = relative_link_name_from_root_model(model_dev, to_link)
+                dev.sdf_to_link(to_link_frame)
+
                 dev.frame_transform(from_frame => to_frame) if from_frame != to_frame
                 model_dev.gazebo_root_model.register_exported_link(dev)
                 register_exported_link_device(dev)
                 dev
+            end
+
+            def sdf_export_resolve_link_sdf(model_dev, frame_name)
+                if frame_name == "world"
+                    return resolve_enclosing_world(model_dev.sdf_model)
+                end
+
+                relative_link_name = frame_name.split("::")[1..-1].join("::")
+                unless (sdf = model_dev.sdf.find_link_by_name(relative_link_name))
+                    raise ArgumentError,
+                          "cannot find link #{relative_link_name} inferred from frame " \
+                          "#{frame_name}, within model #{model_dev.sdf.name}"
+                end
+                sdf
+            end
+
+            def relative_link_name_from_root_model(model_dev, link)
+                root_model_parent = model_dev.gazebo_root_model.sdf.parent
+                return "world" if link.instance_of?(::SDF::World)
+
+                link.full_name(root: root_model_parent) || link.full_name
             end
 
             def find_actual_model(name, candidates)
@@ -384,7 +438,8 @@ module RockGazebo
                     )
                     model_device = define_submodel_device(name, enclosing_device, model)
                     prefix_device_with_name = true
-                    deployment_prefix += enclosing_model.name + "::" + model.name + "::"
+                    deployment_prefix +=
+                        "#{sdf_relative_path(enclosing_model.parent, model)}::"
                 else
                     enclosing_device = expose_gazebo_model(
                         enclosing_model, deployment_prefix,
@@ -443,7 +498,6 @@ module RockGazebo
                 name: sdf_model.name, prefix_device_with_name: true,
                 deployment_prefix: ""
             )
-
                 sensors =
                     if Syskit.scope_device_name_with_links_and_submodels
                         sdf_model.each_direct_sensor
@@ -496,6 +550,9 @@ module RockGazebo
             # @api private
             #
             # Define devices for all links and sensors in the model
+            #
+            # @param [SDF::Model] sdf_model SDF model of this profile's robot,
+            #   as included in the current gazebo world
             def load_gazebo_robot_model(
                 sdf_model, root_device,
                 reuse: nil, name: sdf_model.name, prefix_device_with_name: true,
@@ -505,12 +562,14 @@ module RockGazebo
                     frame_prefix = "#{normalize_name(prefix)}_"
                 end
 
-                sdf_model.each_link_with_name do |l, l_name|
-                    gazebo_define_link_device(
-                        root_device, sdf_model, l, l_name,
-                        model_name: name, reuse: reuse, frame_prefix: frame_prefix,
-                        prefix_device_with_name: prefix_device_with_name
-                    )
+                if Syskit.use_gazebo_automatic_links
+                    sdf_model.each_link_with_name do |l, l_name|
+                        gazebo_define_link_device(
+                            root_device, sdf_model, l, l_name,
+                            model_name: name, reuse: reuse, frame_prefix: frame_prefix,
+                            prefix_device_with_name: prefix_device_with_name
+                        )
+                    end
                 end
 
                 load_gazebo_robot_submodels(
@@ -551,11 +610,19 @@ module RockGazebo
                     .use_frames("#{frame_basename}_source" => link_frame,
                                 "#{frame_basename}_target" => 'world')
                     .select_service(driver_srv)
-                device(CommonModels::Devices::Gazebo::Link,
-                       as: device_name, using: link_driver_m)
+                dev =
+                    device(
+                        CommonModels::Devices::Gazebo::Link,
+                        as: device_name, using: link_driver_m
+                    )
                     .doc("Gazebo: state of the #{link.name} link of #{sdf_model.name}")
                     .frame_transform(link_frame => 'world')
                     .advanced
+
+                link_full_name = link.full_name(root: root_device.sdf)
+                dev.sdf_from_link(link_full_name)
+                dev.sdf_to_link("world")
+                dev
             end
 
             def gazebo_define_sensor_device(

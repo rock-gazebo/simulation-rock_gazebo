@@ -674,8 +674,14 @@ module RockGazebo
 
                 it 'sets up the transforms on the submodel\'s links' do
                     device, = common_link_export_behavior
-                    assert_equal 'included_model::child', device.frame_transform.from
-                    assert_equal 'world', device.frame_transform.to
+                    assert_equal "included_model::child", device.frame_transform.from
+                    assert_equal "world", device.frame_transform.to
+                end
+
+                it 'provides the link names for the from and to of the link device' do
+                    device, = common_link_export_behavior
+                    assert_equal "included_model::child", device.sdf_from_link
+                    assert_equal "world", device.sdf_to_link
                 end
 
                 it 'exposes the links from the submodel' do
@@ -752,11 +758,7 @@ module RockGazebo
 
             describe '#sdf_export_link' do
                 before do
-                    root = ::SDF::Root.load(
-                        expand_fixture_world('simple_model.world'),
-                        flatten: false
-                    )
-                    @world = root.each_world.first
+                    @world = load_normalized_world("simple_model.world")
                     @robot_sdf = @world.each_model.first
                     @device = @robot_model.expose_gazebo_model(@robot_sdf, 'prefix')
 
@@ -780,6 +782,39 @@ module RockGazebo
                 it "records all the exported links" do
                     assert_equal [@link_device], @robot_model.each_exported_link.to_a
                 end
+
+                it "exports the to and from frames as the sdf element of them" do
+                    assert_equal "included_model::root",
+                                 @link_device.sdf_from_link
+                    assert_equal "included_model::child",
+                                 @link_device.sdf_to_link
+                end
+
+                it "raises when the from frame is not a known link" do
+                    model = @robot_model
+                    dev = @device
+                    assert_raises ArgumentError do
+                        model.sdf_export_link(
+                            dev,
+                            as: "other_links",
+                            from_frame: "banana::apple",
+                            to_frame: "prefix::child"
+                        )
+                    end
+                end
+
+                it "raises when the to frame is not a known link" do
+                    model = @robot_model
+                    dev = @device
+                    assert_raises ArgumentError do
+                        model.sdf_export_link(
+                            dev,
+                            as: "other_links",
+                            from_frame: "prefix::child",
+                            to_frame: "banana::apple"
+                        )
+                    end
+                end
             end
 
             describe '#sdf_export_joint' do
@@ -794,14 +829,14 @@ module RockGazebo
 
                     @joint_device = @robot_model.sdf_export_joint(
                         @device,
-                        as: 'some_links', joint_names: ['prefix::j1']
+                        as: 'some_links', joint_names: ["included_model::roo2child"]
                     )
                 end
 
                 it 'creates a device with the relevant joint_export dynamic service' do
                     plan = Roby::Plan.new
                     srv = @joint_device.to_instance_requirements.instanciate(plan)
-                    assert_equal ['prefix::j1'],
+                    assert_equal %w[included_model::roo2child],
                                  srv.model.dynamic_service_options[:joint_names]
                 end
 
@@ -815,7 +850,7 @@ module RockGazebo
                     plan = Roby::Plan.new
                     joint_device = @robot_model.sdf_export_joint(
                         @device,
-                        as: 'other_links', joint_names: ['prefix::j1'],
+                        as: "other_links", joint_names: ["included_model::roo2child"],
                         ignore_joint_names: true
                     )
                     srv = joint_device.to_instance_requirements.instanciate(plan)
@@ -834,7 +869,8 @@ module RockGazebo
                     plan = Roby::Plan.new
                     joint_device = @robot_model.sdf_export_joint(
                         @device,
-                        as: 'other_links', joint_names: ['prefix::j1'],
+                        as: "other_links",
+                        joint_names: ["included_model::roo2child"],
                         ignore_joint_names: true,
                         position_offsets: [10]
                     )
@@ -844,6 +880,20 @@ module RockGazebo
 
                 it "records all the exported joints" do
                     assert_equal [@joint_device], @robot_model.each_exported_joint.to_a
+                end
+
+                it "raises when the given joint name is not a known joint" do
+                    model = @robot_model
+                    dev = @device
+                    assert_raises ArgumentError do
+                        model.sdf_export_joint(
+                            dev,
+                            as: "other_links",
+                            joint_names: ["some::absurd::joint_name"],
+                            ignore_joint_names: true,
+                            position_offsets: [10]
+                        )
+                    end
                 end
             end
 
@@ -867,12 +917,14 @@ module RockGazebo
                         @device = @robot_model.find_device("renamed_model")
                         @link = @robot_model.sdf_export_link(
                             @device,
-                            as: "some_links", from_frame: "prefix::root",
-                            to_frame: "prefix::child"
+                            as: "some_links",
+                            from_frame: "attachment::included_model::root",
+                            to_frame: "attachment::included_model::child"
                         )
                         @joint = @robot_model.sdf_export_joint(
                             @device,
-                            as: "some_joints", joint_names: ["prefix::j1"]
+                            as: "some_joints",
+                            joint_names: ["attachment::included_model::roo2child"]
                         )
                     end
 
@@ -901,12 +953,12 @@ module RockGazebo
                         @device = @robot_model.find_device("renamed_model")
                         @link = @robot_model.sdf_export_link(
                             @device,
-                            as: "some_links", from_frame: "prefix::root",
-                            to_frame: "prefix::child"
+                            as: "some_links", from_frame: "included_model::root",
+                            to_frame: "included_model::child"
                         )
                         @joint = @robot_model.sdf_export_joint(
                             @device,
-                            as: "some_joints", joint_names: ["prefix::j1"]
+                            as: "some_joints", joint_names: ["included_model::roo2child"]
                         )
                     end
 
