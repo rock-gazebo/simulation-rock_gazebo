@@ -48,7 +48,7 @@ module RockGazebo
             # Setup the transformer based on the given model
             #
             # @return [Model]
-            def use_sdf_model(*path, as: nil)
+            def use_sdf_model(*path, filter: nil, as: nil)
                 if @sdf
                     raise AlreadyLoaded, "SDF model already loaded, loading more than one is not possible"
                 end
@@ -62,10 +62,9 @@ module RockGazebo
 
                 @sdf = resolve_sdf_model(*path)
                 @sdf_model = @sdf.each_model.first
-                if as
-                    @sdf_model.name = as
-                end
-                transformer.parse_sdf_model(@sdf_model)
+                @sdf_model.name = as if as
+                transformer.parse_sdf_model(@sdf_model, filter: filter)
+
                 @sdf_model
             end
 
@@ -73,16 +72,24 @@ module RockGazebo
             #
             # Find the model given to {#use_sdf_model} into the loaded SDF world
             def resolve_model_in_world
-                includes = sdf_world.root.find_all_included_models(@sdf.metadata['path'])
+                model_path = @sdf.metadata["path"]
+                includes = sdf_world.root.find_all_included_models(model_path)
                 model_in_world = includes.find { |m| m.name == @sdf_model.name }
-                if !model_in_world
-                    if includes.empty?
-                        raise ArgumentError, "cannot find model passed to #use_sdf_model in the current world. The expected model is not included anywhere."
-                    else
-                        raise ArgumentError, "cannot find model passed to #use_sdf_model in the current world. The expected model is included, but no includes have the expected name '#{@sdf_model.name}', found: #{includes.map(&:name).sort.join(", ")}."
-                    end
+                return model_in_world if model_in_world
+
+                if includes.empty?
+                    raise ArgumentError,
+                          "cannot find model #{model_path}, passed to " \
+                          "#use_sdf_model, in the current world #{sdf_world.name}. " \
+                          "The expected model does not seem to be included anywhere."
                 end
-                model_in_world
+
+                found = includes.map(&:name).sort.join(", ")
+                raise ArgumentError,
+                      "cannot find model #{model_path}, passed to " \
+                      "#use_sdf_model, in the current world #{sdf_world.name}. " \
+                      "The expected model is included, but no includes have " \
+                      "the expected name '#{@sdf_model.name}', found: #{found}"
             end
 
             # Configure the transformer to reflect the SDF environment loaded
@@ -127,8 +134,8 @@ module RockGazebo
             #
             # @param [Boolean] use_world whether {#use_gazebo_world} should be
             #   called at the end. You usually want this
-            def use_gazebo_model(*path, as: nil, use_world: true, reuse: nil, prefix_device_with_name: nil)
-                use_sdf_model(*path, as: as)
+            def use_gazebo_model(*path, filter: nil, as: nil, use_world: true, reuse: nil, prefix_device_with_name: nil)
+                use_sdf_model(*path, as: as, filter: filter)
                 model_in_world = resolve_model_in_world
 
                 # Load the model in the syskit subsystems

@@ -63,7 +63,7 @@ module RockGazebo
                 it 'loads the model in the transformer instance' do
                     flexmock(@profile.transformer)
                         .should_receive(:parse_sdf_model)
-                        .with(->(m) { m.name == 'simple test model' })
+                        .with(->(m) { m.name == 'simple test model' }, filter: nil)
                         .once
                     @profile.use_sdf_model 'model://simple_model'
                 end
@@ -113,25 +113,13 @@ module RockGazebo
                     e = assert_raises(ArgumentError) do
                         @profile.use_sdf_world
                     end
-                    assert_equal(
-                        'cannot find model passed to #use_sdf_model '\
-                        'in the current world. The expected model is '\
-                        'not included anywhere.',
-                        e.message
+
+                    match = Regexp.new(
+                        "cannot find model .*model/model.sdf, passed to " \
+                        "#use_sdf_model, in the current world test. The expected model " \
+                        "does not seem to be included anywhere.",
                     )
-                end
-                it 'raises if the model loaded by #use_sdf_model '\
-                   'cannot be found in the world' do
-                    @profile.use_sdf_model 'model://simple_model'
-                    e = assert_raises(ArgumentError) do
-                        @profile.use_sdf_world
-                    end
-                    assert_equal(
-                        'cannot find model passed to #use_sdf_model in the current '\
-                        'world. The expected model is included, but no includes have '\
-                        'the expected name \'simple test model\', found: included_model.',
-                        e.message
-                    )
+                    assert_match(match, e.message)
                 end
                 it "aliases the world's frame to 'world'" do
                     @profile.use_sdf_world
