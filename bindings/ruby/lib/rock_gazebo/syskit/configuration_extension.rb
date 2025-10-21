@@ -1,14 +1,12 @@
+# frozen_string_literal: true
+
 module RockGazebo
     module Syskit
         module ConfigurationExtension
             Roby.app.on_setup do
-                if Conf.sdf.world_path?
-                    world_path = Conf.sdf.world_path
-                end
+                world_path = Conf.sdf.world_path if Conf.sdf.world_path?
                 Conf.sdf = SDF.new
-                if world_path
-                    Conf.sdf.world_path = world_path
-                end
+                Conf.sdf.world_path = world_path if world_path
                 Conf.gazebo.use_sim_time = false
                 Conf.gazebo.localhost = true
             end
@@ -73,6 +71,20 @@ module RockGazebo
                       "#{Roby.app.search_path.join(' ')}"
             end
 
+            def self.normalize_read_only(
+                deployment_model, read_only_names, read_only_task_models
+            )
+                # Be explicit to the support of turning read only on and off entirely
+                return true if read_only_names == true
+                return false if read_only_names == false
+
+                task_names =
+                    deployment_model.each_deployed_task_model.filter_map do |name, model|
+                        name if read_only_task_models.any? { |s| s === model.name }
+                    end
+                read_only_names + task_names
+             end
+
             # Sets up Syskit to use gazebo configured to use the given world. One can set
             # some of entities in the world as read only, meaning they won't be configured
             # at startup, instead they will wait for another instance of syskit to do it.
@@ -84,7 +96,8 @@ module RockGazebo
             #   gazebo itself
             def use_gazebo_world(
                 *path, world_name: nil, localhost: Conf.gazebo.localhost?,
-                read_only: false, logger_name: nil, period: 0.1
+                read_only: false, read_only_task_models: [], logger_name: nil,
+                period: 0.1
             )
                 world = use_sdf_world(*path, world_name: world_name)
                 Rock::Gazebo.process_gazebo_world(world)
@@ -118,11 +131,15 @@ module RockGazebo
                         process_server_config_for("gazebo")
                     end
 
+                read_only = ConfigurationExtension.normalize_read_only(
+                    deployment_model, read_only, read_only_task_models
+                )
+                Robot.info "read only deployed tasks: #{read_only}"
                 configured_deployment =
                     ::Syskit::Models::ConfiguredDeployment
                     .new(process_server_config.name, deployment_model,
                          {}, "gazebo:#{world.name}", {}, read_only: read_only,
-                         logger_name: logger_name)
+                                                         logger_name: logger_name)
                 register_configured_deployment(configured_deployment)
                 configured_deployment
             end
