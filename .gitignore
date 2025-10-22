@@ -6,3 +6,4 @@ build/
 .settings/*
 .log
 *.sw?
+.vscode/c_cpp*
