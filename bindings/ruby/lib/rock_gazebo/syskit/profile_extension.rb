@@ -141,14 +141,20 @@ module RockGazebo
             #
             # @param [Boolean] use_world whether {#use_gazebo_world} should be
             #   called at the end. You usually want this
-            def use_gazebo_model(*path, filter: nil, as: nil, use_world: true, reuse: nil, prefix_device_with_name: nil)
+            def use_gazebo_model(
+                *path,
+                filter: nil, as: nil, use_world: true,
+                reuse: nil, prefix_device_with_name: Syskit.prefix_device_with_name
+            )
                 use_sdf_model(*path, as: as, filter: filter)
                 model_in_world = resolve_model_in_world
 
                 # Load the model in the syskit subsystems
-                robot.load_gazebo(model_in_world, "gazebo::#{sdf_world.name}",
-                                  reuse: reuse,
-                                  prefix_device_with_name: prefix_device_with_name)
+                robot.load_gazebo(
+                    model_in_world, "gazebo::#{sdf_world.name}",
+                    reuse: reuse,
+                    prefix_device_with_name: prefix_device_with_name
+                )
 
                 use_gazebo_world(reuse: reuse) if use_world
             end

@@ -32,10 +32,19 @@ module RockGazebo
             # This starts failing when one uses more than two levels of submodels as it
             # quickly gets too complex to manage the automatically generated links names
             attr_accessor :use_gazebo_automatic_links
+
+            # Feature flag that control use_gazebo_world and use_gazebo_model's
+            # prefix_device_with_name flag.
+            #
+            # The historical default was false, but you really should switch it to true.
+            # First migrate little by little each call and then turn it on globally
+            # by setting this flag.
+            attr_accessor :prefix_device_with_name
         end
 
         @scope_device_name_with_links_and_submodels = false
         @use_gazebo_automatic_links = true
+        @prefix_device_with_name = false
 
         # Gazebo-specific extensions to {Syskit::Robot::RobotDefinition}
         module RobotDefinitionExtension
@@ -413,7 +422,8 @@ module RockGazebo
             # @raise [ArgumentError] if models does not contain robot_model
             def load_gazebo(
                 model, deployment_prefix,
-                name: model.name, reuse: nil, prefix_device_with_name: false
+                name: model.name, reuse: nil,
+                prefix_device_with_name: Syskit.prefix_device_with_name
             )
                 # Allow passing a profile instead of a robot definition
                 reuse = reuse.robot if reuse.respond_to?(:robot)
@@ -421,10 +431,13 @@ module RockGazebo
 
                 unless prefix_device_with_name
                     Roby.warn_deprecated <<~EOMSG
-                        The link naming scheme in #use_sdf_model and #use_gazebo_model will change from using the link
-                        name as device name to prefixing it with the name given to #use_sdf_model (which defaults to the
-                        model name itself) set the prefix_device_with_name: option to true to enable the new behavior
-                        and remove this warning This warning will become an error before the functionality completely
+                        The link naming scheme in #use_sdf_model and #use_gazebo_model
+                        will change from using the link name as device name to
+                        prefixing it with the name given to #use_sdf_model
+                        (which defaults to the model name itself) set the
+                        prefix_device_with_name: option to true to enable the
+                        new behavior and remove this warning This warning will
+                        become an error before the functionality completely
                         disappears
                     EOMSG
                 end
@@ -449,10 +462,12 @@ module RockGazebo
                     enclosing_device.advanced = false
                     deployment_prefix += model.name + "::"
                 end
-                load_gazebo_robot_model(model, enclosing_device,
-                                        name: name, reuse: reuse,
-                                        prefix_device_with_name: prefix_device_with_name,
-                                        deployment_prefix: deployment_prefix
+
+                load_gazebo_robot_model(
+                    model, enclosing_device,
+                    name: name, reuse: reuse,
+                    prefix_device_with_name: prefix_device_with_name,
+                    deployment_prefix: deployment_prefix
                 )
                 model_device
             end
@@ -495,7 +510,8 @@ module RockGazebo
             # Describes recursively all sensors and plugins in the model
             def load_gazebo_robot_submodels(
                 sdf_model,
-                name: sdf_model.name, prefix_device_with_name: true,
+                name: sdf_model.name,
+                prefix_device_with_name:,
                 deployment_prefix: ""
             )
                 sensors =
@@ -555,7 +571,8 @@ module RockGazebo
             #   as included in the current gazebo world
             def load_gazebo_robot_model(
                 sdf_model, root_device,
-                reuse: nil, name: sdf_model.name, prefix_device_with_name: true,
+                reuse: nil, name: sdf_model.name,
+                prefix_device_with_name:,
                 deployment_prefix: ""
             )
                 if (prefix = sdf_model.full_name(root: root_device.sdf))
@@ -582,7 +599,7 @@ module RockGazebo
             def gazebo_define_link_device(
                 root_device, sdf_model, link, link_name,
                 model_name: sdf_model.name, frame_prefix: '',
-                prefix_device_with_name: true, reuse: false
+                prefix_device_with_name:, reuse: false
             )
                 device_name = "#{normalize_name(link_name)}_link"
                 if prefix_device_with_name
@@ -627,7 +644,7 @@ module RockGazebo
 
             def gazebo_define_sensor_device(
                 sdf_model, sensor,
-                model_name: sdf_model.name, prefix_device_with_name: true,
+                model_name: sdf_model.name, prefix_device_with_name:,
                 deployment_prefix: ""
             )
                 device_name = "#{normalize_name(sensor.name)}_sensor"
@@ -664,7 +681,7 @@ module RockGazebo
 
             def gazebo_define_plugin_device(
                 sdf_model, plugin,
-                model_name: sdf_model.name, prefix_device_with_name: true,
+                model_name: sdf_model.name, prefix_device_with_name:,
                 deployment_prefix: ""
             )
                 plugin_name = normalize_name(plugin.name.split(/__/)[-1])
