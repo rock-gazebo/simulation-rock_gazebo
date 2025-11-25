@@ -2,12 +2,52 @@ module RockGazebo
     module Syskit
         module ProfileExtension
             # The globally-loaded SDF model that describes our world
+            #
+            # @return [SDF::World]
             def sdf_world
                 @sdf_world ||= Conf.sdf.world
             end
 
             # The model loaded with #use_sdf_model
+            #
+            # @return [SDF::Model]
             attr_accessor :sdf_model
+
+            # The transformer representation of the loaded SDF world
+            #
+            # This takes into account the
+            def sdf_world_transforms
+                return @sdf_world_transforms if @sdf_world_transforms
+
+                # Parse the whole world and massage it before we merge it in the
+                # profile's transformer
+                world_tr = ::Transformer::Configuration.new
+                world_tr.parse_sdf_world(sdf_world)
+                sdf_adapt_transformer_configuration_to_main_model(world_tr) if @sdf_model
+                @sdf_world_transforms = world_tr
+            end
+
+            # @api private
+            #
+            # Adapt a transformer configuration parsed from the whole world to remove
+            # the duplication of the model loaded by use_sdf_model
+            #
+            # Essentially, it replaces 'deep' representation of the main model by the
+            # one already loaded by use_sdf_model, to remove the duplication
+            def sdf_adapt_transformer_configuration_to_main_model(transformer)
+                model_in_world = resolve_model_in_world
+                model_in_world_full_name = model_in_world.full_name(root: sdf_world)
+                model_in_world_frame_prefix = "#{model_in_world_full_name}::"
+
+                frame_mapping = { model_in_world_full_name => @sdf_model.name }
+                transformer.frames.each do |frame_name|
+                    if frame_name.start_with?(model_in_world_frame_prefix)
+                        subname = frame_name[model_in_world_frame_prefix.size..-1]
+                        frame_mapping[frame_name] = "#{@sdf_model.name}::#{subname}"
+                    end
+                end
+                transformer.rename_frames(frame_mapping)
+            end
 
             # @api private
             #
@@ -72,7 +112,22 @@ module RockGazebo
                 @sdf_model.name = as if as
                 transformer.parse_sdf_model(@sdf_model, filter: filter)
 
+                create_world_frame
+
                 @sdf_model
+            end
+
+            # Make sure that the world's root name is connected to a frame named 'world'
+            def create_world_frame
+                return if transformer.frame?("world")
+
+                transformer.frames "world"
+                return unless (world = sdf_world)
+
+                world_real_name = world.full_name
+                return if world_real_name == "world"
+
+                transformer.identity_transform(world.full_name => "world")
             end
 
             # @api private
@@ -102,35 +157,8 @@ module RockGazebo
             # Configure the transformer to reflect the SDF environment loaded
             # using Conf.syskit.use_sdf_world
             def use_sdf_world
-                world = sdf_world
-
-                if @sdf_model
-                    model_in_world = resolve_model_in_world
-
-                    # Parse the whole world and massage it before we merge it in the
-                    # profile's transformer
-                    world_tr = ::Transformer::Configuration.new
-                    world_tr.parse_sdf_world(world)
-
-                    model_in_world_full_name = model_in_world.full_name(root: world)
-                    model_in_world_frame_prefix = "#{model_in_world_full_name}::"
-
-                    frame_mapping = Hash[model_in_world_full_name => @sdf_model.name]
-                    world_tr.frames.each do |frame_name|
-                        if frame_name.start_with?(model_in_world_frame_prefix)
-                            frame_mapping[frame_name] = "#{@sdf_model.name}::#{frame_name[model_in_world_frame_prefix.size..-1]}"
-                        end
-                    end
-                    world_tr.rename_frames(frame_mapping)
-                    transformer.merge(world_tr)
-                else
-                    transformer.parse_sdf_world(world)
-                end
-
-                # There can be only one world ... name it 'world'
-                if !transformer.has_frame?('world')
-                    transformer.static_transform Eigen::Vector3.Zero, world.full_name => 'world'
-                end
+                transformer.merge(sdf_world_transforms)
+                create_world_frame
             end
 
             # Sets up this profile, robot and transformer according to the
@@ -144,20 +172,50 @@ module RockGazebo
             def use_gazebo_model(
                 *path,
                 filter: nil, as: nil, reuse: nil,
-                use_world: Syskit.use_gazebo_model_calls_use_gazebo_world,
-                prefix_device_with_name: Syskit.prefix_device_with_name
+                use_world: RockGazebo::Syskit.use_gazebo_model_calls_use_gazebo_world,
+                prefix_device_with_name: RockGazebo::Syskit.prefix_device_with_name
             )
                 use_sdf_model(*path, as: as, filter: filter)
+
                 model_in_world = resolve_model_in_world
 
                 # Load the model in the syskit subsystems
                 robot.load_gazebo(
                     model_in_world, "gazebo::#{sdf_world.name}",
-                    reuse: reuse,
+                    reuse: reuse, name: as || model_in_world.name,
                     prefix_device_with_name: prefix_device_with_name
                 )
 
+                sdf_add_enclosing_model_to_transformer
+
                 use_gazebo_world(reuse: reuse) if use_world
+            end
+
+            # @api private
+            #
+            # Add to the profile's transformer the frame of sdf_model's root model
+            # and the transform between the root model and sdf_model if it is static
+            def sdf_add_enclosing_model_to_transformer
+                model_in_world = resolve_model_in_world
+                enclosing_model = robot.resolve_enclosing_model(model_in_world)
+                return if model_in_world == enclosing_model
+
+                transformer.sdf_add_root_model(enclosing_model)
+
+                # Now make sure we actually define a static transform between
+                # the two if it exists
+                sdf_transfomer_copy_static_transform_from_world(
+                    enclosing_model.name, sdf_model.name
+                )
+            end
+
+            # Copy a transform from the SDF world to the profile's own transformer
+            # if it exists
+            def sdf_transfomer_copy_static_transform_from_world(from_frame, to_frame)
+                pose = sdf_world_transforms.try_resolve_static_chain(from_frame, to_frame)
+                return unless pose
+
+                transformer.static_transform(pose, from_frame => to_frame)
             end
 
             # Exports the world into the transformer and expose the models
