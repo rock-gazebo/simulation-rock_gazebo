@@ -143,8 +143,9 @@ module RockGazebo
             #   called at the end. You usually want this
             def use_gazebo_model(
                 *path,
-                filter: nil, as: nil, use_world: true,
-                reuse: nil, prefix_device_with_name: Syskit.prefix_device_with_name
+                filter: nil, as: nil, reuse: nil,
+                use_world: Syskit.use_gazebo_model_calls_use_gazebo_world,
+                prefix_device_with_name: Syskit.prefix_device_with_name
             )
                 use_sdf_model(*path, as: as, filter: filter)
                 model_in_world = resolve_model_in_world
@@ -170,10 +171,12 @@ module RockGazebo
 
                 reuse = reuse.robot if reuse.respond_to?(:robot)
                 sdf_world.each_model do |model|
-                    if model != enclosing_model
-                        robot.expose_gazebo_model(model, "gazebo::#{sdf_world.name}::",
-                            reuse: reuse)
-                    end
+                    next if model == enclosing_model
+
+                    robot.expose_gazebo_model(
+                        model, "gazebo::#{sdf_world.name}::",
+                        reuse: reuse
+                    )
                 end
             end
         end

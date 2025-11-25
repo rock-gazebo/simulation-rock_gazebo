@@ -38,10 +38,18 @@ module RockGazebo
             # First migrate little by little each call and then turn it on globally
             # by setting this flag.
             attr_accessor :prefix_device_with_name
+
+            # Feature flag that controls whether use_gazebo_model calls use_gazebo_world
+            #
+            # The historical default was true, but will become false. If switching the
+            # flag to false globally does not work, a more gradual migration can be
+            # done by passing `use_world: false` to the use_gazebo_model call
+            attr_accessor :use_gazebo_model_calls_use_gazebo_world
         end
 
         @scope_device_name_with_links_and_submodels = false
         @use_gazebo_automatic_links = true
         @prefix_device_with_name = false
+        @use_gazebo_model_calls_use_gazebo_world = true
     end
 end
