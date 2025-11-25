@@ -13,6 +13,7 @@ require 'models/devices/gazebo/joint'
 require 'transformer/syskit'
 Transformer::SyskitPlugin.enable
 require 'transformer/sdf'
+require 'rock_gazebo/syskit/features'
 require 'rock_gazebo/syskit/sdf'
 require 'rock_gazebo/syskit/configuration_extension'
 require 'rock_gazebo/syskit/profile_extension'
