@@ -2,41 +2,6 @@
 
 module RockGazebo
     module Syskit
-        class << self
-            # Feature flag that corrects how the library generates sensor device names
-            #
-            # When recursive models are used, the library's old behaviour is to
-            # define sensor devices with the root model name and the sensor name,
-            # that is
-            #
-            #     use_gazebo_model model://model_in_model
-            #
-            # will define 'root_gps_sensor' if the XML hierarchy is
-            # root/included_model/link/gps. It will also define
-            # root_included_model_gps_sensor along the way
-            #
-            # This rather obviously starts failing when one wants to include
-            # the same sub-model more than once, or have two sensors of the
-            # same type in the model (the latter could be worked around by
-            # changing the sensor name though)
-            #
-            # This historical behaviour is retained when the flag is false (
-            # this is the default). The new behaviour is to properly scope
-            # sensors by the full path in the XML. In the example above,
-            # the sensor device is root_included_model_link_gps_sensor_dev
-            attr_accessor :scope_device_name_with_links_and_submodels
-
-            # Feature flag that toggles the automatic definition of links when
-            # loading a gazebo model.
-            #
-            # This starts failing when one uses more than two levels of submodels as it
-            # quickly gets too complex to manage the automatically generated links names
-            attr_accessor :use_gazebo_automatic_links
-        end
-
-        @scope_device_name_with_links_and_submodels = false
-        @use_gazebo_automatic_links = true
-
         # Gazebo-specific extensions to {Syskit::Robot::RobotDefinition}
         module RobotDefinitionExtension
             # Given a sensor, returns the device and device driver model that
@@ -413,7 +378,8 @@ module RockGazebo
             # @raise [ArgumentError] if models does not contain robot_model
             def load_gazebo(
                 model, deployment_prefix,
-                name: model.name, reuse: nil, prefix_device_with_name: false
+                name: model.name, reuse: nil,
+                prefix_device_with_name: Syskit.prefix_device_with_name
             )
                 # Allow passing a profile instead of a robot definition
                 reuse = reuse.robot if reuse.respond_to?(:robot)
@@ -421,10 +387,13 @@ module RockGazebo
 
                 unless prefix_device_with_name
                     Roby.warn_deprecated <<~EOMSG
-                        The link naming scheme in #use_sdf_model and #use_gazebo_model will change from using the link
-                        name as device name to prefixing it with the name given to #use_sdf_model (which defaults to the
-                        model name itself) set the prefix_device_with_name: option to true to enable the new behavior
-                        and remove this warning This warning will become an error before the functionality completely
+                        The link naming scheme in #use_sdf_model and #use_gazebo_model
+                        will change from using the link name as device name to
+                        prefixing it with the name given to #use_sdf_model
+                        (which defaults to the model name itself) set the
+                        prefix_device_with_name: option to true to enable the
+                        new behavior and remove this warning This warning will
+                        become an error before the functionality completely
                         disappears
                     EOMSG
                 end
@@ -449,10 +418,12 @@ module RockGazebo
                     enclosing_device.advanced = false
                     deployment_prefix += model.name + "::"
                 end
-                load_gazebo_robot_model(model, enclosing_device,
-                                        name: name, reuse: reuse,
-                                        prefix_device_with_name: prefix_device_with_name,
-                                        deployment_prefix: deployment_prefix
+
+                load_gazebo_robot_model(
+                    model, enclosing_device,
+                    name: name, reuse: reuse,
+                    prefix_device_with_name: prefix_device_with_name,
+                    deployment_prefix: deployment_prefix
                 )
                 model_device
             end
@@ -495,7 +466,8 @@ module RockGazebo
             # Describes recursively all sensors and plugins in the model
             def load_gazebo_robot_submodels(
                 sdf_model,
-                name: sdf_model.name, prefix_device_with_name: true,
+                name: sdf_model.name,
+                prefix_device_with_name:,
                 deployment_prefix: ""
             )
                 sensors =
@@ -555,7 +527,8 @@ module RockGazebo
             #   as included in the current gazebo world
             def load_gazebo_robot_model(
                 sdf_model, root_device,
-                reuse: nil, name: sdf_model.name, prefix_device_with_name: true,
+                reuse: nil, name: sdf_model.name,
+                prefix_device_with_name:,
                 deployment_prefix: ""
             )
                 if (prefix = sdf_model.full_name(root: root_device.sdf))
@@ -582,7 +555,7 @@ module RockGazebo
             def gazebo_define_link_device(
                 root_device, sdf_model, link, link_name,
                 model_name: sdf_model.name, frame_prefix: '',
-                prefix_device_with_name: true, reuse: false
+                prefix_device_with_name:, reuse: false
             )
                 device_name = "#{normalize_name(link_name)}_link"
                 if prefix_device_with_name
@@ -627,7 +600,7 @@ module RockGazebo
 
             def gazebo_define_sensor_device(
                 sdf_model, sensor,
-                model_name: sdf_model.name, prefix_device_with_name: true,
+                model_name: sdf_model.name, prefix_device_with_name:,
                 deployment_prefix: ""
             )
                 device_name = "#{normalize_name(sensor.name)}_sensor"
@@ -664,7 +637,7 @@ module RockGazebo
 
             def gazebo_define_plugin_device(
                 sdf_model, plugin,
-                model_name: sdf_model.name, prefix_device_with_name: true,
+                model_name: sdf_model.name, prefix_device_with_name:,
                 deployment_prefix: ""
             )
                 plugin_name = normalize_name(plugin.name.split(/__/)[-1])
