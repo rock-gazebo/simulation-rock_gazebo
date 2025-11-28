@@ -3,6 +3,7 @@
         <model name="attachment">
             <link name="in_attachment" />
             <include>
+                <pose>1 0 0 0 0 0</pose>
                 <name>included_model</name>
                 <uri>model://simple_model</uri>
             </include>

@@ -67,6 +67,21 @@ module RockGazebo
                         .once
                     @profile.use_sdf_model 'model://simple_model'
                 end
+
+                it "defines the world frame in the transformer instance" do
+                    @profile.use_sdf_model 'model://simple_model', as: 'test'
+                    assert @profile.transformer.frame?("world")
+                end
+
+                it "connects the 'world' frame to the world's actual name" do
+                    flexmock(@profile)
+                        .should_receive(:sdf_world).and_return(flexmock(full_name: "w"))
+                    @profile.use_sdf_model 'model://simple_model', as: 'test'
+                    assert_equal(
+                        Eigen::Isometry3.Identity,
+                        @profile.transformer.transform_for("w", "world").to_isometry
+                    )
+                end
             end
 
             describe '#use_sdf_world' do
@@ -94,7 +109,7 @@ module RockGazebo
                     transform = @profile.transformer.transformation_for(
                         'included_model::root', 'attachment::in_attachment'
                     )
-                    assert transform.translation.approx?(Eigen::Vector3.Zero)
+                    assert transform.translation.approx?(Eigen::Vector3.UnitX)
                     assert transform.rotation.approx?(Eigen::Quaternion.Identity)
                 end
                 it 'creates transforms for joints between the world '\
@@ -104,7 +119,7 @@ module RockGazebo
                     transform = @profile.transformer.transformation_for(
                         'included_model::root', 'test'
                     )
-                    assert transform.translation.approx?(Eigen::Vector3.Zero)
+                    assert transform.translation.approx?(Eigen::Vector3.UnitX)
                     assert transform.rotation.approx?(Eigen::Quaternion.Identity)
                 end
                 it 'raises if the model loaded by #use_sdf_model '\
@@ -139,6 +154,27 @@ module RockGazebo
                 assert profile.transformer.has_frame?(frame_name),
                        "expected #{profile.transformer.frames.to_a} to "\
                        "include #{frame_name}"
+            end
+
+            describe "#use_gazebo_model" do
+                describe "handling of submodels" do
+                    it "imports the root model in the transformer" do
+                        Conf.sdf.load_sdf(
+                            expand_fixture_world("attached_simple_model.world")
+                        )
+
+                        @profile.use_gazebo_model(
+                            "model://simple_model", use_world: false, as: "included_model"
+                        )
+
+                        tr = @profile.transformer
+                        assert tr.frame?("attachment")
+                        assert_equal(
+                            -Eigen::Vector3.UnitX,
+                            tr.transform_for("attachment", "included_model").translation
+                        )
+                    end
+                end
             end
 
             describe '#use_gazebo_world' do
