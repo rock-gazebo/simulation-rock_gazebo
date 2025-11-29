@@ -11,7 +11,8 @@ require 'models/devices/gazebo/root_model'
 require 'models/devices/gazebo/link'
 require 'models/devices/gazebo/joint'
 require 'transformer/syskit'
-Transformer::SyskitPlugin.enable
+Syskit.conf.transformer_enabled = true
+
 require 'transformer/sdf'
 require 'rock_gazebo/syskit/features'
 require 'rock_gazebo/syskit/sdf'
