@@ -237,6 +237,18 @@ module RockGazebo
                     )
                 end
             end
+
+            # Add the device and transformer frame needed to run the given root model
+            #
+            # Unlike methods like {#use_sdf_model}, it will only care about the root
+            # model itself, not its submodels, link frames or anything like that
+            def gazebo_add_root_model(sdf_model, reuse: nil)
+                transformer.sdf_add_root_model(sdf_model)
+                robot.expose_gazebo_model(
+                    sdf_model, "gazebo::#{sdf_world.name}::",
+                    reuse: reuse
+                )
+            end
         end
         ::Syskit::Actions::Profile.include ProfileExtension
     end
