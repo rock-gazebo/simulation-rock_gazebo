@@ -11,12 +11,13 @@ parse_sdf_only = false
 update_models  = false
 
 gui = 'vizkit'
-gzserver_args = Array.new
-start = false
+gzserver_args = %w[-s]
+vizkit3d_start = false
+paused = false
 options = OptionParser.new do |opt|
     opt.banner = "rock-gazebo SCENE"
     opt.on '--start', 'controls in vizkit3d visualization mode if rock-gazebo should configure and start the ModelTask components to ensure the visualization gets updated' do
-        start = true
+        vizkit3d_start = true
     end
     opt.on '--gui=MODE', String, "controls the GUI that is used.", "'vizkit' (the default) uses Vizkit3D,", "'gzclient' uses Gazebo\'s visualization and", "'no' disables visualization altogether" do |gui_mode|
         if NO_GUI.include?(gui_mode)
@@ -38,14 +39,15 @@ options = OptionParser.new do |opt|
         update_models = true
     end
     opt.on '--verbose', 'run gzserver in verbose mode' do
-        gzserver_args << '--verbose'
+        gzserver_args << '-v' << '4'
         Rock::Gazebo.logger.level = Logger::DEBUG
     end
     opt.on '--pause', 'run gzserver in paused state' do
-        gzserver_args << '--pause'
-        Rock::Gazebo.logger.level = Logger::DEBUG
+        paused = true
     end
 end
+
+gzserver_args << "-r" unless paused
 
 args = options.parse(ARGV)
 if args.size != 1
@@ -62,7 +64,7 @@ end
 require 'rock/bundles'
 # Workaround: default_loader calls Orocos.load unconditionally :(
 Orocos.disable_sigchld_handler = true
-if start
+if vizkit3d_start
     Bundles.load
 else
     Bundles.setup_search_paths
@@ -96,10 +98,11 @@ end
 
 subprocesses = Hash.new
 begin
-    gazebo_pid = Rock::Gazebo.spawn('gzserver', scene, *gzserver_args)
+    gazebo_pid = Rock::Gazebo.spawn(
+        'gz', 'sim', *gzserver_args, scene)
     subprocesses[gazebo_pid] = 'gzserver'
     if gui == 'vizkit'
-        RockGazebo.viz(scene, start: start)
+        RockGazebo.viz(scene, start: vizkit3d_start)
         timer = Qt::Timer.new
         timer.connect(SIGNAL('timeout()')) do
             if terminated_pid = Process.waitpid(-1, Process::WNOHANG)
@@ -110,7 +113,7 @@ begin
         timer.start(2000)
         Vizkit.exec
     elsif gui == 'gzclient'
-        gzclient_pid = Rock::Gazebo.spawn('gzclient')
+        gzclient_pid = Rock::Gazebo.spawn('gz', "gui")
         subprocesses[gzclient_pid] = 'gzclient'
         terminated_pid = Process.waitpid
         puts "#{subprocesses[terminated_pid]} finished (#{terminated_pid})"

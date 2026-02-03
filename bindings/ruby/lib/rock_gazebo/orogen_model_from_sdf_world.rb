@@ -26,11 +26,6 @@ module RockGazebo
         "gps" => "rock_gazebo::GPSTask"
     }.freeze
 
-    PLUGIN_TASK_MODELS = {
-        /gazebo_thruster/ => "rock_gazebo::ThrusterTask",
-        /gazebo_underwater/ => "rock_gazebo::UnderwaterTask"
-    }.freeze
-
     # Add tasks to a deployment, matching the tasks that would be deployed by
     # the rock-gazebo plugin
     #
@@ -170,8 +165,6 @@ module RockGazebo
     # plugin's behavior
     #
     # Tasks in plugins are explicitely specified with a <task .../> element.
-    # Only the plugins listed in PLUGIN_TASK_MODELS have hardcoded mapping from
-    # the plugin filename to the task model, for backward compatibility reasons
     #
     # The task name is always gazebo:${world}:${model}:${plugin}
     #
@@ -184,11 +177,7 @@ module RockGazebo
         deployment, plugin, prefix: "", period: 0.1
     )
         task_name, task_model =
-            if (task_xml = plugin.xml.elements["task"])
-                [task_xml.attributes["name"], task_xml.attributes["model"]]
-            else
-                [plugin.name.gsub(/__/, "::"), PLUGIN_TASK_MODELS.find { |k, _| k === plugin.filename }&.last]
-            end
+            [task_xml.attributes["name"], task_xml.attributes["model"]]
 
         return unless task_model
 

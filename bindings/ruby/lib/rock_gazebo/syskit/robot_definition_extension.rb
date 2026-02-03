@@ -66,7 +66,6 @@ module RockGazebo
             #   device model and device driver that should be used for this
             #   sensor
             def plugins_to_device(plugin, device_name, deployment_hint)
-                has_task = false
                 plugin.xml.elements.to_a("task").each do |task_element|
                     task_model_name = task_element.attributes["model"]
                     task_model = ::Syskit::TaskContext.find_model_from_orogen_name(task_model_name)
@@ -77,40 +76,6 @@ module RockGazebo
                         return device(device, as: device_name, using: task_model)
                                .prefer_deployed_tasks(task_name)
                     end
-                    # Maintain the old version for compatibility
-                    has_task = true
-                    case task_element.attributes["model"]
-                    when "rock_gazebo::ThrusterTask"
-                        require "common_models/models/devices/gazebo/thruster"
-                        return device(
-                            CommonModels::Devices::Gazebo::Thruster,
-                            as: device_name,
-                            using: OroGen.rock_gazebo.ThrusterTask
-                        ).prefer_deployed_tasks(task_name)
-                    when "rock_gazebo::UnderwaterTask"
-                        require "common_models/models/devices/gazebo/underwater"
-                        return device(
-                            CommonModels::Devices::Gazebo::Underwater,
-                            as: device_name,
-                            using: OroGen.rock_gazebo.UnderwaterTask
-                        ).prefer_deployed_tasks(task_name)
-                    end
-                end
-                return if has_task
-
-                case plugin.filename
-                when /gazebo_thruster/
-                    require "common_models/models/devices/gazebo/thruster"
-                    device(CommonModels::Devices::Gazebo::Thruster,
-                           as: device_name,
-                           using: OroGen.rock_gazebo.ThrusterTask)
-                        .prefer_deployed_tasks(deployment_hint)
-                when /gazebo_underwater/
-                    require "common_models/models/devices/gazebo/underwater"
-                    device(CommonModels::Devices::Gazebo::Underwater,
-                           as: device_name,
-                           using: OroGen.rock_gazebo.UnderwaterTask)
-                        .prefer_deployed_tasks(deployment_hint)
                 end
             end
 

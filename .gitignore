@@ -7,3 +7,5 @@ build/
 .log
 *.sw?
 .vscode/c_cpp*
+
+.cache/

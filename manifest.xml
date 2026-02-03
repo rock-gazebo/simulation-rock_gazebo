@@ -1,23 +1,17 @@
 <package>
-  <description brief="Rock gazebo bridge package">
-  This package integrates the gazebo simulator and the Rock framework.
+  <description brief="Gz plugin to interface with a Gazebo simulation from Rock">
+	  This package integrates the gazebo simulator and the Rock framework.
   </description>
-  <author>Thomio Watanabe/thomio.watanabe@fieb.org.br</author>
   <author>Sylvain Joyeux/sylvain.joyeux@tidewise.io</author>
   <maintainer>Sylvain Joyeux/sylvain.joyeux@tidewise.io</maintainer>
   <license>LGPLv2 or later</license>
+
   <depend package="base/cmake" />
+  <depend package="base/orogen/std" />
+  <depend package="base/orogen/types" />
+  <depend package="drivers/orogen/gps_base" />
+  <depend package="simulation/orogen/gz_rock" />
+  <depend package="tools/logger" />
 
-  <depend_optional package="base/scripts" />
-  <depend_optional package="simulation/gazebo" />
-  <depend_optional package="ruby-minitar" />
-  <depend_optional package="tools/logger" />
-  <depend_optional package="simulation/orogen/rock_gazebo" />
-  <depend_optional package="control/ruby_sdformat" />
-  <depend_optional package="gui/collada_osg" />
-  <depend_optional package="gui/robot_model" />
-  <depend_optional package="bundles/common_models" />
-
-  <test_depend package="tools/syskit" />
-  <test_depend package="bundles/common_models" />
+  <depend package="simulation/gz" />
 </package>

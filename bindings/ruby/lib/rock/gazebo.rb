@@ -108,7 +108,7 @@ module Rock
                 else arg
                 end
             end
-            yield(Array[env, cmd, '-s', RockGazebo::PATH_TO_PLUGIN, *args])
+            yield(Array[env, cmd, *args])
         end
 
         def self.compute_spawn_arguments(cmd, *cmdline)
@@ -167,6 +167,11 @@ module Rock
         # @param [OroGen::Loaders::Base] loader
         # @return [void]
         def self.process_gazebo_world(world, loader: create_rtt_loader)
+            plugin = REXML::Element.new("plugin")
+            plugin.attributes["filename"] = "gz_rock"
+            plugin.attributes["name"] = "rock::gz"
+            world.xml.add_element(plugin)
+
             needed_typekits = Set.new
             REXML::XPath.each(world.xml, "//plugin") do |plugin_xml|
                 needed_typekits.merge(
@@ -326,6 +331,7 @@ module Rock
 
         def self.spawn(cmd, *cmdline, **options)
             prepare_spawn(cmd, *cmdline) do |args|
+                Rock::Gazebo.debug "Running: #{args.join(" ")}"
                 Process.spawn(*args, **options)
             end
         end
