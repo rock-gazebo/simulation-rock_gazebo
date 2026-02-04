@@ -1,4 +1,4 @@
-<sdf version="1.6">
+<sdf version="1.8">
 <world name="w">
     <model name="m">
         <pose>1 2 3 0 0 0.1</pose>
@@ -19,6 +19,10 @@
         <link name="rotated_link">
             <pose>0 0 0 0 1.5708 0</pose>
         </link>
+
+        <plugin filename="gz_rock-plugintask" name="gz_rock::PluginTask">
+            <task model="gz_rock::ModelTask" />
+        </plugin>
 
         <include>
         <name>nested</name>
