@@ -131,7 +131,7 @@ module Rock
         #   describes a SDF file (either a path, or a model:// URI)
         # @return [SDF::Root]
         def self.process_sdf_file(sdf)
-            sdf = SDF::Root.load(sdf) if sdf.respond_to?(:to_str)
+            sdf = SDF::Root.load(sdf, flatten: false) if sdf.respond_to?(:to_str)
             sdf
         end
 
@@ -193,7 +193,6 @@ module Rock
         def self.process_gazebo_plugin(world, plugin_xml, loader:)
             scope = resolve_plugin_full_name(world.xml, plugin_xml)
             typekits = normalize_rock_components(scope, plugin_xml, loader)
-            plugin_xml.attributes["name"] = scope.gsub(/[^\w]/, "_")
             typekits
         rescue OroGen::NotFound => e
             plugin_name = plugin_xml.attributes["name"]
