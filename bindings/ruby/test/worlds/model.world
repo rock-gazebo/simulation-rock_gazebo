@@ -8,16 +8,28 @@
         <pose>1 2 3 0 0 0.1</pose>
         <link name="root">
         </link>
+
         <link name="l">
             <pose>2 3 4 0 0 0.2</pose>
         </link>
+
         <static>true</static>
+
+        <joint name="l2root" type="fixed">
+            <parent>root</parent>
+            <child>l</child>
+        </joint>
 
         <include>
             <name>nested</name>
             <uri>model://model</uri>
             <pose>3 2 1 0 0 -0.2</pose>
         </include>
+
+        <joint name="nested_l2root" type="fixed">
+            <parent>root</parent>
+            <child>nested::l</child>
+        </joint>
     </model>
 </world>
 </sdf>

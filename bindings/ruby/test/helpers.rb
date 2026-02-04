@@ -93,6 +93,11 @@ module Helpers
         end
     end
 
+    def assert_eigen_approx(expected, actual, tol = 1e-6)
+        assert expected.approx?(actual, tol),
+               "expected #{expected} to be approximately equal to #{actual}"
+    end
+
     def poll_until(
         timeout: 10, period: 0.01,
         flunk: true, message: 'could not reach condition'

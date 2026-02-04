@@ -2,7 +2,7 @@
 
 require 'test/helpers'
 
-describe 'rock_gazebo::ModelTask' do
+describe 'gz_rock::ModelTask' do
     include Orocos::Test::Component
     include Helpers
 
@@ -61,18 +61,19 @@ describe 'rock_gazebo::ModelTask' do
         end
 
         it 'exports the state of all the non-fixed joints' do
-            configure_start_and_read_one_new_sample 'joints_samples' do |joints|
-                joints.names == %w[m::j_00 m::j_01 m::child::j_00 m::child::j_01] &&
-                    (-0.1..0.11).include?(joints.elements[0].position) &&
-                    (0.19..0.31).include?(joints.elements[1].position) &&
-                    (0.39..0.51).include?(joints.elements[2].position) &&
-                    (0.59..0.71).include?(joints.elements[3].position)
-            end
+            joints = configure_start_and_read_one_new_sample 'joints_samples'
+            assert_equal %w[m::j_00 m::j_01 m::child_j_00 m::child_j_01],
+                         joints.names
+
+            assert_includes (-0.1..0.11), joints.elements[0].position
+            assert_includes (0.19..0.31), joints.elements[1].position
+            assert_includes (0.39..0.51), joints.elements[2].position
+            assert_includes (0.59..0.71), joints.elements[3].position
         end
 
         it 'allows commanding the joints' do
             cmd = Types.base.samples.Joints.new(
-                names: %w[m::j_00 m::j_01 m::child::j_00 m::child::j_01],
+                names: %w[m::j_00 m::j_01 m::child_j_00 m::child_j_01],
                 elements: [Types.base.JointState.Effort(-1),
                             Types.base.JointState.Effort(1),
                             Types.base.JointState.Effort(-1),
@@ -93,6 +94,20 @@ describe 'rock_gazebo::ModelTask' do
                 end
             end
         end
+
+        def initialize_joint_positions(writer)
+            cmd = Types.base.samples.Joints.new(
+                names: %w[m::j_00 m::j_01 m::child_j_00 m::child_j_01],
+                elements: [Types.base.JointState.Position(0.05),
+                            Types.base.JointState.Position(0.25),
+                            Types.base.JointState.Position(0.45),
+                            Types.base.JointState.Position(0.65)]
+            )
+
+            task.configure
+            task.start
+            writer.write(cmd)
+        end
     end
 
     describe 'the joints export' do
@@ -102,32 +117,32 @@ describe 'rock_gazebo::ModelTask' do
         end
 
         it 'exports a set of joints in the specified order' do
-            task.exported_joints = [Types.rock_gazebo.JointExport.new(
+            task.exported_joints = [Types.gz_rock.JointExport.new(
                 port_name: 'test', prefix: '',
-                joints: %w[m::child::j_00 m::j_01],
+                joints: %w[m::child_j_00 m::j_01],
                 port_period: Time.at(0)
             )]
             configure_start_and_read_one_new_sample 'test_samples' do |joints|
-                joints.names == %w[m::child::j_00 m::j_01] &&
+                joints.names == %w[m::child_j_00 m::j_01] &&
                     (0.39..0.51).include?(joints.elements[0].position) &&
                     (0.19..0.31).include?(joints.elements[1].position)
             end
         end
 
         it 'exports values at the simulation rate' do
-            task.exported_joints = [Types.rock_gazebo.JointExport.new(
+            task.exported_joints = [Types.gz_rock.JointExport.new(
                 port_name: 'test', prefix: '',
-                joints: %w[m::child::j_00 m::j_01],
+                joints: %w[m::child_j_00 m::j_01],
                 port_period: Time.at(0)
             )]
             samples = configure_start_read_samples_and_stop 'test_samples', 0.5
-            assert (22..28).include?(samples.size)
+            assert_includes (22..28), samples.size
         end
 
         it 'allows to control the output period of a joint export' do
-            task.exported_joints = [Types.rock_gazebo.JointExport.new(
+            task.exported_joints = [Types.gz_rock.JointExport.new(
                 port_name: 'test', prefix: '',
-                joints: %w[m::child::j_00 m::j_01],
+                joints: %w[m::child_j_00 m::j_01],
                 port_period: Time.at(0.1)
             )]
             samples = configure_start_read_samples_and_stop 'test_samples', 0.5
@@ -135,13 +150,13 @@ describe 'rock_gazebo::ModelTask' do
         end
 
         it "handles joints given relatively to the model" do
-            task.exported_joints = [Types.rock_gazebo.JointExport.new(
+            task.exported_joints = [Types.gz_rock.JointExport.new(
                 port_name: "test", prefix: "",
-                joints: %w[child::j_00 j_01],
+                joints: %w[child_j_00 j_01],
                 port_period: Time.at(0)
             )]
             configure_start_read_samples_and_stop "test_samples", 0.5 do |joints|
-                joints.names == %w[m::child::j_00 m::j_01] &&
+                joints.names == %w[m::child_j_00 m::j_01] &&
                     (0.39..0.51).include?(joints.elements[0].position) &&
                     (0.19..0.31).include?(joints.elements[1].position)
             end
@@ -149,14 +164,14 @@ describe 'rock_gazebo::ModelTask' do
 
         it 'gives command access to a subset of the joints' do
             cmd = Types.base.samples.Joints.new(
-                names: %w[m::child::j_00 m::j_01],
+                names: %w[m::child_j_00 m::j_01],
                 elements: [Types.base.JointState.Effort(-1),
                             Types.base.JointState.Effort(1)]
             )
 
-            task.exported_joints = [Types.rock_gazebo.JointExport.new(
+            task.exported_joints = [Types.gz_rock.JointExport.new(
                 port_name: 'test', prefix: '',
-                joints: %w[m::child::j_00 m::j_01],
+                joints: %w[m::child_j_00 m::j_01],
                 port_period: Time.at(0),
                 ignore_joint_names: false
             )]
@@ -176,14 +191,14 @@ describe 'rock_gazebo::ModelTask' do
 
         it 'validates the joint name size' do
             cmd = Types.base.samples.Joints.new(
-                names: %w[m::child::j_01],
+                names: %w[m::child_j_01],
                 elements: [Types.base.JointState.Effort(-1),
                             Types.base.JointState.Effort(1)]
             )
 
-            task.exported_joints = [Types.rock_gazebo.JointExport.new(
+            task.exported_joints = [Types.gz_rock.JointExport.new(
                 port_name: 'test', prefix: '',
-                joints: %w[m::child::j_00 m::j_01],
+                joints: %w[m::child_j_00 m::j_01],
                 port_period: Time.at(0),
                 ignore_joint_names: false
             )]
@@ -197,14 +212,14 @@ describe 'rock_gazebo::ModelTask' do
 
         it 'validates the joint names' do
             cmd = Types.base.samples.Joints.new(
-                names: %w[m::child::j_01 m::j_02],
+                names: %w[m::child_j_01 m::j_02],
                 elements: [Types.base.JointState.Effort(-1),
                             Types.base.JointState.Effort(1)]
             )
 
-            task.exported_joints = [Types.rock_gazebo.JointExport.new(
+            task.exported_joints = [Types.gz_rock.JointExport.new(
                 port_name: 'test', prefix: '',
-                joints: %w[m::child::j_00 m::j_01],
+                joints: %w[m::child_j_00 m::j_01],
                 port_period: Time.at(0),
                 ignore_joint_names: false
             )]
@@ -222,9 +237,9 @@ describe 'rock_gazebo::ModelTask' do
                             Types.base.JointState.Effort(1)]
             )
 
-            task.exported_joints = [Types.rock_gazebo.JointExport.new(
+            task.exported_joints = [Types.gz_rock.JointExport.new(
                 port_name: 'test', prefix: '',
-                joints: %w[m::child::j_00 m::j_01],
+                joints: %w[m::child_j_00 m::j_01],
                 port_period: Time.at(0),
                 ignore_joint_names: true
             )]
@@ -244,9 +259,9 @@ describe 'rock_gazebo::ModelTask' do
 
         describe 'the prefix setting' do
             it 'raises if a joint name does not start with the requested prefix' do
-                task.exported_joints = [Types.rock_gazebo.JointExport.new(
-                    port_name: 'test', prefix: 'm::child::',
-                    joints: %w[m::child::j_00 m::j_01],
+                task.exported_joints = [Types.gz_rock.JointExport.new(
+                    port_name: 'test', prefix: 'm::child_',
+                    joints: %w[m::child_j_00 m::j_01],
                     port_period: Time.at(0)
                 )]
                 assert_raises(Orocos::StateTransitionFailed) do
@@ -254,13 +269,13 @@ describe 'rock_gazebo::ModelTask' do
                 end
             end
             it 'allows to remove a scope prefix from the joint names' do
-                task.exported_joints = [Types.rock_gazebo.JointExport.new(
+                task.exported_joints = [Types.gz_rock.JointExport.new(
                     port_name: 'test', prefix: 'm::',
-                    joints: %w[m::child::j_00 m::j_01],
+                    joints: %w[m::child_j_00 m::j_01],
                     port_period: Time.at(0)
                 )]
                 configure_start_and_read_one_new_sample 'test_samples' do |joints|
-                    joints.names == %w[child::j_00 j_01] &&
+                    joints.names == %w[child_j_00 j_01] &&
                         (0.39..0.51).include?(joints.elements[0].position) &&
                         (0.19..0.31).include?(joints.elements[1].position)
                 end
@@ -268,9 +283,9 @@ describe 'rock_gazebo::ModelTask' do
         end
 
         it 'removes the ports on cleanup' do
-            task.exported_joints = [Types.rock_gazebo.JointExport.new(
+            task.exported_joints = [Types.gz_rock.JointExport.new(
                 port_name: 'test', prefix: '',
-                joints: %w[m::child::j_00 m::j_01],
+                joints: %w[m::child_j_00 m::j_01],
                 port_period: Time.at(0)
             )]
             task.configure
@@ -280,7 +295,7 @@ describe 'rock_gazebo::ModelTask' do
         end
 
         it 'fails to configure if a joint does not exist' do
-            task.exported_joints = [Types.rock_gazebo.JointExport.new(
+            task.exported_joints = [Types.gz_rock.JointExport.new(
                 port_name: 'test', prefix: '',
                 joints: %w[does_not_exist m::j_01],
                 port_period: Time.at(0)
@@ -299,7 +314,7 @@ describe 'rock_gazebo::ModelTask' do
                 end
 
                 it 'uses the link names as frames by default' do
-                    task.exported_links = [Types.rock_gazebo.LinkExport.new(
+                    task.exported_links = [Types.gz_rock.LinkExport.new(
                         port_name: 'test', source_link: 'l', target_link: 'root',
                         port_period: Time.at(0)
                     )]
@@ -309,7 +324,7 @@ describe 'rock_gazebo::ModelTask' do
                 end
 
                 it 'allows to override the frame names' do
-                    task.exported_links = [Types.rock_gazebo.LinkExport.new(
+                    task.exported_links = [Types.gz_rock.LinkExport.new(
                         port_name: 'test', source_link: 'l', target_link: 'root',
                         source_frame: 'src', target_frame: 'target',
                         port_period: Time.at(0)
@@ -321,7 +336,7 @@ describe 'rock_gazebo::ModelTask' do
 
                 it 'sets cov_position from the provided cov_position' do
                     cov = matrix3_rand
-                    task.exported_links = [Types.rock_gazebo.LinkExport.new(
+                    task.exported_links = [Types.gz_rock.LinkExport.new(
                         port_name: 'test', source_link: 'l', target_link: 'root',
                         cov_position: cov, port_period: Time.at(0)
                     )]
@@ -331,7 +346,7 @@ describe 'rock_gazebo::ModelTask' do
 
                 it 'sets cov_orientation from the provided cov_orientation' do
                     cov = matrix3_rand
-                    task.exported_links = [Types.rock_gazebo.LinkExport.new(
+                    task.exported_links = [Types.gz_rock.LinkExport.new(
                         port_name: 'test', source_link: 'l', target_link: 'root',
                         cov_orientation: cov, port_period: Time.at(0)
                     )]
@@ -341,7 +356,7 @@ describe 'rock_gazebo::ModelTask' do
 
                 it 'sets cov_velocity from the provided cov_velocity' do
                     cov = matrix3_rand
-                    task.exported_links = [Types.rock_gazebo.LinkExport.new(
+                    task.exported_links = [Types.gz_rock.LinkExport.new(
                         port_name: 'test', source_link: 'l', target_link: 'root',
                         cov_velocity: cov, port_period: Time.at(0)
                     )]
@@ -356,27 +371,27 @@ describe 'rock_gazebo::ModelTask' do
                 end
 
                 it 'exports a link\'s pose' do
-                    task.exported_links = [Types.rock_gazebo.LinkExport.new(
+                    task.exported_links = [Types.gz_rock.LinkExport.new(
                         port_name: 'test', source_link: 'l', target_link: 'root',
                         port_period: Time.at(0)
                     )]
                     link_pose = configure_start_and_read_one_new_sample 'test'
-                    assert Eigen::Vector3.new(2, 3, 4).approx?(link_pose.position)
-                    assert(
-                        Eigen::Quaternion
-                        .from_angle_axis(0.2, Eigen::Vector3.UnitZ)
-                        .approx?(link_pose.orientation)
+                    assert_eigen_approx Eigen::Vector3.new(2, 3, 4),
+                                        link_pose.position
+                    assert_eigen_approx(
+                        Eigen::Quaternion.from_angle_axis(0.2, Eigen::Vector3.UnitZ),
+                        link_pose.orientation
                     )
                 end
             end
 
             describe 'velocity' do
                 before do
-                    @task = gzserver 'freefall.world', '/gazebo::w::m'
+                    @task = gzserver 'velocities.world', '/gazebo::w::m'
                 end
 
                 it 'exports a link\'s linear velocity' do
-                    task.exported_links = [Types.rock_gazebo.LinkExport.new(
+                    task.exported_links = [Types.gz_rock.LinkExport.new(
                         port_name: 'test', source_link: 'l', target_link: 'root',
                         port_period: Time.at(0)
                     )]
@@ -388,12 +403,12 @@ describe 'rock_gazebo::ModelTask' do
                 end
 
                 it 'exports the velocity in the target link\'s frame' do
-                    task.exported_links = [Types.rock_gazebo.LinkExport.new(
+                    task.exported_links = [Types.gz_rock.LinkExport.new(
                         port_name: 'test',
                         source_link: 'root', target_link: 'rotated_link',
                         port_period: Time.at(0)
                     )]
-                    rbs = configure_start_and_read_one_new_sample 'test' do |sample|
+                    rbs = configure_start_and_read_one_new_sample_matching 'test' do |sample|
                         sample.velocity.x > 1
                     end
                     assert_in_delta 0, rbs.velocity.y, 1e-3
@@ -401,7 +416,7 @@ describe 'rock_gazebo::ModelTask' do
                 end
 
                 it 'exports a link\'s angular velocity' do
-                    task.exported_links = [Types.rock_gazebo.LinkExport.new(
+                    task.exported_links = [Types.gz_rock.LinkExport.new(
                         port_name: 'test', source_link: 'l', target_link: 'root',
                         port_period: Time.at(0)
                     )]
@@ -423,7 +438,7 @@ describe 'rock_gazebo::ModelTask' do
 
                 it 'exports the angular velocity always in the source '\
                     'links\'s frame' do
-                    task.exported_links = [Types.rock_gazebo.LinkExport.new(
+                    task.exported_links = [Types.gz_rock.LinkExport.new(
                         port_name: 'test',
                         source_link: 'root', target_link: 'rotated_link',
                         port_period: Time.at(0)
@@ -448,12 +463,12 @@ describe 'rock_gazebo::ModelTask' do
 
         describe 'acceleration export' do
             before do
-                @task = gzserver 'freefall.world', '/gazebo::w::m'
+                @task = gzserver 'accelerations.world', '/gazebo::w::m'
             end
 
             it 'exports a link\'s linear acceleration' do
-                task.exported_links = [Types.rock_gazebo.LinkExport.new(
-                    port_name: 'test', source_link: 'l', target_link: 'root',
+                task.exported_links = [Types.gz_rock.LinkExport.new(
+                    port_name: 'test', source_link: 'root',
                     port_period: Time.at(0)
                 )]
                 link_acceleration =
@@ -462,7 +477,7 @@ describe 'rock_gazebo::ModelTask' do
             end
 
             it 'exports the linear acceleration expressed in the source frame' do
-                task.exported_links = [Types.rock_gazebo.LinkExport.new(
+                task.exported_links = [Types.gz_rock.LinkExport.new(
                     port_name: 'test',
                     source_link: 'root', target_link: 'rotated_link',
                     port_period: Time.at(0)
@@ -470,12 +485,14 @@ describe 'rock_gazebo::ModelTask' do
                 link_acceleration =
                     configure_start_and_read_one_new_sample 'test_acceleration'
                 assert_in_delta(
-                    -9.8, link_acceleration.acceleration.z, 1e-3
+                    -9.8, link_acceleration.acceleration.z, 1e-3,
+                    "expected acceleration to be unaffected by the target frame, " \
+                    "but it seems that it is"
                 )
             end
 
             it 'exports a link\'s angular acceleration' do
-                task.exported_links = [Types.rock_gazebo.LinkExport.new(
+                task.exported_links = [Types.gz_rock.LinkExport.new(
                     port_name: 'test', source_link: 'root', target_link: 'root',
                     port_period: Time.at(0)
                 )]
@@ -501,7 +518,7 @@ describe 'rock_gazebo::ModelTask' do
             end
 
             it 'exports the angular acceleration expressed in the source frame' do
-                task.exported_links = [Types.rock_gazebo.LinkExport.new(
+                task.exported_links = [Types.gz_rock.LinkExport.new(
                     port_name: 'test',
                     source_link: 'root', target_link: 'rotated_link',
                     port_period: Time.at(0)
@@ -532,10 +549,11 @@ describe 'rock_gazebo::ModelTask' do
             before do
                 @task = gzserver 'wrench.world', '/gazebo::w::m'
                 Orocos.load_typekit 'base'
+                @task.wrench_command_timeout = Time.at(1)
             end
 
             it 'allows to send a force command to its source link' do
-                task.exported_links = [Types.rock_gazebo.LinkExport.new(
+                task.exported_links = [Types.gz_rock.LinkExport.new(
                     port_name: 'test', source_link: 'leaf', target_link: 'root',
                     port_period: Time.at(0)
                 )]
@@ -567,7 +585,7 @@ describe 'rock_gazebo::ModelTask' do
             end
 
             it 'allows to send a torque command to its source link' do
-                task.exported_links = [Types.rock_gazebo.LinkExport.new(
+                task.exported_links = [Types.gz_rock.LinkExport.new(
                     port_name: 'test', source_link: 'middle', target_link: 'root',
                     port_period: Time.at(0)
                 )]
@@ -602,7 +620,7 @@ describe 'rock_gazebo::ModelTask' do
             end
 
             it 'knows how to export a link in a nested model' do
-                task.exported_links = [Types.rock_gazebo.LinkExport.new(
+                task.exported_links = [Types.gz_rock.LinkExport.new(
                     port_name: 'test', source_link: 'nested::l', target_link: 'root',
                     port_period: Time.at(0)
                 )]
@@ -610,14 +628,16 @@ describe 'rock_gazebo::ModelTask' do
                 task.start
 
                 link_pose = assert_has_one_new_sample(task.test.reader)
-                assert Eigen::Vector3.new(3, 2, 1).approx?(link_pose.position)
-                assert Eigen::Quaternion.from_angle_axis(-0.2, Eigen::Vector3.UnitZ)
-                                        .approx?(link_pose.orientation)
+                assert_eigen_approx Eigen::Vector3.new(3, 2, 1), link_pose.position, 1e-3
+                assert_eigen_approx(
+                    Eigen::Quaternion.from_angle_axis(-0.2, Eigen::Vector3.UnitZ),
+                    link_pose.orientation
+                )
             end
 
             it 'the pose\'s update period is controlled by the '\
                 'port_period parameter' do
-                task.exported_links = [Types.rock_gazebo.LinkExport.new(
+                task.exported_links = [Types.gz_rock.LinkExport.new(
                     port_name: 'test', source_link: 'l', target_link: 'root',
                     port_period: Time.at(0.1)
                 )]
@@ -630,7 +650,7 @@ describe 'rock_gazebo::ModelTask' do
             end
 
             it 'refuses to configure if the source link does not exist' do
-                task.exported_links = [Types.rock_gazebo.LinkExport.new(
+                task.exported_links = [Types.gz_rock.LinkExport.new(
                     port_name: 'test',
                     source_link: 'does_not_exist', target_link: 'root',
                     port_period: Time.at(0)
@@ -641,7 +661,7 @@ describe 'rock_gazebo::ModelTask' do
             end
 
             it 'refuses to configure if the target link does not exist' do
-                task.exported_links = [Types.rock_gazebo.LinkExport.new(
+                task.exported_links = [Types.gz_rock.LinkExport.new(
                     port_name: 'test',
                     source_link: 'l', target_link: 'does_not_exist',
                     port_period: Time.at(0)
@@ -653,11 +673,11 @@ describe 'rock_gazebo::ModelTask' do
 
             it 'refuses to configure if the port is already in use' do
                 task.exported_links = [
-                    Types.rock_gazebo.LinkExport.new(
+                    Types.gz_rock.LinkExport.new(
                         port_name: 'test', source_link: 'l', target_link: 'root',
                         port_period: Time.at(0)
                     ),
-                    Types.rock_gazebo.LinkExport.new(
+                    Types.gz_rock.LinkExport.new(
                         port_name: 'test', source_link: 'l', target_link: 'root',
                         port_period: Time.at(0)
                     )

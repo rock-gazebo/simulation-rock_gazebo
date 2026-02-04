@@ -1,4 +1,4 @@
-<sdf version="1.6">
+<sdf version="1.8">
     <world name="w">
         <model name="m">
             <link name="root">
@@ -10,19 +10,22 @@
             <link name="leaf">
                 <pose>3 0 0 0 0 0</pose>
             </link>
+            <link name="ground">
+                <must_be_base_link>true</must_be_base_link>
+            </link>
             <joint name="attach_to_ground" type="fixed">
-                <parent>root</parent>
-                <child>world</child>
+                <parent>ground</parent>
+                <child>root</child>
             </joint>
             <joint name="root2middle" type="revolute">
                 <parent>root</parent>
                 <child>middle</child>
                 <axis>
                     <xyz>0 0 1</xyz>
-                    <limits>
+                    <limit>
                         <lower>-0.1</lower>
                         <upper>0.1</upper>
-                    </limits>
+                    </limit>
                 </axis>
             </joint>
             <joint name="middle2leaf" type="revolute">
@@ -30,12 +33,16 @@
                 <child>leaf</child>
                 <axis>
                     <xyz>0 0 1</xyz>
-                    <limits>
+                    <limit>
                         <lower>-0.1</lower>
                         <upper>0.1</upper>
-                    </limits>
+                    </limit>
                 </axis>
             </joint>
+
+            <plugin filename="gz_rock-plugintask" name="gz_rock::PluginTask">
+                <task model="gz_rock::ModelTask" />
+            </plugin>
         </model>
     </world>
 </sdf>

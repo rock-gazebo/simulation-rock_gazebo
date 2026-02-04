@@ -1,7 +1,6 @@
 <sdf version="1.8">
 <world name="w">
     <model name="m">
-        <pose>1 2 3 0 0 0.1</pose>
         <link name="root">
             <inertial>
                 <mass>2</mass>
@@ -9,17 +8,22 @@
         </link>
 
         <link name="l">
-            <pose>2 3 4 0 0 0.2</pose>
-        </link>
-
-        <link name="rotated_link">
-            <pose>0 0 0 0 1.5708 0</pose>
+            <inertial>
+                <mass>0.01</mass>
+            </inertial>
         </link>
 
         <joint name="l2root" type="fixed">
             <parent>root</parent>
             <child>l</child>
         </joint>
+
+        <link name="rotated_link">
+            <pose>0 0 0 0 1.5708 0</pose>
+            <inertial>
+                <mass>0.01</mass>
+            </inertial>
+        </link>
 
         <joint name="rotated2root" type="fixed">
             <parent>root</parent>
@@ -29,17 +33,6 @@
         <plugin filename="gz_rock-plugintask" name="gz_rock::PluginTask">
             <task model="gz_rock::ModelTask" />
         </plugin>
-
-        <include>
-            <name>nested</name>
-            <uri>model://model</uri>
-            <pose>3 2 1 0 0 -0.2</pose>
-        </include>
-
-        <joint name="nested2root" type="fixed">
-            <parent>root</parent>
-            <child>nested::l</child>
-        </joint>
     </model>
 </world>
 </sdf>
