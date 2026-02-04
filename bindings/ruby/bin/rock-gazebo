@@ -50,7 +50,7 @@ end
 gzserver_args << "-r" unless paused
 
 args = options.parse(ARGV)
-if args.size != 1
+if args.empty?
     if update_models
         Rock::Gazebo.update_existing_models
         exit 0
@@ -59,6 +59,9 @@ if args.size != 1
         puts options
         exit 1
     end
+elsif args.size > 1
+    gzserver_args.concat(args[1..-1])
+    args = args[0, 1]
 end
 
 require 'rock/bundles'
