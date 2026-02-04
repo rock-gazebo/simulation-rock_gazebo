@@ -88,10 +88,9 @@ module Rock
             self.model_path = self.default_model_path
         end
 
-        def self.prepare_spawn(cmd, *cmdline)
-            env = Hash.new
+        def self.prepare_spawn(cmd, *cmdline, env: {})
             if cmdline.first.kind_of?(Hash)
-                env = cmdline.shift
+                env = cmdline.shift.merge(env)
             end
 
             model_path, args = resolve_worldfiles_and_models_arguments(cmdline)
@@ -328,15 +327,15 @@ module Rock
             end
         end
 
-        def self.spawn(cmd, *cmdline, **options)
-            prepare_spawn(cmd, *cmdline) do |args|
+        def self.spawn(cmd, *cmdline, env: {}, **options)
+            prepare_spawn(cmd, *cmdline, env: env) do |args|
                 Rock::Gazebo.debug "Running: #{args.join(" ")}"
                 Process.spawn(*args, **options)
             end
         end
 
-        def self.exec(cmd, *cmdline, download_missing_models: true, **options)
-            prepare_spawn(cmd, *cmdline, download_missing_models: download_missing_models) do |args|
+        def self.exec(cmd, *cmdline, download_missing_models: true, env: {}, **options)
+            prepare_spawn(cmd, *cmdline, env: env, download_missing_models: download_missing_models) do |args|
                 Process.exec(*args, **options)
             end
         end

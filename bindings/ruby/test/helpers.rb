@@ -44,8 +44,8 @@ module Helpers
         raise '@gazebo_output is nil, have you overriden #setup ?' unless @gazebo_output
 
         @gazebo_pid = Rock::Gazebo.spawn(
-            'gzserver', expand_fixture_world(world_file), '--verbose',
-            '--model-dir', File.join(__dir__, 'models'),
+            'gz', "sim", "-s", expand_fixture_world(world_file), '--verbose',
+            env: { "GAZEBO_MODEL_PATH" => File.join(__dir__, 'models') },
             out: @gazebo_output,
             err: @gazebo_output
         )
