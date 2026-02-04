@@ -1,6 +1,6 @@
 add_definitions(-DRTT_COMPONENT)
 rock_library(gz_rock
-	SOURCES RockSystem.cpp
+	SOURCES RockSystem.cpp details.cpp
     HEADERS RockSystem.hpp
 	DEPS_PKGCONFIG
                 orocos-rtt-gnulinux
@@ -28,3 +28,11 @@ rock_library(gz_rock
                 logger-transport-mqueue-gnulinux
                 logger-transport-typelib-gnulinux
 	DEPS_CMAKE Boost gz-sim)
+
+rock_library(gz_rock-plugintask
+	SOURCES PluginTask.cpp details.cpp
+    HEADERS PluginTask.hpp
+	DEPS_PKGCONFIG
+                orocos-rtt-gnulinux
+                orocos-rtt-corba-gnulinux
+	DEPS_CMAKE gz-sim)

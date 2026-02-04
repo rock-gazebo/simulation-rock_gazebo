@@ -2,71 +2,43 @@
 #define _ROCK_SYSTEM_HPP_
 
 // Gazebo headers
-#include <gz/sim/World.hh>
 #include <gz/sim/Model.hh>
-#include <gz/sim/Util.hh>
 #include <gz/sim/System.hh>
+#include <gz/sim/Util.hh>
+#include <gz/sim/World.hh>
 
-namespace RTT
-{
+namespace RTT {
     class TaskContext;
-    namespace base
-    {
+    namespace base {
         class ActivityInterface;
     }
 }
 
-namespace gz_rock
-{
-    class RockSystem: public gz::sim::System, public gz::sim::ISystemConfigure, public gz::sim::ISystemPreUpdate
-    {
-        public:
-            // Pure virtual function implementation
-            virtual void Load(int _argc = 0, char** _argv = NULL);
-            RockSystem();
-            ~RockSystem();
+namespace gz_rock {
+    class RockSystem : public gz::sim::System,
+                       public gz::sim::ISystemConfigure,
+                       public gz::sim::ISystemPostUpdate {
+    public:
+        // Pure virtual function implementation
+        RockSystem();
+        ~RockSystem();
 
-            void initCORBA();
-            void loadStandardTypekits();
-            void createInProcessLogger(std::string const& worldName);
+        void initCORBA();
+        void loadStandardTypekits();
+        void createInProcessLogger(std::string const& worldName);
 
-        private:
-            virtual void Configure(
-                gz::sim::Entity const& entity,
-                std::shared_ptr<const sdf::Element> const& sdf,
-                gz::sim::EntityComponentManager& ecm,
-                gz::sim::EventManager& eventMgr
-            ) override;
+    private:
+        virtual void Configure(gz::sim::Entity const& entity,
+            std::shared_ptr<const sdf::Element> const& sdf,
+            gz::sim::EntityComponentManager& ecm,
+            gz::sim::EventManager& eventMgr) override;
 
-            // void modelAdded(std::string const&);
-            void PreUpdate(gz::sim::UpdateInfo const& info, gz::sim::EntityComponentManager& ecm) override;
-            void setupTaskActivity(RTT::TaskContext* task);
+        // void modelAdded(std::string const&);
+        void PostUpdate(gz::sim::UpdateInfo const& info,
+            gz::sim::EntityComponentManager const& ecm) override;
 
-            void processRockComponentsPlugin(sdf::ElementConstPtr pluginElement);
-            RTT::TaskContext* instanciateTask(sdf::ElementConstPtr taskElement);
-            void instantiatePluginComponents(
-                sdf::ElementConstPtr model_sdf, gz::sim::Entity model_entity,
-                gz::sim::EntityComponentManager& ecm,
-                gz::sim::EventManager& event_manager
-            );
-            void instantiateSensorComponents(
-                sdf::ElementConstPtr model_sdf, gz::sim::Entity model_entity,
-                gz::sim::EntityComponentManager& ecm,
-                gz::sim::EventManager& event_manager
-            );
-
-            template<typename RockTask>
-            void setupSensorTask(
-                gz::sim::Entity model_entity,
-                sdf::ElementConstPtr sensor_sdf,
-                gz::sim::EntityComponentManager& ecm,
-                gz::sim::EventManager& event_manager
-            );
-
-            typedef std::vector<RTT::TaskContext*> Tasks;
-            Tasks tasks;
-            typedef std::vector<RTT::base::ActivityInterface*> Activities;
-            Activities activities;
+        RTT::TaskContext* m_logger_task = nullptr;
+        RTT::base::ActivityInterface* m_logger_activity = nullptr;
     };
 }
 
