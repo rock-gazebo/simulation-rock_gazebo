@@ -45,7 +45,7 @@ module Helpers
 
         @gazebo_pid = Rock::Gazebo.spawn(
             'gz', "sim", "-s", expand_fixture_world(world_file), '--verbose',
-            "--model-dir", File.join(__dir__, 'models'),
+            "-r", "--model-dir", File.join(__dir__, 'models'),
             out: @gazebo_output,
             err: @gazebo_output
         )
