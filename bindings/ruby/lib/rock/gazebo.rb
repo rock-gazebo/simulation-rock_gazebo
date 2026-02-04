@@ -88,6 +88,8 @@ module Rock
             self.model_path = self.default_model_path
         end
 
+        SDF_EXTENSIONS = %w[.sdf .world].freeze
+
         def self.prepare_spawn(cmd, *cmdline, env: {})
             if cmdline.first.kind_of?(Hash)
                 env = cmdline.shift.merge(env)
@@ -97,15 +99,14 @@ module Rock
             SDF::XML.model_path.concat(model_path)
             @tempfiles ||= Array.new
             args = args.map do |arg|
-                if arg =~ /\.sdf$|\.world$/
-                    world = process_gazebo_file(arg)
-                    processed_world = Tempfile.new
-                    processed_world.write(world.xml.to_s)
-                    processed_world.flush
-                    @tempfiles << processed_world
-                    processed_world.path
-                else arg
-                end
+                next arg unless SDF_EXTENSIONS.include?(File.extname(arg))
+
+                world = process_gazebo_file(arg)
+                processed_world = Tempfile.new
+                processed_world.write(world.xml.to_s)
+                processed_world.flush
+                @tempfiles << processed_world
+                processed_world.path
             end
             yield(Array[env, cmd, *args])
         end
@@ -168,7 +169,7 @@ module Rock
         def self.process_gazebo_world(world, loader: create_rtt_loader)
             plugin = REXML::Element.new("plugin")
             plugin.attributes["filename"] = "gz_rock"
-            plugin.attributes["name"] = "rock::gz"
+            plugin.attributes["name"] = "gz_rock::RockSystem"
             world.xml.add_element(plugin)
 
             needed_typekits = Set.new
@@ -190,7 +191,7 @@ module Rock
         # @return [Set<String>] the set of typekits that are needed by the tasks
         #   within this plugin need
         def self.process_gazebo_plugin(world, plugin_xml, loader:)
-            scope = resolve_plugin_full_name(world.xml, plugin_xml)
+            scope = resolve_plugin_full_name(world.xml, plugin_xml.parent)
             typekits = normalize_rock_components(scope, plugin_xml, loader)
             typekits
         rescue OroGen::NotFound => e
@@ -218,6 +219,9 @@ module Rock
             needed_typekits = Set.new
             plugin_xml.elements.each("task") do |task_xml|
                 full_name = task_xml.attributes["name"] || scope
+                if task_xml.attributes["absolute"] == "0"
+                    full_name = "#{scope}::#{full_name}"
+                end
 
                 task_xml.attributes["name"] = full_name
                 model_name = task_xml.attributes["model"]
@@ -232,12 +236,9 @@ module Rock
         end
 
         def self.create_or_update_rock_components(world_xml)
-            existing = REXML::XPath.first(world_xml, "plugin[@name='rock_components']")
-            return existing if existing
-
             plugin = REXML::Element.new("plugin")
-            plugin.attributes["name"] = "rock_components"
-            plugin.attributes["filename"] = "__default__"
+            plugin.attributes["name"] = "gz_rock::PluginTask"
+            plugin.attributes["filename"] = "gz_rock-plugintask"
             world_xml.elements << plugin
             plugin
         end

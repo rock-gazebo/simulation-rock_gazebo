@@ -14,7 +14,7 @@ describe 'rock_gazebo::ModelTask' do
         end
 
         it 'exports the model using a ModelTask' do
-            assert_equal 'rock_gazebo::ModelTask', task.model.name
+            assert_equal 'gz_rock::ModelTask', task.model.name
         end
     end
 

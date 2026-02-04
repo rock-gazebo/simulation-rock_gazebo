@@ -45,7 +45,7 @@ module Helpers
 
         @gazebo_pid = Rock::Gazebo.spawn(
             'gz', "sim", "-s", expand_fixture_world(world_file), '--verbose',
-            env: { "GAZEBO_MODEL_PATH" => File.join(__dir__, 'models') },
+            "--model-dir", File.join(__dir__, 'models'),
             out: @gazebo_output,
             err: @gazebo_output
         )
@@ -76,7 +76,6 @@ module Helpers
 
     def gazebo_flunk(message)
         @gazebo_output.rewind
-        puts @gazebo_output.read
         flunk(message)
     end
 
