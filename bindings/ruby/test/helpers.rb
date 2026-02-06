@@ -118,9 +118,13 @@ module Helpers
         reader
     end
 
-    def configure_start_and_read_one_new_sample(port_name)
+    def configure_start_and_read_one_new_sample(port_name, &block)
         reader = create_active_reader(port_name)
-        assert_has_one_new_sample(reader)
+        if block
+            assert_has_one_new_sample_matching(reader, &block)
+        else
+            assert_has_one_new_sample(reader)
+        end
     ensure
         reader&.disconnect
     end
