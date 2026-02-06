@@ -1,13 +1,19 @@
-<sdf version="1.6">
+<sdf version="1.8">
 <world name="w">
     <physics type="ode" default="1">
     <max_step_size>0.1</max_step_size>
     <real_time_update_rate>10</real_time_update_rate>
     </physics>
 
+    <plugin name="gz::sim::systems::Imu" filename="gz-sim-imu-system"></plugin>
+
     <model name="m">
         <link name="l">
-            <sensor name="i" type="imu" />
+            <sensor name="i" type="imu">
+                <plugin name="gz_rock::PluginTask" filename="gz_rock-plugintask">
+                    <task model="gz_rock::ImuTask" />
+                </plugin>
+            </sensor>
         </link>
     </model>
 </world>

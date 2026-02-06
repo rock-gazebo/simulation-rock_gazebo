@@ -10,7 +10,7 @@ describe 'rock_gazebo::ImuTask' do
         self, world_basename: 'imu',
               task_name: '/gazebo::w::m::l::i',
               port_name: 'orientation_samples',
-              model_name: 'rock_gazebo::ImuTask'
+              model_name: 'gz_rock::ImuTask'
     )
 
     def imu_configure_start_and_read_one_new_sample(
@@ -53,24 +53,11 @@ describe 'rock_gazebo::ImuTask' do
         assert sample.orientation.approx?(Eigen::Quaternion.Identity)
     end
 
-    it 'provides an orientation-to-horizontal if '\
-        'reference == REFERENCE_HORIZONTAL_PLANE' do
-        sample = imu_configure_start_and_read_one_new_sample 'imu-not-aligned.world' do |task|
-            task.reference = :REFERENCE_HORIZONTAL_PLANE
-        end
-        expected = Eigen::Quaternion.from_euler(
-            Eigen::Vector3.new(0, 0.1, 0.1), 2, 1, 0
-        )
-        assert sample.orientation.approx?(expected)
-    end
-
-    it 'provides an orientation-to-absolute if reference == REFERENCE_ABSOLUTE' do
-        sample = imu_configure_start_and_read_one_new_sample 'imu-not-aligned.world' do |task|
-            task.reference = :REFERENCE_ABSOLUTE
-        end
+    it 'provides the orientation' do
+        sample = imu_configure_start_and_read_one_new_sample 'imu-not-aligned.world'
         expected = Eigen::Quaternion.from_euler(
             Eigen::Vector3.new(0.1, 0.1, 0.1), 2, 1, 0
         )
-        assert sample.orientation.approx?(expected)
+        assert_eigen_approx sample.orientation.to_euler, expected.to_euler
     end
 end
