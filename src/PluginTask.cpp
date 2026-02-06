@@ -2,6 +2,7 @@
 #include "gz_rock/PluginTaskI.hpp"
 #include "gz_rock/details.hpp"
 
+#include <chrono>
 #include <gz/plugin/Register.hh>
 #include <sdf/Element.hh>
 
@@ -107,6 +108,16 @@ void PluginTask::deleteAllTasks() {
 
 void PluginTask::PreUpdate(UpdateInfo const& info, EntityComponentManager& ecm)
 {
+    auto sim_time_us = base::Time::fromMicroseconds(
+        std::chrono::duration_cast<std::chrono::microseconds>(info.simTime).count()
+    );
+    for (auto task: m_tasks) {
+        auto* plugin_task = dynamic_cast<PluginTaskI*>(task);
+        if (plugin_task) {
+            plugin_task->gazeboCriticalZone();
+            plugin_task->setSimTime(sim_time_us);
+        }
+    }
     for (auto activity: m_activities) {
         activity->execute();
     }
