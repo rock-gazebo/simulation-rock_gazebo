@@ -105,7 +105,7 @@ void PluginTask::deleteAllTasks() {
     }
 }
 
-void PluginTask::Update(UpdateInfo const& info, EntityComponentManager& ecm)
+void PluginTask::PreUpdate(UpdateInfo const& info, EntityComponentManager& ecm)
 {
     for (auto activity: m_activities) {
         activity->execute();
@@ -118,6 +118,6 @@ GZ_ADD_PLUGIN(
     PluginTask,
     gz::sim::System,
     PluginTask::ISystemConfigure,
-    PluginTask::ISystemUpdate,
+    PluginTask::ISystemPreUpdate,
     PluginTask::ISystemReset
 );

@@ -11,7 +11,7 @@
 namespace gz_rock {
     class PluginTask : public gz::sim::System,
                        public gz::sim::ISystemConfigure,
-                       public gz::sim::ISystemUpdate,
+                       public gz::sim::ISystemPreUpdate,
                        public gz::sim::ISystemReset {
         typedef std::vector<RTT::TaskContext*> Tasks;
         Tasks m_tasks;
@@ -34,7 +34,7 @@ namespace gz_rock {
             gz::sim::EntityComponentManager& ecm,
             gz::sim::EventManager& event_manager) override;
 
-        void Update(gz::sim::UpdateInfo const& info,
+        void PreUpdate(gz::sim::UpdateInfo const& info,
             gz::sim::EntityComponentManager& ecm) override;
 
         void Reset(const gz::sim::UpdateInfo& info,
