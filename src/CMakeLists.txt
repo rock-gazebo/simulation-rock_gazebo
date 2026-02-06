@@ -33,6 +33,7 @@ rock_library(gz_rock-plugintask
 	SOURCES PluginTask.cpp details.cpp
     HEADERS PluginTask.hpp
 	DEPS_PKGCONFIG
-                orocos-rtt-gnulinux
-                orocos-rtt-corba-gnulinux
+        base-types
+        orocos-rtt-gnulinux
+        orocos-rtt-corba-gnulinux
 	DEPS_CMAKE gz-sim)
