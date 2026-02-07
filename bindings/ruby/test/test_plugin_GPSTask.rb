@@ -2,7 +2,7 @@
 
 require 'test/helpers'
 
-describe 'rock_gazebo::GPSTask' do
+describe 'gz_rock::GPSTask' do
     include Orocos::Test::Component
     include Helpers
 
@@ -10,15 +10,15 @@ describe 'rock_gazebo::GPSTask' do
         self, world_basename: 'gps',
                 task_name: '/gazebo::w::m::l::g',
                 port_name: 'gps_solution',
-                model_name: 'rock_gazebo::GPSTask'
+                model_name: 'gz_rock::GPSTask'
     )
 
     def gps_configure_start_and_read_one_sample(
-        world, port = 'gps_solution', nested_models_prefix: ""
+        world, port = 'gps_solution', nested_models_prefix: "", timeout: 5
     )
         @task = gzserver world, "/gazebo::w::m::#{nested_models_prefix}l::g"
         yield(@task) if block_given?
-        configure_start_and_read_one_new_sample(port)
+        configure_start_and_read_one_new_sample(port, timeout: timeout)
     end
 
     it 'exports the solution' do
@@ -49,15 +49,18 @@ describe 'rock_gazebo::GPSTask' do
         assert(sample.time.to_f > 0 && sample.time.to_f < 10)
     end
 
-    it 'exports a 1m deviation in both vertical an horizontal by default' do
+    it 'exports a 5m deviation in both vertical an horizontal by default' do
         sample = gps_configure_start_and_read_one_sample('gps.world')
-        assert_equal 1, sample.deviationLatitude
-        assert_equal 1, sample.deviationLongitude
-        assert_equal 1, sample.deviationAltitude
+        assert_equal 5, sample.deviationLatitude
+        assert_equal 5, sample.deviationLongitude
+        assert_equal 5, sample.deviationAltitude
     end
 
-    it 'uses the GPS noise parameters to set the deviations if present' do
-        sample = gps_configure_start_and_read_one_sample('gps-noise.world')
+    it 'passes the deviation set in properties to the output solution' do
+        sample = gps_configure_start_and_read_one_sample('gps.world') do |task|
+            task.deviation_horizontal = 3
+            task.deviation_vertical = 2
+        end
         assert_equal 3, sample.deviationLatitude
         assert_equal 3, sample.deviationLongitude
         assert_equal 2, sample.deviationAltitude

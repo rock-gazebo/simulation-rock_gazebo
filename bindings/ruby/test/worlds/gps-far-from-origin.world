@@ -7,11 +7,19 @@
         <elevation>10</elevation>
         <heading_deg>90</heading_deg>
     </spherical_coordinates>
+
+    <plugin name="gz::sim::systems::NavSat" filename="gz-sim-navsat-system"></plugin>
+
     <model name="m">
         <static>true</static>
         <pose>1000 1000 -100 0 0 0</pose>
         <link name="l">
-            <sensor name="g" type="gps" />
+            <sensor name="g" type="navsat">
+                <plugin name="gz_rock::PluginTask" filename="gz_rock-plugintask">
+                    <task model="gz_rock::GPSTask" />
+                </plugin>
+                <update_rate>5</update_rate>
+            </sensor>
         </link>
     </model>
 </world>

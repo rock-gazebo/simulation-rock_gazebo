@@ -1,17 +1,23 @@
 <sdf version="1.6">
 <world name="w">
     <spherical_coordinates>
-    <surface_model>EARTH_WGS84</surface_model>
-    <latitude_deg>-22.9068</latitude_deg>
-    <longitude_deg>-43.1729</longitude_deg>
-    <elevation>10</elevation>
-    <heading_deg>0</heading_deg>
+        <surface_model>EARTH_WGS84</surface_model>
+        <latitude_deg>-22.9068</latitude_deg>
+        <longitude_deg>-43.1729</longitude_deg>
+        <elevation>10</elevation>
+        <heading_deg>0</heading_deg>
     </spherical_coordinates>
+
+    <plugin name="gz::sim::systems::NavSat" filename="gz-sim-navsat-system"></plugin>
+
     <model name="m">
         <static>true</static>
         <link name="l">
-            <sensor name="g" type="gps">
-            <update_rate>5</update_rate>
+            <sensor name="g" type="navsat">
+                <plugin name="gz_rock::PluginTask" filename="gz_rock-plugintask">
+                    <task model="gz_rock::GPSTask" />
+                </plugin>
+                <update_rate>5</update_rate>
             </sensor>
         </link>
     </model>
