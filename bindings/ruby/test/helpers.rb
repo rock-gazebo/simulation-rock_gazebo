@@ -118,12 +118,12 @@ module Helpers
         reader
     end
 
-    def configure_start_and_read_one_new_sample(port_name, &block)
+    def configure_start_and_read_one_new_sample(port_name, timeout: 5, &block)
         reader = create_active_reader(port_name)
         if block
-            assert_has_one_new_sample_matching(reader, &block)
+            assert_has_one_new_sample_matching(reader, timeout, &block)
         else
-            assert_has_one_new_sample(reader)
+            assert_has_one_new_sample(reader, timeout)
         end
     ensure
         reader&.disconnect
