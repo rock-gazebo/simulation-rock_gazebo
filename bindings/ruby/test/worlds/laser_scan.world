@@ -1,0 +1,43 @@
+<sdf version="1.8">
+    <world name="w">
+        <physics type="ode" default="1">
+            <max_step_size>0.1</max_step_size>
+            <real_time_update_rate>10</real_time_update_rate>
+        </physics>
+
+        <plugin name="gz::sim::systems::Sensors" filename="gz-sim-sensors-system"></plugin>
+
+        <model name="m">
+            <link name="l">
+                <sensor name="laser" type="gpu_lidar">
+                    <ray>
+                        <scan>
+                            <horizontal>
+                                <samples>10</samples>
+                                <resolution>1</resolution>
+                                <min_angle>-3.1415</min_angle>
+                                <max_angle>3.1415</max_angle>
+                            </horizontal>
+                            <vertical>
+                                <samples>1</samples>
+                                <resolution>1</resolution>
+                                <min_angle>-0.1963</min_angle>
+                                <max_angle>0.1963</max_angle>
+                            </vertical>
+                        </scan>
+
+                        <range>
+                            <min>1</min>
+                            <max>200</max>
+                            <resolution>0.02</resolution>
+                        </range>
+                    </ray>
+
+                    <plugin name="gz_rock::PluginTask" filename="gz_rock-plugintask">
+                        <task model="gz_rock::LaserScanTask" />
+                    </plugin>
+                </sensor>
+            </link>
+        </model>
+    </world>
+</sdf>

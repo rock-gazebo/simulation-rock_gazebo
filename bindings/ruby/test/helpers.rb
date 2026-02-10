@@ -194,7 +194,9 @@ module Helpers
     def self.common_sensor_behavior(
         ctx, world_basename:, task_name:, port_name:, model_name:
     )
-        ctx.send(:describe, "common sensor behavior for #{model_name}") do
+        ctx.send(
+            :describe, "common sensor behavior for #{model_name} (#{world_basename})"
+        ) do
             it "exports the sensor using #{model_name}" do
                 task = gzserver "#{world_basename}.world", task_name
                 assert_equal model_name, task.model.name
