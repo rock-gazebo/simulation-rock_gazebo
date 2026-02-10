@@ -1,10 +1,10 @@
-#ifndef GZ_ROCK_DETAILS_HPP
-#define GZ_ROCK_DETAILS_HPP
+#ifndef rock_gazebo_DETAILS_HPP
+#define rock_gazebo_DETAILS_HPP
 
 #include <sdf/Element.hh>
-#include <gz_rock/details/rttfwd.hpp>
+#include <rock_gazebo/details/rttfwd.hpp>
 
-namespace gz_rock {
+namespace rock_gazebo {
     namespace details {
         RTT::TaskContext* instanciateTask(sdf::ElementConstPtr task_sdf);
         RTT::base::ActivityInterface* setupTaskActivity(RTT::TaskContext* task);

@@ -2,7 +2,7 @@
 
 require 'test/helpers'
 
-describe 'gz_rock::GPSTask' do
+describe 'rock_gazebo::GPSTask' do
     include Orocos::Test::Component
     include Helpers
 
@@ -10,7 +10,7 @@ describe 'gz_rock::GPSTask' do
         self, world_basename: 'gps',
                 task_name: '/gazebo::w::m::l::g',
                 port_name: 'gps_solution',
-                model_name: 'gz_rock::GPSTask'
+                model_name: 'rock_gazebo::GPSTask'
     )
 
     def gps_configure_start_and_read_one_sample(

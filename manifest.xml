@@ -10,8 +10,8 @@
   <depend package="base/orogen/std" />
   <depend package="base/orogen/types" />
   <depend package="drivers/orogen/gps_base" />
-  <depend package="simulation/orogen/gz_rock" />
+  <depend package="simulation/orogen/rock_gazebo" />
   <depend package="tools/logger" />
 
-  <depend package="simulation/gz" />
+  <depend package="simulation/gazebo" />
 </package>

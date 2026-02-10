@@ -1,14 +1,14 @@
-#ifndef GZ_ROCK_PLUGIN_TASK_HPP
-#define GZ_ROCK_PLUGIN_TASK_HPP
+#ifndef rock_gazebo_PLUGIN_TASK_HPP
+#define rock_gazebo_PLUGIN_TASK_HPP
 
-#include <gz_rock/details/rttfwd.hpp>
+#include <rock_gazebo/details/rttfwd.hpp>
 
 #include <gz/sim/Entity.hh>
 #include <gz/sim/EntityComponentManager.hh>
 #include <gz/sim/EventManager.hh>
 #include <gz/sim/System.hh>
 
-namespace gz_rock {
+namespace rock_gazebo {
     class PluginTask : public gz::sim::System,
                        public gz::sim::ISystemConfigure,
                        public gz::sim::ISystemPreUpdate,

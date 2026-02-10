@@ -15,12 +15,11 @@
         <pose>0 0 0 0 0 0</pose>
         <link name="l">
             <sensor name="g" type="navsat">
-                <plugin name="gz_rock::PluginTask" filename="gz_rock-plugintask">
-                    <task model="gz_rock::GPSTask" />
+                <plugin name="rock_gazebo::PluginTask" filename="rock_gazebo">
+                    <task model="rock_gazebo::GPSTask" />
                 </plugin>
             </sensor>
         </link>
     </model>
 </world>
 </sdf>
-

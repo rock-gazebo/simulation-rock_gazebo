@@ -1,8 +1,8 @@
 <sdf version="1.6">
 <world name="w">
     <model name="m">
-        <plugin filename="gz_rock-plugintask" name="gz_rock::PluginTask">
-            <task model="gz_rock::ModelTask" />
+        <plugin filename="rock_gazebo" name="rock_gazebo::PluginTask">
+            <task model="rock_gazebo::ModelTask" />
         </plugin>
 
         <pose>1 2 3 0 0 0.1</pose>
@@ -33,4 +33,3 @@
     </model>
 </world>
 </sdf>
-

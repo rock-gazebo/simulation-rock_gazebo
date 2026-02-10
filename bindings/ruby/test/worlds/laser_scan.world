@@ -33,8 +33,8 @@
                         </range>
                     </ray>
 
-                    <plugin name="gz_rock::PluginTask" filename="gz_rock-plugintask">
-                        <task model="gz_rock::LaserScanTask" />
+                    <plugin name="rock_gazebo::PluginTask" filename="rock_gazebo">
+                        <task model="rock_gazebo::LaserScanTask" />
                     </plugin>
                 </sensor>
             </link>

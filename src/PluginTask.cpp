@@ -1,9 +1,9 @@
 #include "PluginTask.hpp"
-#include "gz_rock/PluginTaskI.hpp"
-#include "gz_rock/details.hpp"
+#include "rock_gazebo/PluginTaskI.hpp"
+#include "rock_gazebo/details.hpp"
 
 #include <chrono>
-#include <gz/plugin/Register.hh>
+#include <gz/plugin/RegisterMore.hh>
 #include <sdf/Element.hh>
 
 #include <rtt/Activity.hpp>
@@ -17,7 +17,7 @@
 #include <rtt/plugin/PluginLoader.hpp>
 
 using namespace std;
-using namespace gz_rock;
+using namespace rock_gazebo;
 using namespace gz::sim;
 
 PluginTask::~PluginTask() {

@@ -57,7 +57,7 @@ module Rock
             def assert_world_loads_libraries(xml, expected)
                 loads =
                     REXML::XPath
-                    .each(xml, "/sdf/world/plugin[@name='gz_rock::PluginTask']/load")
+                    .each(xml, "/sdf/world/plugin[@name='rock_gazebo::PluginTask']/load")
                     .map { |xml| xml.attributes["path"] }
                 assert_equal expected.to_set, loads.to_set,
                     "expected #{xml.to_s} to have load statements"

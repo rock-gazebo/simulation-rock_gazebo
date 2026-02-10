@@ -17,10 +17,10 @@
 #include <base/transports/typelib/TransportPlugin.hpp>
 #include <base/typekit/Plugin.hpp>
 
-#include <gz_rock/transports/corba/TransportPlugin.hpp>
-#include <gz_rock/transports/mqueue/TransportPlugin.hpp>
-#include <gz_rock/transports/typelib/TransportPlugin.hpp>
-#include <gz_rock/typekit/Plugin.hpp>
+#include <rock_gazebo/transports/corba/TransportPlugin.hpp>
+#include <rock_gazebo/transports/mqueue/TransportPlugin.hpp>
+#include <rock_gazebo/transports/typelib/TransportPlugin.hpp>
+#include <rock_gazebo/typekit/Plugin.hpp>
 
 #include <logger/Logger.hpp>
 #include <logger/transports/corba/TransportPlugin.hpp>
@@ -41,7 +41,7 @@
 
 using namespace std;
 using namespace gz::sim;
-using namespace gz_rock;
+using namespace rock_gazebo;
 using sdf::ElementConstPtr;
 
 RockSystem::RockSystem()
@@ -110,13 +110,13 @@ void RockSystem::loadStandardTypekits()
     RTT::types::TypekitRepository::Import(
         new orogen_typekits::gps_baseTypelibTransportPlugin);
 
-    RTT::types::TypekitRepository::Import(new orogen_typekits::gz_rockTypekitPlugin);
+    RTT::types::TypekitRepository::Import(new orogen_typekits::rock_gazeboTypekitPlugin);
     RTT::types::TypekitRepository::Import(
-        new orogen_typekits::gz_rockCorbaTransportPlugin);
+        new orogen_typekits::rock_gazeboCorbaTransportPlugin);
     RTT::types::TypekitRepository::Import(
-        new orogen_typekits::gz_rockMQueueTransportPlugin);
+        new orogen_typekits::rock_gazeboMQueueTransportPlugin);
     RTT::types::TypekitRepository::Import(
-        new orogen_typekits::gz_rockTypelibTransportPlugin);
+        new orogen_typekits::rock_gazeboTypelibTransportPlugin);
 
     RTT::types::TypekitRepository::Import(new orogen_typekits::loggerTypekitPlugin);
     RTT::types::TypekitRepository::Import(

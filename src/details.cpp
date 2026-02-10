@@ -1,4 +1,4 @@
-#include <gz_rock/details.hpp>
+#include <rock_gazebo/details.hpp>
 
 #include <rtt/TaskContext.hpp>
 #include <rtt/transports/corba/TaskContextServer.hpp>
@@ -9,7 +9,7 @@
 #include <gz/common/Console.hh>
 
 using namespace std;
-using namespace gz_rock;
+using namespace rock_gazebo;
 
 RTT::TaskContext* details::instanciateTask(sdf::ElementConstPtr task_sdf) {
     string name  = task_sdf->Get<string>("name");

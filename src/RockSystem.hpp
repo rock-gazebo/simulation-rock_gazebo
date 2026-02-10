@@ -14,7 +14,7 @@ namespace RTT {
     }
 }
 
-namespace gz_rock {
+namespace rock_gazebo {
     class RockSystem : public gz::sim::System,
                        public gz::sim::ISystemConfigure,
                        public gz::sim::ISystemPostUpdate {

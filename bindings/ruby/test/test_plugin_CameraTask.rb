@@ -2,7 +2,7 @@
 
 require 'test/helpers'
 
-describe 'gz_rock::CameraTask' do
+describe 'rock_gazebo::CameraTask' do
     include Orocos::Test::Component
     include Helpers
 
@@ -10,7 +10,7 @@ describe 'gz_rock::CameraTask' do
         self, world_basename: 'camera',
               task_name: '/gazebo::w::m::l::c',
               port_name: 'frame',
-              model_name: 'gz_rock::CameraTask'
+              model_name: 'rock_gazebo::CameraTask'
     )
 
     def camera_configure_start_and_read_one_new_sample(

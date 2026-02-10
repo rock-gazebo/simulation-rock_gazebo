@@ -168,8 +168,8 @@ module Rock
         # @return [void]
         def self.process_gazebo_world(world, loader: create_rtt_loader)
             plugin = REXML::Element.new("plugin")
-            plugin.attributes["filename"] = "gz_rock"
-            plugin.attributes["name"] = "gz_rock::RockSystem"
+            plugin.attributes["filename"] = "rock_gazebo"
+            plugin.attributes["name"] = "rock_gazebo::RockSystem"
             world.xml.add_element(plugin)
 
             needed_typekits = Set.new
@@ -237,8 +237,8 @@ module Rock
 
         def self.create_or_update_rock_components(world_xml)
             plugin = REXML::Element.new("plugin")
-            plugin.attributes["name"] = "gz_rock::PluginTask"
-            plugin.attributes["filename"] = "gz_rock-plugintask"
+            plugin.attributes["name"] = "rock_gazebo::PluginTask"
+            plugin.attributes["filename"] = "rock_gazebo"
             world_xml.elements << plugin
             plugin
         end

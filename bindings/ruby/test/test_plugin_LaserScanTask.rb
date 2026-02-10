@@ -2,7 +2,7 @@
 
 require 'test/helpers'
 
-describe 'gz_rock::LaserScanTask' do
+describe 'rock_gazebo::LaserScanTask' do
     include Orocos::Test::Component
     include Helpers
 
@@ -11,7 +11,7 @@ describe 'gz_rock::LaserScanTask' do
         self, world_basename: 'depth_map',
               task_name: '/gazebo::w::m::l::laser',
               port_name: 'depth_map_samples',
-              model_name: 'gz_rock::LaserScanTask'
+              model_name: 'rock_gazebo::LaserScanTask'
     )
 
     # Common behaviour for depth maps
@@ -19,6 +19,6 @@ describe 'gz_rock::LaserScanTask' do
         self, world_basename: 'laser_scan',
               task_name: '/gazebo::w::m::l::laser',
               port_name: 'laser_scan_samples',
-              model_name: 'gz_rock::LaserScanTask'
+              model_name: 'rock_gazebo::LaserScanTask'
     )
 end

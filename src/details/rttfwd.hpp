@@ -1,5 +1,5 @@
-#ifndef GZ_ROCK_DETAILS_RTTFWD_HPP
-#define GZ_ROCK_DETAILS_RTTFWD_HPP
+#ifndef rock_gazebo_DETAILS_RTTFWD_HPP
+#define rock_gazebo_DETAILS_RTTFWD_HPP
 
 namespace RTT
 {

@@ -40,12 +40,9 @@
                 </axis>
             </joint>
 
-            <plugin filename="gz_rock-plugintask" name="gz_rock::PluginTask">
-                <task model="gz_rock::ModelTask" />
+            <plugin filename="rock_gazebo" name="rock_gazebo::PluginTask">
+                <task model="rock_gazebo::ModelTask" />
             </plugin>
         </model>
     </world>
 </sdf>
-
-
-
