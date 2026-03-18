@@ -76,7 +76,7 @@ void PluginTask::configurePluginTasks(
             continue;
         }
 
-        plugin_task->setGazebo("", entity, t.sdf, ecm, event_manager);
+        plugin_task->setGazebo(entity, t.sdf, ecm, event_manager);
     }
 }
 
