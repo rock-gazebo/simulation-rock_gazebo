@@ -1,3 +1,73 @@
+# Interface between a Rock system and gazebo
+
+## General SDF Usage
+
+The library offers two plugins: RockSystem and PluginTask. The former is general setup
+and must be included for all other features to work. The second allows to instanciate
+any Rock components. In addition, if that component implements the
+`rock_gazebo::PluginTaskI` interface, it will call the interface's methods at various
+points of the gazebo lifecycle (read `PluginTaskI` documentation for more details).
+
+The first plugin must be declared in the world block, and takes no extra elements or
+configuration:
+
+```xml
+<world name="world">
+  <plugin filename="rock_gazebo" name="rock_gazebo::RockSystem" />
+</world>
+```
+
+The `PluginTask` plugin accepts `task` children elements to declare the tasks to be
+instanciated. General (non-`PluginTaskI`) tasks require a `name` and a `model` attribute.
+For instance, the next block will create two instances of the `Component` task context
+from the `some` orogen project, one named `some_name` and the other `foobar`. These tasks
+will be executed synchronously in the gazebo loop.
+
+```xml
+<world name="world">
+  <plugin filename="rock_gazebo" name="rock_gazebo::PluginTask">
+    <task name="some_name" model="some::Component" />
+    <task name="foobar" model="some::Component" />
+  </plugin>
+</world>
+```
+
+Tasks that are meant to interface with gazebo subclass the `PluginTaskI` interface.
+These sometime require extra arguments in the form of child elements or attributes,
+and are documented below.
+
+## ModelTask
+
+`rock_gazebo::ModelTask` exports joints and poses from a model, and allow to control
+said joints and poses. The task can be directly instanciated as a model plugin, in
+which case no arguments need be given. The task name is also automatically generated
+based on the model's scoped name
+
+```xml
+<model name="m">
+  <plugin filename="rock_gazebo" name="rock_gazebo::PluginTask">
+    <task model="rock_gazebo::ModelTask" />
+  </plugin>
+</model>
+```
+
+Alternatively, the model task can be created at the world level (this is actually
+the recommended option, as it allows to freely select which models need be exported
+and which not). In that case, the model to be exported shall be given with the
+`exported_gz_model` attribute, relative to the entity the plugin is attached on:
+
+```xml
+<world name="m">
+  <plugin filename="rock_gazebo" name="rock_gazebo::PluginTask">
+    <task model="rock_gazebo::ModelTask" exported_gz_model="m" />
+  </plugin>
+
+  <model name="m">
+  </model>
+</model>
+```
+A `name` attribute may be used in place of the automated name.
+
 # Syskit usage
 
 ## Directory Layout
