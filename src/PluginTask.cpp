@@ -58,9 +58,7 @@ void PluginTask::processTasks(sdf::ElementConstPtr plugin_sdf) {
     {
         auto task_context = details::instanciateTask(taskElement);
         auto activity = details::setupTaskActivity(task_context);
-
-        m_tasks.push_back(task_context);
-        m_activities.push_back(activity);
+        m_tasks.push_back({ task_context, activity, taskElement });
 
         taskElement = taskElement->GetNextElement("task");
     }
@@ -72,13 +70,13 @@ void PluginTask::configurePluginTasks(
     gz::sim::EntityComponentManager& ecm,
     gz::sim::EventManager& event_manager
 ) {
-    for (auto task: m_tasks) {
-        auto plugin_task = dynamic_cast<PluginTaskI*>(task);
+    for (auto t: m_tasks) {
+        auto plugin_task = dynamic_cast<PluginTaskI*>(t.task);
         if (!plugin_task) {
             continue;
         }
 
-        plugin_task->setGazebo("", entity, plugin_sdf, ecm, event_manager);
+        plugin_task->setGazebo("", entity, t.sdf, ecm, event_manager);
     }
 }
 
@@ -90,18 +88,14 @@ void PluginTask::Reset(
 }
 
 void PluginTask::deleteAllTasks() {
-    for (auto task: m_tasks) {
-        RTT::corba::CorbaDispatcher::Release(task->ports());
-        RTT::corba::TaskContextServer::CleanupServer(task);
+    for (auto t: m_tasks) {
+        RTT::corba::CorbaDispatcher::Release(t.task->ports());
+        RTT::corba::TaskContextServer::CleanupServer(t.task);
     }
 
-    while (!m_activities.empty()) {
-        delete m_activities.back();
-        m_activities.pop_back();
-    }
-
-    while (!m_tasks.empty()) {
-        delete m_tasks.back();
+    for (auto t: m_tasks) {
+        delete t.activity;
+        delete t.task;
         m_tasks.pop_back();
     }
 }
@@ -111,15 +105,15 @@ void PluginTask::PreUpdate(UpdateInfo const& info, EntityComponentManager& ecm)
     auto sim_time_us = base::Time::fromMicroseconds(
         std::chrono::duration_cast<std::chrono::microseconds>(info.simTime).count()
     );
-    for (auto task: m_tasks) {
-        auto* plugin_task = dynamic_cast<PluginTaskI*>(task);
+    for (auto t: m_tasks) {
+        auto* plugin_task = dynamic_cast<PluginTaskI*>(t.task);
         if (plugin_task) {
             plugin_task->gazeboCriticalZone();
             plugin_task->setSimTime(sim_time_us);
         }
     }
-    for (auto activity: m_activities) {
-        activity->execute();
+    for (auto t: m_tasks) {
+        t.activity->execute();
     }
 }
 

@@ -13,10 +13,13 @@ namespace rock_gazebo {
                        public gz::sim::ISystemConfigure,
                        public gz::sim::ISystemPreUpdate,
                        public gz::sim::ISystemReset {
-        typedef std::vector<RTT::TaskContext*> Tasks;
-        Tasks m_tasks;
-        typedef std::vector<RTT::base::ActivityInterface*> Activities;
-        Activities m_activities;
+
+        struct Task {
+            RTT::TaskContext* task = nullptr;
+            RTT::base::ActivityInterface* activity = nullptr;
+            sdf::ElementConstPtr sdf;
+        };
+        std::vector<Task> m_tasks;
 
         void processLoads(sdf::ElementConstPtr plugin_sdf);
         void processTasks(sdf::ElementConstPtr plugin_sdf);
@@ -29,14 +32,25 @@ namespace rock_gazebo {
     public:
         ~PluginTask() override;
 
+        /** Method called during the Configure step of the gazebo lifecycle
+         *
+         * @param entity the entity the <plugin> tag is attached to
+         * @param sdf the SDF element representing the <plugin ...> tag for
+         *    this plugin. It has no parent (so, can't discover the SDF definition
+         *    of the entity)
+         */
         void Configure(gz::sim::Entity const& entity,
             std::shared_ptr<const sdf::Element> const& plugin_sdf,
             gz::sim::EntityComponentManager& ecm,
             gz::sim::EventManager& event_manager) override;
 
+        /** Method called during the PreUpdate step of the gazebo lifecycle
+         */
         void PreUpdate(gz::sim::UpdateInfo const& info,
             gz::sim::EntityComponentManager& ecm) override;
 
+        /** Method called during the Reset step of the gazebo lifecycle
+         */
         void Reset(const gz::sim::UpdateInfo& info,
             gz::sim::EntityComponentManager& ecm) override;
     };
