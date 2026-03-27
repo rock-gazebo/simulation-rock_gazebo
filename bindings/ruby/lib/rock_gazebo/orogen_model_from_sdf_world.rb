@@ -19,13 +19,6 @@ module RockGazebo
         setup_orogen_model_from_sdf_world(deployment, world, period: period)
     end
 
-    SENSORS_TASK_MODELS = {
-        "ray" => "rock_gazebo::LaserScanTask",
-        "camera" => "rock_gazebo::CameraTask",
-        "imu" => "rock_gazebo::ImuTask",
-        "gps" => "rock_gazebo::GPSTask"
-    }.freeze
-
     # Add tasks to a deployment, matching the tasks that would be deployed by
     # the rock-gazebo plugin
     #
@@ -39,148 +32,33 @@ module RockGazebo
     #
     # @see {.orogen_model_from_sdf_world}
     def self.setup_orogen_model_from_sdf_world(deployment, world, period: 0.1)
-        deployment.task("gazebo::#{world.name}", "rock_gazebo::WorldTask")
-                  .periodic(period)
         deployment.task("gazebo::#{world.name}_Logger", "logger::Logger")
                   .periodic(period)
 
-        world.each_model do |model|
-            setup_orogen_model_from_sdf_model(
-                deployment, model, prefix: "gazebo::#{world.name}::", period: period
-            )
-        end
-
-        world.each_plugin do |plugin|
-            if plugin.name == "rock_components"
-                setup_orogen_model_from_rock_components_plugin(deployment, plugin)
-            end
-        end
+        setup_orogen_model_from_plugin_tasks(deployment, world, "gazebo::#{world.name}", period)
 
         deployment
     end
 
     # @api private
     #
-    # Add the tasks deployed through the rock_components "plugin" to an orogen model
-    #
-    # @param [OroGen::Spec::Deployment] deployment the deployment model to modify
-    # @param [SDF::Plugin] the plugin
-    # @param [Float] period the task's period in seconds
-    def self.setup_orogen_model_from_rock_components_plugin(
-        deployment, plugin, period: 0.1
-    )
-        plugin.xml.elements.each("task") do |el|
-            deployment.task(el.attributes["name"], el.attributes["model"])
-                      .periodic(period)
+    # Define tasks in an orogen deployment that match the name and models of tasks
+    # declared with the rock_gazebo::PluginTask plugin
+    def self.setup_orogen_model_from_plugin_tasks(deployment, context, prefix, period)
+        context.each_direct_plugin do |plugin|
+            if plugin.name == "rock_gazebo::PluginTask"
+                plugin.xml.elements.each("task") do |el|
+                    name = [prefix, el.attributes["name"]].compact.join("::")
+                    deployment.task(name, el.attributes["model"])
+                              .periodic(period)
+                end
+            end
         end
-    end
 
-    # @api private
-    #
-    # Describe a model's rock task to a deployment, describing the rock-gazebo
-    # plugin's behavior
-    #
-    # The model's own task name is always gazebo:${world}:${model}. The method
-    # also adds tasks for the models sensors and plugins. See
-    # {#setup_orogen_model_from_sdf_model_sensor} and {#setup_orogen_model_from_sdf_model_plugin}
-    #
-    # @param [OroGen::Spec::Deployment] deployment the deployment model to modify
-    # @param [SDF::Model] the sensor description
-    # @param [String] prefix the string to be put before the plugin name in
-    #   the generated task name
-    # @param [Float] period the task's period in seconds
-    def self.setup_orogen_model_from_sdf_model(deployment, model, prefix: "", period: 0.1)
-        deployment.task("#{prefix}#{model.name}", "rock_gazebo::ModelTask")
-                  .periodic(period)
-
-        setup_orogen_submodel_from_sdf_model(
-            deployment, model, prefix: "#{prefix}#{model.name}::", period: period
-        )
-    end
-
-    # @api private
-    #
-    # Describes recursively the model's and submodel's plugins and sensors behaviors
-    #
-    # @param [OroGen::Spec::Deployment] deployment the deployment model to modify
-    # @param [SDF::Model] the sensor description
-    # @param [String] prefix the string to be put before the plugin name in
-    #   the generated task name
-    # @param [Float] period the task's period in seconds
-    def self.setup_orogen_submodel_from_sdf_model(
-        deployment, model,
-        prefix: "", period: 0.1
-    )
-        model.each_direct_sensor do |sensor|
-            setup_orogen_model_from_sdf_model_sensor(
-                deployment, sensor,
-                prefix: prefix,
-                period: period
+        context.each_direct_model do |model|
+            setup_orogen_model_from_plugin_tasks(
+                deployment, model, "#{prefix}::#{model.name}", period
             )
         end
-
-        model.each_direct_plugin do |plugin|
-            setup_orogen_model_from_sdf_model_plugin(
-                deployment, plugin,
-                prefix: prefix,
-                period: period
-            )
-        end
-
-        model.each_direct_model do |submodel|
-            setup_orogen_submodel_from_sdf_model(
-                deployment, submodel,
-                prefix: "#{prefix}#{submodel.name}::",
-                period: period
-            )
-        end
-    end
-
-    # @api private
-    #
-    # Describe a sensor's rock task to a deployment, describing the rock-gazebo
-    # plugin's behavior
-    #
-    # The task name is always gazebo:${world}:${model}:${sensor}. The task model
-    # is based on the sensor type, as listed in {SENSORS_TASK_MODELS}
-    #
-    # @param [OroGen::Spec::Deployment] deployment the deployment model to modify
-    # @param [SDF::Sensor] the sensor description
-    # @param [String] prefix the string to be put before the plugin name in
-    #   the generated task name
-    # @param [Float] period the task's period in seconds
-    def self.setup_orogen_model_from_sdf_model_sensor(
-        deployment, sensor, prefix: "", period: 0.1
-    )
-        return unless (task_model = SENSORS_TASK_MODELS[sensor.type])
-
-        sensor_link_name = sensor.parent.name
-        deployment.task("#{prefix}#{sensor_link_name}::#{sensor.name}", task_model)
-                  .periodic(period)
-    end
-
-    # @api private
-    #
-    # Describe a plugin's rock task to a deployment, describing the rock-gazebo
-    # plugin's behavior
-    #
-    # Tasks in plugins are explicitely specified with a <task .../> element.
-    #
-    # The task name is always gazebo:${world}:${model}:${plugin}
-    #
-    # @param [OroGen::Spec::Deployment] deployment the deployment model to modify
-    # @param [SDF::Plugin] the plugin description
-    # @param [String] prefix the string to be put before the plugin name in
-    #   the generated task name
-    # @param [Float] period the task's period in seconds
-    def self.setup_orogen_model_from_sdf_model_plugin(
-        deployment, plugin, prefix: "", period: 0.1
-    )
-        task_name, task_model =
-            [task_xml.attributes["name"], task_xml.attributes["model"]]
-
-        return unless task_model
-
-        deployment.task(task_name, task_model).periodic(period)
     end
 end

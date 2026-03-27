@@ -1,0 +1,16 @@
+<sdf version="1.5">
+    <world name="underwater">
+        <model name="oil_rig">
+            <plugin name="rock_gazebo::PluginTask" filename="rock_gazebo">
+                <task model="rock_gazebo::ModelTask" />
+            </plugin>
+
+            <model name="flat_fish">
+                <plugin name="rock_gazebo::PluginTask" filename="rock_gazebo">
+                    <task model="rock_gazebo::ModelTask" />
+                    <task name="thrusters" model="gazebo_usv::ThrusterTask" />
+                </plugin>
+             </model>
+        </model>
+    </world>
+</sdf>

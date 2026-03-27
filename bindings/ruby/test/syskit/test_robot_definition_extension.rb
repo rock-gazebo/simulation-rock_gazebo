@@ -14,6 +14,66 @@ module RockGazebo
                 require 'models/orogen/rock_gazebo'
             end
 
+            describe "#resolve_frame_element_from_full_name" do
+                it "finds the link of a simple frame from a plugin context" do
+                    xml = <<~XML
+                        <model name="m">
+                            <link name="root" />
+                            <link name="other">
+                                <plugin><frame>root</frame></plugin>
+                            </link>
+                        </model>
+                    XML
+
+                    xml = REXML::Document.new(xml).root
+                    frame_element = xml.elements["//frame"]
+                    assert_equal(
+                        xml.elements["//link[@name=\"root\"]"],
+                        RobotDefinitionExtension.resolve_frame_element_from_full_name(
+                            frame_element, "root"
+                        )
+                    )
+                end
+
+                it "finds the model of a simple frame from a plugin context" do
+                    xml = <<~XML
+                        <model name="m">
+                            <link name="root" />
+                            <link name="other"><plugin><frame>m</frame></plugin></link>
+                        </model>
+                    XML
+
+                    xml = REXML::Document.new(xml).root
+                    frame_element = xml.elements["//frame"]
+                    assert_equal(
+                        xml,
+                        RobotDefinitionExtension.resolve_frame_element_from_full_name(
+                            frame_element, "m"
+                        )
+                    )
+                end
+
+                it "resolves a recursive name" do
+                    xml = <<~XML
+                        <model name="m">
+                            <link name="root" />
+                            <link name="other">
+                                <plugin><frame>m::root</frame></plugin>
+                            </link>
+                        </model>
+                    XML
+
+                    xml = REXML::Document.new(xml).root
+                    frame_element = xml.elements["//frame"]
+                    assert_equal(
+                        xml.elements["//link[@name=\"root\"]"],
+                        RobotDefinitionExtension.resolve_frame_element_from_full_name(
+                            frame_element, "m::root"
+                        )
+                    )
+                end
+            end
+
             describe '#find_actual_model' do
                 before do
                     @robot_sdf =
@@ -33,6 +93,7 @@ module RockGazebo
                     assert_equal @world.each_model.first, actual_model
                     assert_nil enclosing_model
                 end
+
                 it 'resolves a model-in-model as well as its root' do
                     actual_model, enclosing_model = @robot_model.find_actual_model(
                         'included_model', @world.each_model.to_a
@@ -70,375 +131,6 @@ module RockGazebo
                 end
             end
 
-            describe 'sensor model' do
-                describe "prefix_device_with_name: false" do
-                    before do
-                        @world = load_normalized_world("attached_simple_model.world")
-                        @robot_sdf = @world.each_model.first
-                        @robot_model.load_gazebo(
-                            @robot_sdf, "gazebo::test", prefix_device_with_name: false
-                        )
-                    end
-
-                    it "defines a sensor device based on the sensor name only" do
-                        assert @robot_model.find_device("g_sensor")
-                    end
-
-                    it "attaches the sensor device to an existing deployment" do
-                        device = @robot_model.find_device("g_sensor")
-                        hint = device.to_instance_requirements.deployment_hints.first
-                        deployment_m = RockGazebo.orogen_model_from_sdf_world(
-                            "gazebo", @world
-                        )
-                        assert_equal "gazebo::test::attachment::included_model::root::g",
-                                     hint
-                        assert deployment_m.find_task_by_name(hint),
-                               "hint is #{hint}, available deployments: " \
-                               "#{deployment_m.each_task.map(&:name).sort.join(", ")}"
-                    end
-                end
-
-                describe "prefix_device_with_name: true and " \
-                         "!scope_device_name_with_links_and_submodels" do
-                    before do
-                        @__scope_flag = Syskit.scope_device_name_with_links_and_submodels
-                        Syskit.scope_device_name_with_links_and_submodels = false
-                    end
-                    after do
-                        Syskit.scope_device_name_with_links_and_submodels = @__scope_flag
-                    end
-                    describe "loading the root model" do
-                        before do
-                            @world = load_normalized_world("attached_simple_model.world")
-                            @robot_sdf = @world.each_model.first
-                            @robot_model.load_gazebo(
-                                @robot_sdf, "gazebo::test", prefix_device_with_name: true
-                            )
-                        end
-
-                        it "defines a sensor device based on the root model " \
-                           "and sensor name" do
-                            assert @robot_model.find_device("attachment_g_sensor")
-                        end
-
-                        it "attaches the sensor device to an existing deployment" do
-                            device = @robot_model.find_device("attachment_g_sensor")
-                            hint = device.to_instance_requirements.deployment_hints.first
-                            deployment_m = RockGazebo.orogen_model_from_sdf_world(
-                                "gazebo", @world
-                            )
-                            assert_equal(
-                                "gazebo::test::attachment::included_model::root::g",
-                                hint
-                            )
-                            assert deployment_m.find_task_by_name(hint),
-                                "hint is #{hint}, available deployments: " \
-                                "#{deployment_m.each_task.map(&:name).sort.join(", ")}"
-                        end
-                    end
-
-                    describe "loading a submodel" do
-                        before do
-                            @world = load_normalized_world("attached_simple_model.world")
-                            @root_model_sdf = @world.each_model.first
-                            @robot_sdf = @root_model_sdf.each_model.first
-                            @robot_model.load_gazebo(
-                                @robot_sdf, "gazebo::test", prefix_device_with_name: true
-                            )
-                        end
-
-                        it "defines a sensor device based on the root model " \
-                           "and sensor name" do
-                            assert @robot_model.find_device("included_model_g_sensor")
-                        end
-
-                        it "attaches the sensor device to an existing deployment" do
-                            device = @robot_model.find_device("included_model_g_sensor")
-                            hint = device.to_instance_requirements.deployment_hints.first
-                            deployment_m = RockGazebo.orogen_model_from_sdf_world(
-                                "gazebo", @world
-                            )
-                            assert_equal(
-                                "gazebo::test::attachment::included_model::root::g",
-                                hint
-                            )
-                            assert deployment_m.find_task_by_name(hint),
-                                "hint is #{hint}, available deployments: " \
-                                "#{deployment_m.each_task.map(&:name).sort.join(", ")}"
-                        end
-                    end
-                end
-
-                describe "prefix_device_with_name: true and " \
-                         "scope_device_name_with_links_and_submodels" do
-                    before do
-                        @__scope_flag = Syskit.scope_device_name_with_links_and_submodels
-                        Syskit.scope_device_name_with_links_and_submodels = true
-                    end
-                    after do
-                        Syskit.scope_device_name_with_links_and_submodels = @__scope_flag
-                    end
-
-                    describe "loading the root model" do
-                        before do
-                            @world = load_normalized_world("attached_simple_model.world")
-                            @robot_sdf = @world.each_model.first
-                            @robot_model.load_gazebo(
-                                @robot_sdf, "gazebo::test", prefix_device_with_name: true
-                            )
-                        end
-
-                        it "defines a sensor device based on the root model " \
-                           "and sensor name" do
-                            assert @robot_model.find_device(
-                                "attachment_included_model_root_g_sensor"
-                            )
-                        end
-
-                        it "attaches the sensor device to an existing deployment" do
-                            device = @robot_model.find_device(
-                                "attachment_included_model_root_g_sensor"
-                            )
-                            hint = device.to_instance_requirements.deployment_hints.first
-                            deployment_m = RockGazebo.orogen_model_from_sdf_world(
-                                "gazebo", @world
-                            )
-                            assert_equal(
-                                "gazebo::test::attachment::included_model::root::g",
-                                hint
-                            )
-                            assert deployment_m.find_task_by_name(hint),
-                                "hint is #{hint}, available deployments: " \
-                                "#{deployment_m.each_task.map(&:name).sort.join(", ")}"
-                        end
-                    end
-
-                    describe "loading a submodel" do
-                        before do
-                            @world = load_normalized_world("attached_simple_model.world")
-                            @root_model_sdf = @world.each_model.first
-                            @robot_sdf = @root_model_sdf.each_model.first
-                            @robot_model.load_gazebo(
-                                @robot_sdf, "gazebo::test", prefix_device_with_name: true
-                            )
-                        end
-
-                        it "defines a sensor device based on the root model " \
-                           "and sensor name" do
-                            assert @robot_model.find_device("included_model_root_g_sensor")
-                        end
-
-                        it "attaches the sensor device to an existing deployment" do
-                            device = @robot_model.find_device(
-                                "included_model_root_g_sensor"
-                            )
-                            hint = device.to_instance_requirements.deployment_hints.first
-                            deployment_m = RockGazebo.orogen_model_from_sdf_world(
-                                "gazebo", @world
-                            )
-                            assert_equal(
-                                "gazebo::test::attachment::included_model::root::g",
-                                hint
-                            )
-                            assert deployment_m.find_task_by_name(hint),
-                                "hint is #{hint}, available deployments: " \
-                                "#{deployment_m.each_task.map(&:name).sort.join(", ")}"
-                        end
-                    end
-                end
-
-                describe "plugin model" do
-                    require "common_models/models/devices/gazebo/gps"
-
-                    before do
-                        @task_model = OroGen.rock_gazebo.GPSTask
-                        RockGazebo::Syskit::RobotDefinitionExtension
-                            .register_device_by_plugin_task_model(
-                                @task_model, CommonModels::Devices::Gazebo::GPS
-                            )
-                    end
-
-                    describe "prefix_device_with_name: false" do
-                        before do
-                            @world = load_normalized_world("attached_simple_model.world")
-                            @robot_sdf = @world.each_model.first
-                            @robot_model.load_gazebo(@robot_sdf, "gazebo::test")
-                        end
-
-                        it "defines a plugin device based on the plugin name only" do
-                            assert @robot_model.find_device("gps_test_plugin")
-                        end
-
-                        it "attaches the plugin device to an existing deployment" do
-                            device = @robot_model.find_device("gps_test_plugin")
-                            hint = device.to_instance_requirements.deployment_hints.first
-                            deployment_m = RockGazebo.orogen_model_from_sdf_world(
-                                "gazebo", @world
-                            )
-                            assert_equal "gazebo::test::attachment::included_model::gps_test",
-                                         hint
-                            assert deployment_m.find_task_by_name(hint),
-                                   "hint is #{hint}, available deployments: " \
-                                   "#{deployment_m.each_task.map(&:name).sort.join(', ')}"
-                        end
-                    end
-
-                    describe "prefix_device_with_name: true and " \
-                             "!scope_device_name_with_links_and_submodels" do
-                        before do
-                            @__scope_flag = Syskit.scope_device_name_with_links_and_submodels
-                            Syskit.scope_device_name_with_links_and_submodels = false
-                        end
-
-                        after do
-                            Syskit.scope_device_name_with_links_and_submodels = @__scope_flag
-                        end
-
-                        describe "loading the root model" do
-                            before do
-                                @world = load_normalized_world("attached_simple_model.world")
-                                @robot_sdf = @world.each_model.first
-                                @robot_model.load_gazebo(
-                                    @robot_sdf, "gazebo::test", prefix_device_with_name: true
-                                )
-                            end
-
-                            it "defines a plugin device based on the root model " \
-                               "and sensor name" do
-                                assert @robot_model.find_device("attachment_gps_test_plugin")
-                            end
-
-                            it "attaches the plugin device to an existing deployment" do
-                                device =
-                                    @robot_model.find_device("attachment_gps_test_plugin")
-                                hint = device.to_instance_requirements.deployment_hints.first
-                                deployment_m =
-                                    RockGazebo.orogen_model_from_sdf_world("gazebo", @world)
-                                assert_equal(
-                                    "gazebo::test::attachment::included_model::gps_test",
-                                    hint
-                                )
-                                assert deployment_m.find_task_by_name(hint),
-                                       "hint is #{hint}, available deployments: " \
-                                       "#{deployment_m.each_task.map(&:name).sort.join(', ')}"
-                            end
-                        end
-
-                        describe "loading a submodel" do
-                            before do
-                                @world = load_normalized_world("attached_simple_model.world")
-                                @root_model_sdf = @world.each_model.first
-                                @robot_sdf = @root_model_sdf.each_model.first
-                                @robot_model.load_gazebo(
-                                    @robot_sdf, "gazebo::test", prefix_device_with_name: true
-                                )
-                            end
-
-                            it "defines a plugin device based on the root model " \
-                               "and sensor name" do
-                                device = @robot_model
-                                         .find_device("included_model_gps_test_plugin")
-                                assert device
-                            end
-
-                            it "attaches the plugin device to an existing deployment" do
-                                device =
-                                    @robot_model.find_device("included_model_gps_test_plugin")
-                                hint = device.to_instance_requirements.deployment_hints.first
-                                deployment_m = RockGazebo.orogen_model_from_sdf_world(
-                                    "gazebo", @world
-                                )
-                                assert_equal(
-                                    "gazebo::test::attachment::included_model::gps_test",
-                                    hint
-                                )
-                                assert deployment_m.find_task_by_name(hint),
-                                       "hint is #{hint}, available deployments: " \
-                                       "#{deployment_m.each_task.map(&:name).sort.join(', ')}"
-                            end
-                        end
-                    end
-                    describe "prefix_device_with_name: true and " \
-                             "scope_device_name_with_links_and_submodels" do
-                        before do
-                            @__scope_flag = Syskit.scope_device_name_with_links_and_submodels
-                            Syskit.scope_device_name_with_links_and_submodels = true
-                            @world = load_normalized_world("attached_simple_model.world")
-                        end
-
-                        after do
-                            Syskit.scope_device_name_with_links_and_submodels = @__scope_flag
-                        end
-
-                        describe "loading the root model" do
-                            before do
-                                @robot_sdf = @world.each_model.first
-                                @robot_model.load_gazebo(
-                                    @robot_sdf, "gazebo::test", prefix_device_with_name: true
-                                )
-                            end
-
-                            it "defines a plugin device based on the root model " \
-                               "and sensor name" do
-                                assert @robot_model.find_device(
-                                    "attachment_included_model_gps_test_plugin"
-                                )
-                            end
-
-                            it "attaches the plugin device to an existing deployment" do
-                                device = @robot_model.find_device(
-                                    "attachment_included_model_gps_test_plugin"
-                                )
-                                hint = device.to_instance_requirements.deployment_hints.first
-                                deployment_m = RockGazebo.orogen_model_from_sdf_world(
-                                    "gazebo", @world
-                                )
-                                assert_equal(
-                                    "gazebo::test::attachment::included_model::gps_test",
-                                    hint
-                                )
-                                assert deployment_m.find_task_by_name(hint),
-                                       "hint is #{hint}, available deployments: " \
-                                       "#{deployment_m.each_task.map(&:name).sort.join(', ')}"
-                            end
-                        end
-
-                        describe "loading a submodel" do
-                            before do
-                                @root_model_sdf = @world.each_model.first
-                                @robot_sdf = @root_model_sdf.each_model.first
-                                @robot_model.load_gazebo(
-                                    @robot_sdf, "gazebo::test", prefix_device_with_name: true
-                                )
-                            end
-
-                            it "defines a plugin device based on the root model " \
-                               "and sensor name" do
-                                assert \
-                                    @robot_model.find_device("included_model_gps_test_plugin")
-                            end
-
-                            it "attaches the plugin device to an existing deployment" do
-                                device = @robot_model.find_device(
-                                    "included_model_gps_test_plugin"
-                                )
-                                hint = device.to_instance_requirements.deployment_hints.first
-                                deployment_m = RockGazebo.orogen_model_from_sdf_world(
-                                    "gazebo", @world
-                                )
-                                assert_equal(
-                                    "gazebo::test::attachment::included_model::gps_test",
-                                    hint
-                                )
-                                assert deployment_m.find_task_by_name(hint),
-                                       "hint is #{hint}, available deployments: " \
-                                       "#{deployment_m.each_task.map(&:name).sort.join(', ')}"
-                            end
-                        end
-                    end
-                end
-            end
-
             describe 'root model' do
                 before do
                     root = ::SDF::Root.load expand_fixture_world('simple_model.world')
@@ -473,7 +165,7 @@ module RockGazebo
                     end
                 end
 
-                describe 'deprecated link and sensor export behavior' do
+                describe 'deprecated link export behavior' do
                     before do
                         flexmock(Roby).should_receive(:warn_deprecated).at_least.once
                         @robot_model.load_gazebo(
@@ -507,20 +199,6 @@ module RockGazebo
                         assert_equal 'included_model::child',
                                      link_driver_m.frame_mappings['child_source']
                     end
-
-                    it 'exposes the sensors from the model but does not prefix '\
-                       'them with the model name' do
-                        device = @robot_model.find_device('g_sensor')
-                        sensor_driver_m = device.to_instance_requirements
-                        driver_m = sensor_driver_m.to_component_model
-                        assert_equal ['gazebo::included_model::root::g'],
-                                     sensor_driver_m.deployment_hints.to_a
-                        assert_equal OroGen.rock_gazebo.GPSTask, driver_m.model
-                        driver_m.find_transform_of_port(driver_m.position_samples_port)
-
-                        assert_equal 'included_model::root', device.frame_transform.from
-                        assert_equal 'world', device.frame_transform.to
-                    end
                 end
 
                 describe 'link export behavior' do
@@ -552,16 +230,6 @@ module RockGazebo
                         assert_equal 'child_source', transform.from
                         assert_equal 'child_target', transform.to
                     end
-
-                    it 'exposes the sensors from the model' do
-                        device, sensor_driver_m, =
-                            common_sensor_export_behavior
-
-                        assert_equal ['gazebo::included_model::root::g'],
-                                     sensor_driver_m.deployment_hints.to_a
-                        assert_equal 'included_model::root', device.frame_transform.from
-                        assert_equal 'world', device.frame_transform.to
-                    end
                 end
             end
 
@@ -580,10 +248,8 @@ module RockGazebo
                 device = @robot_model.find_device('renamed_model_g_sensor')
                 sensor_driver_m = device.to_instance_requirements
                 driver_m = sensor_driver_m.to_component_model
-                assert_equal OroGen.rock_gazebo.GPSTask, driver_m.model
-                transform = driver_m.find_transform_of_port(
-                    driver_m.position_samples_port
-                )
+                assert_equal OroGen.rock_gazebo.CameraTask, driver_m.model
+                transform = driver_m.find_transform_of_port(driver_m.frame_port)
                 [device, sensor_driver_m, driver_m, transform]
             end
 
@@ -608,7 +274,8 @@ module RockGazebo
                 it 'sets up the device transform on the submodel device, '\
                    'using the submodel\'s root link as root frame' do
                     device = @robot_model.find_device('renamed_model')
-                    assert_equal 'included_model::simple_model::root', device.frame_transform.from
+                    assert_equal 'included_model::simple_model::root',
+                                 device.frame_transform.from
                     assert_equal 'world', device.frame_transform.to
                 end
 
@@ -621,7 +288,8 @@ module RockGazebo
 
                 it "sets up the transforms on the submodel's sensors" do
                     device, = common_sensor_export_behavior
-                    assert_equal 'included_model::simple_model::root', device.frame_transform.from
+                    assert_equal 'included_model::simple_model::root',
+                                 device.frame_transform.from
                     assert_equal 'world', device.frame_transform.to
                 end
 
@@ -629,7 +297,7 @@ module RockGazebo
                     _, sensor_driver_m, = common_sensor_export_behavior
 
                     assert_equal(
-                        ['gazebo::attachment::included_model::simple_model::root::g'],
+                        ['gazebo::attachment::included_model::simple_model::root::c::g_sensor'],
                         sensor_driver_m.deployment_hints.to_a
                     )
                 end
@@ -706,8 +374,10 @@ module RockGazebo
                 it 'exposes the sensors from the submodel' do
                     _, sensor_driver_m, = common_sensor_export_behavior
 
-                    assert_equal ['gazebo::attachment::included_model::root::g'],
-                                 sensor_driver_m.deployment_hints.to_a
+                    assert_equal(
+                        ['gazebo::attachment::included_model::root::c::g_sensor'],
+                        sensor_driver_m.deployment_hints.to_a
+                    )
                 end
             end
 
@@ -747,7 +417,7 @@ module RockGazebo
                 it 'exposes the sensors from the submodel' do
                     device, sensor_driver_m, = common_sensor_export_behavior
 
-                    assert_equal ['gazebo::attachment::included_model::root::g'],
+                    assert_equal ['gazebo::attachment::included_model::root::c::g_sensor'],
                                  sensor_driver_m.deployment_hints.to_a
                     assert_equal 'attachment::included_model::root',
                                  device.frame_transform.from
@@ -829,14 +499,14 @@ module RockGazebo
 
                     @joint_device = @robot_model.sdf_export_joint(
                         @device,
-                        as: 'some_links', joint_names: ["included_model::roo2child"]
+                        as: 'some_links', joint_names: ["included_model::root2child"]
                     )
                 end
 
                 it 'creates a device with the relevant joint_export dynamic service' do
                     plan = Roby::Plan.new
                     srv = @joint_device.to_instance_requirements.instanciate(plan)
-                    assert_equal %w[included_model::roo2child],
+                    assert_equal %w[included_model::root2child],
                                  srv.model.dynamic_service_options[:joint_names]
                 end
 
@@ -850,7 +520,7 @@ module RockGazebo
                     plan = Roby::Plan.new
                     joint_device = @robot_model.sdf_export_joint(
                         @device,
-                        as: "other_links", joint_names: ["included_model::roo2child"],
+                        as: "other_links", joint_names: ["included_model::root2child"],
                         ignore_joint_names: true
                     )
                     srv = joint_device.to_instance_requirements.instanciate(plan)
@@ -870,7 +540,7 @@ module RockGazebo
                     joint_device = @robot_model.sdf_export_joint(
                         @device,
                         as: "other_links",
-                        joint_names: ["included_model::roo2child"],
+                        joint_names: ["included_model::root2child"],
                         ignore_joint_names: true,
                         position_offsets: [10]
                     )
@@ -924,7 +594,7 @@ module RockGazebo
                         @joint = @robot_model.sdf_export_joint(
                             @device,
                             as: "some_joints",
-                            joint_names: ["attachment::included_model::roo2child"]
+                            joint_names: ["attachment::included_model::root2child"]
                         )
                     end
 
@@ -958,7 +628,7 @@ module RockGazebo
                         )
                         @joint = @robot_model.sdf_export_joint(
                             @device,
-                            as: "some_joints", joint_names: ["included_model::roo2child"]
+                            as: "some_joints", joint_names: ["included_model::root2child"]
                         )
                     end
 

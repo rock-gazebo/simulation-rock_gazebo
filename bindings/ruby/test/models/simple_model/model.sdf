@@ -1,18 +1,22 @@
 <?xml version="1.0" ?>
 <sdf version="1.6">
-  <model name="simple test model">
-      <link name="root">
-          <sensor name="g" type="gps" />
-      </link>
-      <link name="child" />
-      <joint name="roo2child" type="revolute">
-          <parent>root</parent>
-          <child>child</child>
-          <axis>
-          </axis>
-      </joint>
-      <plugin name="gps_test">
-        <task model="rock_gazebo::GPSTask"/>
-      </plugin>
-  </model>
+    <model name="simple test model">
+        <link name="root">
+            <sensor name="c" type="camera">
+                <plugin name="rock_gazebo::PluginTask" filename="rock_gazebo">
+                    <task name="g_sensor" model="rock_gazebo::CameraTask">
+                        <frame_from>root</frame_from>
+                        <frame_to>world</frame_to>
+                    </task>
+                </plugin>
+            </sensor>
+        </link>
+        <link name="child" />
+        <joint name="root2child" type="revolute">
+            <parent>root</parent>
+            <child>child</child>
+            <axis>
+            </axis>
+        </joint>
+    </model>
 </sdf>

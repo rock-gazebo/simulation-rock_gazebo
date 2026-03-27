@@ -4,43 +4,6 @@ module RockGazebo
     module Syskit
         # Gazebo-specific extensions to {Syskit::Robot::RobotDefinition}
         module RobotDefinitionExtension
-            # Given a sensor, returns the device and device driver model that
-            # should be used to handle it
-            #
-            # @return [nil,(Model<Syskit::Device>,Model<Syskit::Component>)]
-            #   either nil if this type of sensor is not handled either by the
-            #   rock-gazebo plugin or by the syskit integration (yet), or the
-            #   device model and device driver that should be used for this
-            #   sensor
-            def sensors_to_device(sensor, device_name, frame_name)
-                case sensor.type
-                when 'ray'
-                    require 'common_models/models/devices/gazebo/ray'
-                    device(CommonModels::Devices::Gazebo::Ray,
-                           as: device_name,
-                           using: OroGen.rock_gazebo.LaserScanTask)
-                        .frame(frame_name)
-                when 'imu'
-                    require 'common_models/models/devices/gazebo/imu'
-                    device(CommonModels::Devices::Gazebo::Imu,
-                           as: device_name,
-                           using: OroGen.rock_gazebo.ImuTask)
-                        .frame_transform(frame_name => 'world')
-                when 'camera'
-                    require 'common_models/models/devices/gazebo/camera'
-                    device(CommonModels::Devices::Gazebo::Camera,
-                           as: device_name,
-                           using: OroGen.rock_gazebo.CameraTask)
-                        .frame(frame_name)
-                when 'gps'
-                    require 'common_models/models/devices/gazebo/gps'
-                    device(CommonModels::Devices::Gazebo::GPS,
-                           as: device_name,
-                           using: OroGen.rock_gazebo.GPSTask)
-                        .frame_transform(frame_name => 'world')
-                end
-            end
-
             @plugin_device_mappings = {}
             def self.plugin_device_mappings
                 @plugin_device_mappings ||= {}
@@ -65,18 +28,82 @@ module RockGazebo
             #   rock-gazebo plugin or by the syskit integration (yet), or the
             #   device model and device driver that should be used for this
             #   sensor
-            def plugins_to_device(plugin, device_name, deployment_hint)
-                plugin.xml.elements.to_a("task").each do |task_element|
-                    task_model_name = task_element.attributes["model"]
-                    task_model = ::Syskit::TaskContext.find_model_from_orogen_name(task_model_name)
-                    # The task name is used to avoid ambiguity between multiple plugins
-                    # originated from the same plugin.
-                    task_name = task_element.attributes["name"]
-                    if (device = RobotDefinitionExtension.plugin_device_mappings[task_model])
-                        return device(device, as: device_name, using: task_model)
-                               .prefer_deployed_tasks(task_name)
-                    end
+            def plugin_task_to_device(
+                root_model, task_element, task_model_name,
+                name_scope, deployment_hint
+            )
+                task_model =
+                    ::Syskit::TaskContext.find_model_from_orogen_name(task_model_name)
+                # The task name is used to avoid ambiguity between multiple plugins
+                # originated from the same plugin.
+                task_name = task_element.attributes["name"]
+
+                return unless (device_m = resolve_plugin_device_model(task_model))
+
+                device_name = [name_scope, task_name].compact.join("_")
+                device =
+                    device(device_m, as: device_name, using: task_model)
+                    .prefer_deployed_tasks("#{deployment_hint}#{task_name}")
+
+                # Check if there is a frame or frame_from/frame_to attribute
+                if (frame_name = task_element.elements["frame"]&.text)
+                    device.frame(
+                        RobotDefinitionExtension
+                            .resolve_frame_full_name(root_model, task_element, frame_name)
+                    )
+                elsif (frame_from = task_element.elements["frame_from"]&.text)
+                    frame_to = task_element.elements["frame_to"]&.text
+
+                    from = RobotDefinitionExtension
+                           .resolve_frame_full_name(root_model, task_element, frame_from)
+                    to = RobotDefinitionExtension
+                         .resolve_frame_full_name(root_model, task_element, frame_to)
+
+                    device.frame_transform(from => to)
                 end
+                device
+            end
+
+            def self.resolve_frame_full_name(root_model, context, frame_name)
+                return "world" if frame_name == "world"
+
+                element = resolve_frame_element_from_full_name(context, frame_name)
+                path = []
+                while element != root_model.xml
+                    path.unshift(element.attributes["name"])
+                    element = element.parent
+                end
+                [root_model.name, *path].join("::")
+            end
+
+            def self.resolve_frame_element_from_full_name(context, frame_name)
+                path = frame_name.split("::").freeze
+                while context
+                    queue = path.dup
+                    frame_element = context
+                    while frame_element
+                        return frame_element if queue.empty?
+
+                        next_name = queue.shift
+                        xpath = "link[@name=\"#{next_name}\"] | " \
+                                "model[@name=\"#{next_name}\"]"
+                        frame_element = frame_element.get_elements(xpath).first
+                    end
+
+                    context = context.parent
+                end
+
+                raise ArgumentError, "cannot resolve frame name #{frame_name}"
+            end
+
+            def resolve_plugin_device_model(task_model)
+                device_m = RobotDefinitionExtension.plugin_device_mappings[task_model]
+                return device_m if device_m
+
+                task_model.each_master_driver_service do |driver_m|
+                    return driver_m.model
+                end
+                nil
             end
 
             # Registers a device as one of the exported joint devices
@@ -129,9 +156,11 @@ module RockGazebo
                 joint_names.map do |joint|
                     relative_joint_name = joint.split("::")[1..-1].join("::")
                     unless (sdf = model_dev.sdf.find_joint_by_name(relative_joint_name))
+                        available_joints = model_dev.sdf.each_joint_with_name.map { _2 }
                         raise ArgumentError,
                               "cannot find joint #{relative_joint_name} inferred from " \
-                              "frame #{joint}, within model #{model_dev.sdf.name}"
+                              "frame #{joint}, within model #{model_dev.sdf.name}: " \
+                              "available joints are #{available_joints.sort.join(", ")}"
                     end
                     sdf
                 end
@@ -296,13 +325,73 @@ module RockGazebo
 
             # @api private
             #
+            # Enumerate the models that are exported via a rock_gazebo::ModelTask
+            #
+            # The export can happen directly by adding the task as a child of the model
+            # tag, or indirecty because the model task has a exported_gz_model attribute
+            def resolve_exported_models(context)
+                exported_models = []
+                each_model_task_recursive(context) do |parent, xml|
+                    if (exported_model_name = xml.attributes["exported_gz_model"])
+                        exported_models <<
+                            resolve_model_from_name(parent, exported_model_name)
+                    else
+                        exported_models << parent
+                    end
+                end
+                exported_models
+            end
+
+            # @api private
+            #
+            # Resolve `name` as a submodel (possibly recursively) from the given context
+            def resolve_model_from_name(context, name)
+                path = name.split("::")
+                resolved = path.inject(context) do |sdf, single|
+                    sdf&.find_model_by_name(single)
+                end
+
+                unless resolved
+                    raise ArgumentError, "cannot resolve #{name} from #{context}"
+                end
+                resolved
+            end
+
+            # Recursively resolve the <task...> tags whose model is a
+            # rock_gazebo::ModelTask
+            #
+            # @yieldparam [SDF::Model] model the model the task is defined in
+            # @yieldparam [REXML::Element] task_xml the XML element of the task
+            def each_model_task_recursive(context, &block)
+                return enum_for(:each_model_task_recursive) unless block_given?
+
+                context.each_direct_plugin do |plugin|
+                    plugin.xml
+                          .get_elements("task[@model=\"rock_gazebo::ModelTask\"]")
+                          .each { |xml| yield(context, xml) }
+                end
+
+                context.each_direct_model do |model|
+                    each_model_task_recursive(model, &block)
+                end
+            end
+
+            # @api private
+            #
             # Find the toplevel model that contains the given one
             #
             # @return [Model] the enclosing model. Might be the original model
             #   if it is toplevel.
-            def resolve_enclosing_model(model)
-                model = model.parent while model.parent.kind_of?(::SDF::Model)
-                model
+            def resolve_enclosing_model(context)
+                world = resolve_enclosing_world(context)
+                exported_models = resolve_exported_models(world)
+
+                while context.kind_of?(::SDF::Model)
+                    return context if exported_models.include?(context)
+
+                    context = context.parent
+                end
+                nil
             end
 
             # @api private
@@ -323,14 +412,14 @@ module RockGazebo
             # plugin will create when given this SDF information
             #
             # It does it for all the models in 'world', and for links and
-            # sensors only for 'model'
+            # plugins only for 'model'
             #
             # @param [SDF::Model] robot_model the SDF model for this robot
             # @param [String] name the name of the model in the world, if it
             #   differs from the robot_model name (e.g. if you have multiple
             #   instances of the same robot)
             # @param [Array<SDF::Model>] models a set of models that should be
-            #   exposed as devices on this robot model. Note that sensors and
+            #   exposed as devices on this robot model. Note that plugins and
             #   links are only exposed for the robot_model. It must contain
             #   robot_model
             # @param [Boolean] prefix_device_with_name if true, the name of
@@ -349,6 +438,9 @@ module RockGazebo
                 # Allow passing a profile instead of a robot definition
                 reuse = reuse.robot if reuse.respond_to?(:robot)
                 enclosing_model = resolve_enclosing_model(model)
+                unless enclosing_model
+                    raise "found expected model, but there are no ModelTask exporting it"
+                end
 
                 unless prefix_device_with_name
                     Roby.warn_deprecated <<~EOMSG
@@ -428,20 +520,13 @@ module RockGazebo
 
             # @api private
             #
-            # Describes recursively all sensors and plugins in the model
+            # Describes recursively all plugins in the model and its submodels
             def load_gazebo_robot_submodels(
-                sdf_model,
+                root_model, sdf_model,
                 name: sdf_model.name,
                 prefix_device_with_name:,
                 deployment_prefix: ""
             )
-                sensors =
-                    if Syskit.scope_device_name_with_links_and_submodels
-                        sdf_model.each_direct_sensor
-                    else
-                        sdf_model.each_sensor
-                    end
-
                 plugins =
                     if Syskit.scope_device_name_with_links_and_submodels
                         sdf_model.each_direct_plugin
@@ -456,18 +541,27 @@ module RockGazebo
                         sdf_model.each_model
                     end
 
+                sensors =
+                    if Syskit.scope_device_name_with_links_and_submodels
+                        sdf_model.each_direct_sensor
+                    else
+                        sdf_model.each_sensor
+                    end
+
                 sensors.each do |sensor|
-                    gazebo_define_sensor_device(
-                        sdf_model, sensor,
-                        model_name: name,
-                        prefix_device_with_name: prefix_device_with_name,
-                        deployment_prefix: deployment_prefix
-                    )
+                    sensor.each_plugin do |plugin|
+                        gazebo_define_plugin_devices(
+                            root_model, sdf_model, plugin,
+                            model_name: name,
+                            prefix_device_with_name: prefix_device_with_name,
+                            deployment_prefix: deployment_prefix
+                        )
+                    end
                 end
 
                 plugins.each do |plugin|
-                    gazebo_define_plugin_device(
-                        sdf_model, plugin,
+                    gazebo_define_plugin_devices(
+                        root_model, sdf_model, plugin,
                         model_name: name,
                         prefix_device_with_name: prefix_device_with_name,
                         deployment_prefix: deployment_prefix
@@ -476,7 +570,7 @@ module RockGazebo
 
                 models.each do |model|
                     load_gazebo_robot_submodels(
-                        model,
+                        root_model, model,
                         name: name + "_" + model.name,
                         prefix_device_with_name: true,
                         deployment_prefix: deployment_prefix + model.name + "::"
@@ -486,7 +580,7 @@ module RockGazebo
 
             # @api private
             #
-            # Define devices for all links and sensors in the model
+            # Define devices for all links and plugins in the model and its submodels
             #
             # @param [SDF::Model] sdf_model SDF model of this profile's robot,
             #   as included in the current gazebo world
@@ -511,7 +605,7 @@ module RockGazebo
                 end
 
                 load_gazebo_robot_submodels(
-                    sdf_model,
+                    sdf_model, sdf_model,
                     name: name, prefix_device_with_name: prefix_device_with_name,
                     deployment_prefix: deployment_prefix
                 )
@@ -563,72 +657,42 @@ module RockGazebo
                 dev
             end
 
-            def gazebo_define_sensor_device(
-                sdf_model, sensor,
+            def gazebo_define_plugin_devices(
+                root_model, sdf_model, plugin,
                 model_name: sdf_model.name, prefix_device_with_name:,
                 deployment_prefix: ""
             )
-                device_name = "#{normalize_name(sensor.name)}_sensor"
+                name_scope = nil
+                model_path = sdf_relative_path(sdf_model, plugin.parent)
                 if prefix_device_with_name
                     if Syskit.scope_device_name_with_links_and_submodels
-                        path = sdf_relative_path(sdf_model, sensor)
-                        device_name = "#{normalize_name(path)}_sensor"
+                        name_scope = normalize_name(model_path) unless model_path.empty?
                     end
 
-                    device_name = "#{normalize_name(model_name)}_#{device_name}"
+                    name_scope = [normalize_name(model_name), name_scope]
+                                 .compact.join("_")
                 end
 
-                device = sensors_to_device(
-                    sensor, device_name, link_frame_name(sensor.parent)
-                )
-                unless device
-                    RockGazebo.warn(
-                        "Robot#load_gazebo: don't know how to handle" \
-                        "sensor #{sensor.full_name} of type #{sensor.type}"
+                deployment_hint = "#{deployment_prefix}#{model_path}"
+                plugin.xml.elements.to_a("task").map do |task_element|
+                    task_model_name = task_element.attributes["model"]
+                    # ModelTask is supported directly, ignore here
+                    next if task_model_name == "rock_gazebo::ModelTask"
+
+                    device = plugin_task_to_device(
+                        root_model, task_element, task_model_name, name_scope, deployment_hint
                     )
-                    return
-                end
-
-                if (period = sensor.update_period)
-                    device.period(period)
-                end
-                device.doc "Gazebo: #{sensor.name} sensor of #{sdf_model.full_name}"
-
-                relative = sdf_relative_path(sdf_model, sensor)
-                device
-                    .sdf(sensor)
-                    .prefer_deployed_tasks("#{deployment_prefix}#{relative}")
-            end
-
-            def gazebo_define_plugin_device(
-                sdf_model, plugin,
-                model_name: sdf_model.name, prefix_device_with_name:,
-                deployment_prefix: ""
-            )
-                plugin_name = normalize_name(plugin.name.split(/__/)[-1])
-                device_name = "#{plugin_name}_plugin"
-                if prefix_device_with_name
-                    if Syskit.scope_device_name_with_links_and_submodels
-                        path = sdf_relative_path(sdf_model, plugin.parent)
-                        device_name = "#{normalize_name(path)}#{plugin_name}_plugin"
+                    unless device
+                        RockGazebo.warn(
+                            "Robot#load_gazebo: no device model associated with " \
+                            "#{task_model_name}"
+                        )
+                        next
                     end
 
-                    device_name = "#{normalize_name(model_name)}_#{device_name}"
+                    device.doc "Gazebo: plugin of #{sdf_model.full_name}"
+                    device.sdf(task_element)
                 end
-
-                deployment_hint =
-                    "#{deployment_prefix}#{sdf_relative_path(sdf_model, plugin)}"
-                device = plugins_to_device(plugin, device_name, deployment_hint)
-
-                unless device
-                    RockGazebo.warn(
-                        "Robot#load_gazebo: don't know how to handle " \
-                        "plugin #{plugin.full_name}"
-                    )
-                    return
-                end
-                device.doc "Gazebo: #{plugin_name} plugin of #{sdf_model.full_name}"
-                device.sdf(plugin)
             end
 
             def sdf_relative_path(from, to)

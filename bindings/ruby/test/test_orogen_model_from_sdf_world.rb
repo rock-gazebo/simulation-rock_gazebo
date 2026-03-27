@@ -8,47 +8,38 @@ module RockGazebo
         before do
             require 'orocos'
             Orocos.load unless Orocos.loaded?
+
+            @world = SDF::Root.load(
+                File.join(data_dir, 'orogen_model_test.world'), flatten: false
+            ).each_world.first
+            @model = RockGazebo.orogen_model_from_sdf_world('gazebo_world_test', @world)
         end
 
         def data_dir
             File.expand_path('data', File.dirname(__FILE__))
         end
 
-        it 'creates a deployment that represents the rock_gazebo plugin behaviour' do
-            world = SDF::Root.load(File.join(data_dir, 'test.world')).each_world.first
-            model = RockGazebo.orogen_model_from_sdf_world('gazebo_world_test', world)
-            assert(world_task = model.find_task_by_name('gazebo::underwater'),
-                   "cannot find task gazebo:underwater in #{model}, "\
-                   "tasks are: #{model.each_task.map(&:name).join(', ')}")
-            assert_equal 'rock_gazebo::WorldTask', world_task.task_model.name
-            assert(model_task = model.find_task_by_name('gazebo::underwater::flat_fish'))
+        it "creates tasks with no name directly using the context's name" do
+            assert(model_task = @model.find_task_by_name('gazebo::underwater::oil_rig'))
             assert_equal 'rock_gazebo::ModelTask', model_task.task_model.name
-            assert(model_task = model.find_task_by_name('gazebo::underwater::oil_rig'))
+            assert(model_task = @model.find_task_by_name('gazebo::underwater::oil_rig::flat_fish'))
             assert_equal 'rock_gazebo::ModelTask', model_task.task_model.name
         end
 
-        it 'creates a deployment that represents the rock_gazebo sensor behaviour' do
-            world = SDF::Root.load(File.join(data_dir, 'sensor.world')).each_world.first
-            model = RockGazebo.orogen_model_from_sdf_world('gazebo_world_test', world)
-            assert(model_task = model.find_task_by_name(
-                'gazebo::underwater::flat_fish::strawberry_lidar::pineaple'
-            ))
-            assert_equal 'rock_gazebo::LaserScanTask', model_task.task_model.name
-            assert(model_task = model.find_task_by_name('gazebo::underwater::oil_rig'))
-            assert_equal 'rock_gazebo::ModelTask', model_task.task_model.name
+        it "appends an explicit task name to the context's name" do
+            assert(model_task = @model.find_task_by_name('gazebo::underwater::oil_rig::flat_fish::thrusters'))
+            assert_equal 'gazebo_usv::ThrusterTask', model_task.task_model.name
         end
 
         it "allows to override the task's periodicity" do
-            world = SDF::Root.load(File.join(data_dir, 'test.world')).each_world.first
-            expected_period = 0.1
             model = RockGazebo.orogen_model_from_sdf_world(
-                'gazebo_world_test', world, period: expected_period
+                'gazebo_world_test', @world, period: 0.001
             )
 
-            %w[gazebo::underwater gazebo::underwater::flat_fish gazebo::underwater::oil_rig]
+            %w[gazebo::underwater::oil_rig::flat_fish gazebo::underwater::oil_rig]
                 .each do |task_name|
                     task = model.find_task_by_name(task_name)
-                    assert_in_delta expected_period, task.period, 0.00001
+                    assert_equal 0.001, task.period
                 end
         end
     end
