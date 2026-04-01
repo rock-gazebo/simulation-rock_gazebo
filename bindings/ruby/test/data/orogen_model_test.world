@@ -10,6 +10,15 @@
                     <task model="rock_gazebo::ModelTask" />
                     <task name="thrusters" model="gazebo_usv::ThrusterTask" />
                 </plugin>
+
+                <link name="body">
+                    <sensor name="lidar">
+                        <plugin name="rock_gazebo::PluginTask" filename="rock_gazebo">
+                            <task model="rock_gazebo::LaserScanTask" />
+                            <task name="lidar" model="rock_gazebo::LaserScanTask" />
+                        </plugin>
+                    </sensor>
+                </link>
              </model>
         </model>
     </world>

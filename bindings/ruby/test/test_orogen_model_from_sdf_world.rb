@@ -26,6 +26,20 @@ module RockGazebo
             assert_equal 'rock_gazebo::ModelTask', model_task.task_model.name
         end
 
+        it "resolves tasks with implicit names that are attached to sensors" do
+            sensor_task = @model.find_task_by_name(
+                'gazebo::underwater::oil_rig::flat_fish::body::lidar'
+            )
+            assert_equal 'rock_gazebo::LaserScanTask', sensor_task.task_model.name
+        end
+
+        it "resolves tasks with explicit names that are attached to sensors" do
+            sensor_task = @model.find_task_by_name(
+                'gazebo::underwater::oil_rig::flat_fish::body::lidar::lidar'
+            )
+            assert_equal 'rock_gazebo::LaserScanTask', sensor_task.task_model.name
+        end
+
         it "appends an explicit task name to the context's name" do
             assert(model_task = @model.find_task_by_name('gazebo::underwater::oil_rig::flat_fish::thrusters'))
             assert_equal 'gazebo_usv::ThrusterTask', model_task.task_model.name

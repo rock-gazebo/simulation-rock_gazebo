@@ -35,8 +35,7 @@ module RockGazebo
         deployment.task("gazebo::#{world.name}_Logger", "logger::Logger")
                   .periodic(period)
 
-        setup_orogen_model_from_plugin_tasks(deployment, world, "gazebo::#{world.name}", period)
-
+        setup_orogen_model_from_world(deployment, world, "gazebo::#{world.name}", period)
         deployment
     end
 
@@ -44,21 +43,42 @@ module RockGazebo
     #
     # Define tasks in an orogen deployment that match the name and models of tasks
     # declared with the rock_gazebo::PluginTask plugin
-    def self.setup_orogen_model_from_plugin_tasks(deployment, context, prefix, period)
-        context.each_direct_plugin do |plugin|
-            if plugin.name == "rock_gazebo::PluginTask"
-                plugin.xml.elements.each("task") do |el|
-                    name = [prefix, el.attributes["name"]].compact.join("::")
-                    deployment.task(name, el.attributes["model"])
-                              .periodic(period)
-                end
+    def self.setup_orogen_model_from_world(deployment, context, prefix, period)
+        setup_orogen_model_from_world_or_model(deployment, context, prefix, period)
+    end
+
+    def self.setup_orogen_model_from_model(deployment, context, prefix, period)
+        puts context.full_name
+        setup_orogen_model_from_world_or_model(deployment, context, prefix, period)
+
+        context.each_direct_link do |link|
+            link.each_direct_sensor do |sensor|
+                setup_orogen_model_process_plugins(
+                    deployment, sensor, "#{prefix}::#{link.name}::#{sensor.name}", period
+                )
             end
         end
+    end
+
+    def self.setup_orogen_model_from_world_or_model(deployment, context, prefix, period)
+        setup_orogen_model_process_plugins(deployment, context, prefix, period)
 
         context.each_direct_model do |model|
-            setup_orogen_model_from_plugin_tasks(
+            setup_orogen_model_from_model(
                 deployment, model, "#{prefix}::#{model.name}", period
             )
+        end
+    end
+
+    def self.setup_orogen_model_process_plugins(deployment, context, prefix, period)
+        context.each_direct_plugin do |plugin|
+            next unless plugin.name == "rock_gazebo::PluginTask"
+
+            plugin.xml.elements.each("task") do |el|
+                name = [prefix, el.attributes["name"]].compact.join("::")
+                deployment.task(name, el.attributes["model"])
+                          .periodic(period)
+            end
         end
     end
 end
