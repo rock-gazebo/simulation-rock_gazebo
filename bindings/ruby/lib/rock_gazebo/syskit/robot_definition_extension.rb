@@ -40,7 +40,10 @@ module RockGazebo
 
                 return unless (device_m = resolve_plugin_device_model(task_model))
 
-                device_name = [name_scope, task_name].compact.join("_")
+                device_name = [
+                    (name_scope unless name_scope.empty?),
+                    task_name
+                ].compact.join("_")
                 device =
                     device(device_m, as: device_name, using: task_model)
                     .prefer_deployed_tasks("#{deployment_hint}#{task_name}")
@@ -669,8 +672,10 @@ module RockGazebo
                         name_scope = normalize_name(model_path) unless model_path.empty?
                     end
 
-                    name_scope = [normalize_name(model_name), name_scope]
-                                 .compact.join("_")
+                    name_scope = [
+                        (normalize_name(model_name) if model_name),
+                        name_scope
+                    ].compact.join("_")
                 end
 
                 deployment_hint = "#{deployment_prefix}#{model_path}"
