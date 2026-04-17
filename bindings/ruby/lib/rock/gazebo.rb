@@ -191,9 +191,7 @@ module Rock
         # @return [Set<String>] the set of typekits that are needed by the tasks
         #   within this plugin need
         def self.process_gazebo_plugin(world, plugin_xml, loader:)
-            scope = resolve_plugin_full_name(world.xml, plugin_xml.parent)
-            typekits = normalize_rock_components(scope, plugin_xml, loader)
-            typekits
+            normalize_rock_components(plugin_xml, loader)
         rescue OroGen::NotFound => e
             plugin_name = plugin_xml.attributes["name"]
             raise e, "while processing the <task ..> elements of the #{plugin_name} "\
@@ -215,15 +213,9 @@ module Rock
             (["gazebo", world_xml.attributes["name"]] + parts.reverse).join("::")
         end
 
-        def self.normalize_rock_components(scope, plugin_xml, loader)
+        def self.normalize_rock_components(plugin_xml, loader)
             needed_typekits = Set.new
             plugin_xml.elements.each("task") do |task_xml|
-                full_name = task_xml.attributes["name"] || scope
-                if task_xml.attributes["absolute"] == "0"
-                    full_name = "#{scope}::#{full_name}"
-                end
-
-                task_xml.attributes["name"] = full_name
                 model_name = task_xml.attributes["model"]
                 task_model = loader.task_model_from_name(model_name)
                 task_xml.attributes["filename"] =

@@ -4,6 +4,7 @@
 
 #include <chrono>
 #include <gz/plugin/RegisterMore.hh>
+#include <gz/sim/Util.hh>
 #include <sdf/Element.hh>
 
 #include <rtt/Activity.hpp>
@@ -31,7 +32,10 @@ void PluginTask::Configure(
     EventManager& event_manager
 ) {
     processLoads(plugin_sdf);
-    processTasks(plugin_sdf);
+
+    auto prefix = "gazebo::" + gz::sim::scopedName(entity, ecm, "::", false);
+
+    processTasks(prefix, plugin_sdf);
     configurePluginTasks(entity, plugin_sdf, ecm, event_manager);
 }
 
@@ -52,11 +56,11 @@ void PluginTask::processLoads(sdf::ElementConstPtr plugin_sdf) {
     }
 }
 
-void PluginTask::processTasks(sdf::ElementConstPtr plugin_sdf) {
+void PluginTask::processTasks(string const& prefix, sdf::ElementConstPtr plugin_sdf) {
     sdf::ElementConstPtr taskElement = plugin_sdf->FindElement("task");
     while (taskElement)
     {
-        auto task_context = details::instanciateTask(taskElement);
+        auto task_context = details::instanciateTask(prefix, taskElement);
         auto activity = details::setupTaskActivity(task_context);
         m_tasks.push_back({ task_context, activity, taskElement });
 

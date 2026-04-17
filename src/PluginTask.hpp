@@ -22,7 +22,7 @@ namespace rock_gazebo {
         std::vector<Task> m_tasks;
 
         void processLoads(sdf::ElementConstPtr plugin_sdf);
-        void processTasks(sdf::ElementConstPtr plugin_sdf);
+        void processTasks(std::string const& prefix, sdf::ElementConstPtr plugin_sdf);
         void configurePluginTasks(gz::sim::Entity entity,
             sdf::ElementConstPtr plugin_sdf,
             gz::sim::EntityComponentManager& ecm,
