@@ -170,7 +170,7 @@ module Rock
             plugin = REXML::Element.new("plugin")
             plugin.attributes["filename"] = "rock_gazebo"
             plugin.attributes["name"] = "rock_gazebo::RockSystem"
-            world.xml.add_element(plugin)
+            world.xml.unshift(plugin)
 
             needed_typekits = Set.new
             REXML::XPath.each(world.xml, "//plugin") do |plugin_xml|
