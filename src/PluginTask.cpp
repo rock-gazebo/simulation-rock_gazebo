@@ -103,7 +103,8 @@ void PluginTask::deleteAllTasks() {
         RTT::corba::TaskContextServer::CleanupServer(t.task);
     }
 
-    for (auto t: m_tasks) {
+    while (!m_tasks.empty()) {
+        auto& t = m_tasks.back();
         delete t.activity;
         delete t.task;
         m_tasks.pop_back();
