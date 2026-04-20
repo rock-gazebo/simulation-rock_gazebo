@@ -331,11 +331,11 @@ module RockGazebo
             # Enumerate the models that are exported via a rock_gazebo::ModelTask
             #
             # The export can happen directly by adding the task as a child of the model
-            # tag, or indirecty because the model task has a exported_gz_model attribute
+            # tag, or indirecty because the model task has a gz attribute
             def resolve_exported_models(context)
                 exported_models = []
                 each_model_task_recursive(context) do |parent, xml|
-                    if (exported_model_name = xml.attributes["exported_gz_model"])
+                    if (exported_model_name = xml.attributes["gz"])
                         exported_models <<
                             resolve_model_from_name(parent, exported_model_name)
                     else

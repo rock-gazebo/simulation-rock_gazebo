@@ -80,7 +80,13 @@ void PluginTask::configurePluginTasks(
             continue;
         }
 
-        plugin_task->setGazebo(entity, t.sdf, ecm, event_manager);
+        auto task_entity = entity;
+        auto gz_entity_name = t.sdf->Get<std::string>("gz");
+        if (!gz_entity_name.empty()) {
+            task_entity = details::resolveSubmodelRecursive(entity, gz_entity_name, ecm);
+        }
+
+        plugin_task->setGazebo(task_entity, t.sdf, ecm, event_manager);
     }
 }
 

@@ -18,7 +18,7 @@ configuration:
 ```
 
 The `PluginTask` plugin accepts `task` children elements to declare the tasks to be
-instanciated. General (non-`PluginTaskI`) tasks require a `name` and a `model` attribute.
+instanciated. General (non-`PluginTaskI`) tasks require only a `model` attribute.
 For instance, the next block will create two instances of the `Component` task context
 from the `some` orogen project, one named `some_name` and the other `foobar`. These tasks
 will be executed synchronously in the gazebo loop.
@@ -32,41 +32,40 @@ will be executed synchronously in the gazebo loop.
 </world>
 ```
 
-Tasks that are meant to interface with gazebo subclass the `PluginTaskI` interface.
-These sometime require extra arguments in the form of child elements or attributes,
-and are documented below.
-
-## ModelTask
-
-`rock_gazebo::ModelTask` exports joints and poses from a model, and allow to control
-said joints and poses. The task can be directly instanciated as a model plugin, in
-which case no arguments need be given. The task name is also automatically generated
-based on the model's scoped name
+Tasks that are meant to interface with gazebo itself (such as tasks that represent
+functionality exported by plugins) subclass the `PluginTaskI` interface. These tasks
+are "attached" the plugin's parent entity. For instance, in the following example, the
+`vehicle` ModelTask is attached to the `world::m` model.
 
 ```xml
-<model name="m">
-  <plugin filename="rock_gazebo" name="rock_gazebo::PluginTask">
-    <task model="rock_gazebo::ModelTask" />
-  </plugin>
-</model>
+<world name="world">
+  <model name="m">
+    <plugin filename="rock_gazebo" name="rock_gazebo::PluginTask">
+      <task name="vehicle" model="rock_gazebo::ModelTask" />
+    </plugin>
+  </model>
+</world>
 ```
 
-Alternatively, the model task can be created at the world level (this is actually
-the recommended option, as it allows to freely select which models need be exported
-and which not). In that case, the model to be exported shall be given with the
-`exported_gz_model` attribute, relative to the entity the plugin is attached on:
+However, one may want to keep the task definitions outside of the model definition (to
+be used differently in different scenes). In that case, the `gz` attribute to `task`
+allows to explicitly give the entity the task should be attached to, relative to the
+plugin's parent scope. For instance:
 
 ```xml
-<world name="m">
+<world name="world">
   <plugin filename="rock_gazebo" name="rock_gazebo::PluginTask">
-    <task model="rock_gazebo::ModelTask" exported_gz_model="m" />
+    <task name="vehicle" model="rock_gazebo::ModelTask" gz="m" />
   </plugin>
 
   <model name="m">
   </model>
-</model>
+</world>
 ```
-A `name` attribute may be used in place of the automated name.
+
+In addition, each task may support extra arguments that would be given child elements
+or attributes, and are documented below. Each plugin task should document which elements
+it supports
 
 # Syskit usage
 
@@ -127,123 +126,6 @@ The selected world passed to `use_gazebo_world` is a default. It can be
 overriden on the command line with the `--set=sdf.world_path=world_name` option.
 
 ## Devices bound to the gazebo instance
-
-`use_gazebo_model` defines a number of devices that bind to the gazebo instance,
-namely:
- - one device per model, just called `modelname_dev` (e.g. `flat_fish_dev` for a
-   model called `flat_fish`)
- - one device per link, which exports the pose of the link in the world. It is
-   called `linkname_link_dev` for a link named `linkname`
- - one device per supported sensor, which exports the sensor information as a
-   specialized orogen task (see the tasks in the `rock_gazebo` orogen package).
-   It is called `sensorname_sensor_dev`
-
-None of the transformations (links and models) are declared on the transformer
-as transformation producers (it would lead the transformer to believe that the
-knowledge of all the transformations is available to all tasks). Instead, if one
-needs this information - for instance to feed to a simulation component that
-needs knowledge about the world - one needs to call `transformer_uses_sdf_links_of`
-on the definition.
-
-For instance
-
-```ruby
-define('simulated_underwater_camera', Compositions::CameraSimulation)
-   .transformer_uses_sdf_links_of(flat_fish_dev)
-```
-
-where the argument is the device that represents a model in the SDF world.
-
-Finally, if some specific link-related transformations are needed, they can be
-explicitely exported with `sdf_export_link`
-
-```ruby
-robot do
-  # Export the transformation from the `flat_fish::dvl` link of the `flat_fish`
-  # model to the `flat_fish::imu` link of the `flat_fish` model. The create
-  # device is called `dvl_velocity`
-  sdf_export_link(
-    flat_fish_dev, as: 'dvl_velocity',
-                   from_frame: 'flat_fish::dvl', to_frame: 'flat_fish::dvl'
-  )
-end
-```
-
-`sdf_export_link` returns a device instance. The instance's period can be
-controlled in which case the transformation will be exported only at the
-specified period, e.g.
-
-```ruby
-robot do
-  # Export the transformation from the `flat_fish::dvl` link of the `flat_fish`
-  # model to the `flat_fish::imu` link of the `flat_fish` model. The create
-  # device is called `dvl_velocity`
-  sdf_export_link(flat_fish_dev,
-                  as: 'dvl_velocity',
-                  from_frame: 'flat_fish::dvl', to_frame: 'flat_fish::dvl')
-    .period(0.1)
-end
-```
-
-## Model, Sensors and Plugins
-
-Common Gazebo physical elements such as models and links, as well as sensors
-such as range finders (rays), cameras, imus are handled out-of-the box by
-this Gazebo/Syskit integration. When a model is added to a profile with
-`use_gazebo_model`, the integration creates devices of the right type that allow
-to access the data. The corresponding oroGen components are made available in
-the `simulation/orogen/rock_gazebo` package.
-
-At the inception of this Gazebo/Rock integration, two plugins were being
-developed for the simulation of underwater systems, `gazebo_underwater` and
-`gazebo_thruster`. To simplify an already long task, it had been decided to
-define the corresponding tasks in `simulation/orogen/rock_gazebo` and hardcode
-their support in the Syskit support. This obviously does not scale **at all**,
-and is now the deprecated method to handle plugins.
-
-Model plugins blocks may now have a `<task ... />` tag that defines the model
-of an oroGen task capable to expose the plugin functionality. For instance,
-the `libgazebo_underwater.so` plugin would be written:
-
-~~~ xml
-<plugin name="hydrodynamics" filename="libgazebo_underwater.so">
-    <task model="rock_gazebo::UnderwaterTask" />
-</plugin>
-~~~
-
-The `task` element does not list the task name, only its model, as the task
-name is derived from the plugin name (in this case it would be
-`$PREFIX:hydrodynamics` where $PREFIX is `$world:$model`.
-
-To define such a task, it must be a subclass of `rock_gazebo::ModelPluginTask`
-which is defined in `simulation/orogen/rock_gazebo`. To use in your own oroGen
-project, add the following to the oroGen definition:
-
-~~~ ruby
-using_task_library "rock_gazebo"
-
-task_context "Task", subclasses: "rock_gazebo::ModelPluginTask" do
-end
-~~~
-
-Your task will have to overload the virtual method
-
-~~~
-virtual void setGazeboModel(
-    std::string const& pluginName,
-    gazebo::physics::ModelPtr model
-);
-~~~
-
-At runtime, before any of the task's hooks have been called, this method is
-called to allow the task to link itself to the plugin. There is no way to
-directly access a plugin object, so the preferred method of communication is
-to use gazebo topics. The SDF plugin definition is however available through
-the model pointer.
-
-Note that, within Syskit, these tasks are made available for deployment. It
-is up to the plugin developer and/or the application integrator to define the
-relevant device models and declare the corresponding devices.
 
 ## Using SDF without Gazebo
 

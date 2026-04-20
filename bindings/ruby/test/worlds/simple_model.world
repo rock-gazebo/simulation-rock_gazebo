@@ -1,7 +1,7 @@
 <sdf version="1.6">
     <world name="test">
         <plugin name="rock_gazebo::PluginTask" filename="rock_gazebo">
-            <task model="rock_gazebo::ModelTask" exported_gz_model="included_model" />
+            <task model="rock_gazebo::ModelTask" gz="included_model" />
         </plugin>
 
         <include>
