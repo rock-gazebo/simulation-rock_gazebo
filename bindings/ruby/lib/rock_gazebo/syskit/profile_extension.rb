@@ -191,6 +191,109 @@ module RockGazebo
                 use_gazebo_world(reuse: reuse) if use_world
             end
 
+            # Sets up this profile, robot and transformer according to the
+            # information in the .erb model at "path"
+            #
+            # In addition to {#use_sdf_model}, it adds the Gazebo devices that
+            # expose a simulation
+            #
+            # @param path [Array<String>] path to the .erb model
+            # @param erb_args [Hash] The ERB configuration arguments.
+            # @param output_file_name [String] destination filename (defaults to "model.sdf")
+            # @param use_world [Boolean] whether {#use_gazebo_world} should be
+            #   called at the end. You usually want this
+            def use_gazebo_erb_model(
+                *path,
+                erb_args: {},
+                output_file_name: "model.sdf",
+                filter: nil, as: nil, reuse: nil,
+                use_world: RockGazebo::Syskit.use_gazebo_model_calls_use_gazebo_world,
+                prefix_device_with_name: RockGazebo::Syskit.prefix_device_with_name
+            )
+                # Ensure the helper module is loaded
+                require 'rock_gazebo/syskit/erb'
+                require 'fileutils'
+
+                # 1. Resolve template path using standard Gazebo path resolution
+                path_string = File.join(*path)
+                if path_string.start_with?("model://") && !path_string.end_with?(".erb")
+                    path_string = File.join(path_string, "model.sdf.erb")
+                end
+
+                _, resolved_paths = Rock::Gazebo.resolve_worldfiles_and_models_arguments(
+                    [path_string], path_resolver: Roby.app
+                )
+                full_path = resolved_paths.first
+
+                if File.directory?(full_path)
+                    full_path = File.join(full_path, "model.sdf.erb")
+                elsif File.file?(full_path) && full_path.end_with?(".sdf")
+                    full_path = "#{full_path}.erb"
+                end
+
+                # 2. Read and parse template file using our ERB helper module
+                erb_content = ::RockGazebo::Syskit::ERB.read_erb_file(full_path)
+                solved_erb_as_sdf_str = ::RockGazebo::Syskit::ERB.parse_erb_as_str(erb_content, erb_args)
+
+                # 3. Determine unique output folder path
+                base_destination = File.join(Roby.app.log_dir, "sdf")
+                template_dir = File.dirname(full_path)
+                
+                base_model_name = as || File.basename(template_dir)
+                unique_name = base_model_name
+                counter = 1
+                candidate_dir = File.join(base_destination, unique_name)
+
+                while File.exist?(candidate_dir)
+                    unique_name = "#{base_model_name}#{counter}"
+                    candidate_dir = File.join(base_destination, unique_name)
+                    counter += 1
+                end
+
+                sdf_file_destination = candidate_dir
+
+                # 4. Copy all companion files (meshes, subdirectories, configs) to unique folder
+                ::FileUtils.mkdir_p(sdf_file_destination)
+                Dir.glob(File.join(template_dir, '*')).each do |item|
+                    next if item.end_with?('.erb')
+                    ::FileUtils.cp_r(item, sdf_file_destination)
+                end
+
+                # 5. Save dynamically rendered model.sdf inside the unique folder
+                ::RockGazebo::Syskit::ERB.save_erb_as_sdf_model(
+                    solved_erb_as_sdf_str, sdf_file_destination, output_file_name
+                )
+
+                # 6. Generate fallback model.config if missing
+                unless File.file?(File.join(sdf_file_destination, "model.config"))
+                    fallback_config = <<~XML
+                        <?xml version="1.0"?>
+                        <model>
+                          <name>#{unique_name}</name>
+                          <version>1.0</version>
+                          <sdf version="1.6">#{output_file_name}</sdf>
+                        </model>
+                    XML
+                    File.write(File.join(sdf_file_destination, "model.config"), fallback_config)
+                end
+
+                # 7. Prepend base directory to model search paths so both Syskit & Gazebo find it
+                current_paths = Rock::Gazebo.model_path
+                unless current_paths.include?(base_destination)
+                    Rock::Gazebo.model_path = [base_destination] + current_paths
+                end
+
+                # 8. Delegate to standard use_gazebo_model with unique model directory
+                use_gazebo_model(
+                    sdf_file_destination,
+                    filter: filter,
+                    as: unique_name,
+                    reuse: reuse,
+                    use_world: use_world,
+                    prefix_device_with_name: prefix_device_with_name
+                )
+            end
+
             # @api private
             #
             # Add to the profile's transformer the frame of sdf_model's root model
