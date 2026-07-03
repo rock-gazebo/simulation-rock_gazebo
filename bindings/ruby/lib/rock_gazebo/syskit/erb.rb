@@ -5,7 +5,7 @@ require 'erb'
 module RockGazebo
     module Syskit
         module ERB
-
+            module_function
             # Open an .erb file and returns its content as a string
             #
             # @param [String] file_path path to the .erb template file
