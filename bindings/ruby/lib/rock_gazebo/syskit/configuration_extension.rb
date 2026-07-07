@@ -44,8 +44,19 @@ module RockGazebo
 
             # Add all models/sdf folders in our dependent bundles
             def setup_gazebo_model_path
-                Rock::Gazebo.model_path =
-                    Rock::Gazebo.default_model_path(path_resolver: Roby.app)
+                unless Rock::Gazebo.instance_variable_get(:@model_path)
+                    Rock::Gazebo.model_path =
+                            Rock::Gazebo.default_model_path(path_resolver: Roby.app)
+                end
+            end
+
+            # Pre-renders an ERB template and registers its search path
+            #
+            # @return [String] the folder path of the generated model
+            def pre_render_gazebo_erb_model(*path, **options)
+                require 'rock_gazebo/syskit/erb'
+                setup_gazebo_model_path
+                ::RockGazebo::Syskit::ERB.pre_render_gazebo_erb_model(*path, **options)
             end
 
             # Find the path to the world file, using the Roby search path if needed
