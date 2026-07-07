@@ -70,6 +70,131 @@ module RockGazebo
                 # Render the ERB template with the passed hash arguments
                 erb_engine.result_with_hash(erb_args)
             end
+
+            # Resolves the path arguments of an ERB model into a full file path to the template.
+            #
+            # @return [String] the resolved full path to the .sdf.erb file
+            def resolve_erb_template_path(*path)
+                path_string = File.join(*path)
+                if path_string.start_with?("model://") && !path_string.end_with?(".erb")
+                    path_string = File.join(path_string, "model.sdf.erb")
+                end
+
+                _, resolved_paths = Rock::Gazebo.resolve_worldfiles_and_models_arguments(
+                    [path_string], path_resolver: Roby.app
+                )
+                full_path = resolved_paths.first
+
+                if File.directory?(full_path)
+                    File.join(full_path, "model.sdf.erb")
+                elsif File.file?(full_path) && full_path.end_with?(".sdf")
+                    "#{full_path}.erb"
+                else
+                    full_path
+                end
+            end
+
+            # Returns a unique, non-existent folder path under the temporary SDF folder
+            # to prevent model collision.
+            #
+            # @param [String] base_model_name the desired or default base name
+            # @param [Bool] override whether to override an existing model in case
+            # there is already a model folder with the same name
+            # @return [String] the unique destination folder path
+            def erb_unique_destination_dir(base_model_name, override = true)
+                base_destination =
+                    if Roby.app.created_log_dir?
+                        File.join(Roby.app.log_dir, "sdf")
+                    else
+                        File.join(Dir.tmpdir, "gazebo_erb_models")
+                    end
+
+                unique_name = base_model_name
+                candidate_dir = File.join(base_destination, unique_name)
+
+                unless override
+                    counter = 1
+                    while File.exist?(candidate_dir)
+                        unique_name = "#{base_model_name}#{counter}"
+                        candidate_dir = File.join(base_destination, unique_name)
+                        counter += 1
+                    end
+                end
+
+                candidate_dir
+            end
+
+            # Copies meshes, subdirectories, configurations, and other assets from the template directory
+            # to the target destination directory, skipping .erb files.
+            def erb_copy_companion_assets(template_dir, destination_dir)
+                ::FileUtils.mkdir_p(destination_dir)
+                Dir.glob(File.join(template_dir, '*')).each do |item|
+                    next if item.end_with?('.erb')
+                    ::FileUtils.cp_r(item, destination_dir)
+                end
+            end
+
+            # Checks if model.config is present in the destination, writing a fallback if missing.
+            def erb_ensure_model_config(destination_dir, model_name, sdf_file_name)
+                unless File.file?(File.join(destination_dir, "model.config"))
+                    fallback_config = <<~XML
+                        <?xml version="1.0"?>
+                        <model>
+                          <name>#{model_name}</name>
+                          <version>1.0</version>
+                          <sdf version="1.6">#{sdf_file_name}</sdf>
+                        </model>
+                    XML
+                    File.write(File.join(destination_dir, "model.config"), fallback_config)
+                end
+            end
+
+            # Pre-renders an ERB template into a physical model directory and registers its search path
+            #
+            # @return [String] the folder path of the generated model
+            def pre_render_gazebo_erb_model(
+                *path,
+                erb_args: {},
+                output_file_name: "model.sdf",
+                output_folder_name: nil
+            )
+                require 'fileutils'
+                require 'tmpdir'
+
+                # 1. Resolve full path to template
+                full_path = resolve_erb_template_path(*path)
+                template_dir = File.dirname(full_path)
+
+                # 2. Render template string
+                erb_content = read_erb_file(full_path)
+                solved_erb_as_sdf_str = parse_erb_as_str(erb_content, erb_args)
+
+                # 3. Determine unique output path & names
+                base_name = output_folder_name || File.basename(template_dir)
+                sdf_file_destination = erb_unique_destination_dir(base_name)
+                unique_model_name = File.basename(sdf_file_destination)
+
+                # 4. Copy meshes, subdirectories, configurations, and other assets
+                erb_copy_companion_assets(template_dir, sdf_file_destination)
+
+                # 5. Write rendered SDF
+                save_as_sdf_model(
+                    solved_erb_as_sdf_str, sdf_file_destination, output_file_name
+                )
+
+                # 6. Ensure model.config exists
+                erb_ensure_model_config(sdf_file_destination, unique_model_name, output_file_name)
+
+                # 7. Prepend base directory to model search paths so both Syskit & Gazebo find it
+                base_destination = File.dirname(sdf_file_destination)
+                current_paths = Rock::Gazebo.model_path
+                unless current_paths.include?(base_destination)
+                    Rock::Gazebo.model_path = [base_destination] + current_paths
+                    ::SDF::XML.clear_cache
+                end
+
+                sdf_file_destination
+            end
         end
     end
 end

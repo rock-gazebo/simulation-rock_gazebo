@@ -6,12 +6,14 @@ require 'rock_gazebo/syskit/test'
 module RockGazebo
     module Syskit
         describe ERB do
-            # before do
-            #     Roby.app.using_task_library 'rock_gazebo'
-            #     require 'models/orogen/rock_gazebo'
-            #     @profile = ::Syskit::Actions::Profile.new
-            #     # Conf.sdf = SDF.new
-            # end
+            include Helpers
+
+            before do
+                Roby.app.using_task_library 'rock_gazebo'
+                require 'models/orogen/rock_gazebo'
+                @profile = ::Syskit::Actions::Profile.new
+                Conf.sdf = SDF.new
+            end
 
             it "read_erb_file" do
                 template_path = File.expand_path('../models/simple_model_erb/model.sdf.erb',__dir__)
@@ -40,7 +42,7 @@ module RockGazebo
                                     <pose><%= gps[:pose].join(' ') %></pose>
                                 </link>
                                 <joint name="<%= gps[:name] %>_attachment" type="fixed">
-                                    <parent>body</parent>
+                                    <parent>root</parent>
                                     <child><%= gps[:name] %></child>
                                 </joint>
                             <% end %>
@@ -52,8 +54,6 @@ module RockGazebo
                     </sdf>
                     XML
                 assert_equal(sdf_str, expected_sdf_str)
-
-
             end
 
             it "read_erb_file_wrong_extension" do
@@ -130,7 +130,7 @@ module RockGazebo
                                     <pose><%= gps[:pose].join(' ') %></pose>
                                 </link>
                                 <joint name="<%= gps[:name] %>_attachment" type="fixed">
-                                    <parent>body</parent>
+                                    <parent>root</parent>
                                     <child><%= gps[:name] %></child>
                                 </joint>
                             <% end %>
@@ -176,7 +176,7 @@ module RockGazebo
                                     <pose>-0.679 0.0 1.92 0.0 0.0 0.0</pose>
                                 </link>
                                 <joint name="gps_attachment" type="fixed">
-                                    <parent>body</parent>
+                                    <parent>root</parent>
                                     <child>gps</child>
                                 </joint>
 
@@ -184,7 +184,7 @@ module RockGazebo
                                     <pose>2.571 0.044 0.808 0 0 0</pose>
                                 </link>
                                 <joint name="gps2_attachment" type="fixed">
-                                    <parent>body</parent>
+                                    <parent>root</parent>
                                     <child>gps2</child>
                                 </joint>
 
@@ -224,6 +224,68 @@ module RockGazebo
                 # Write new content and verify it overwrites completely
                 ERB.save_as_sdf_model("<new_content/>", destination_dir, file_name)
                 assert_equal "<new_content/>", File.read(full_path)
+            end
+
+            it "imports the root model in the transformer" do
+                pose_gps2 = [2.571, 0.044, 0.808, 0, 0, 0]
+                erb_args = {
+                    model_name: "simple test model",
+                    gps_sensors: [
+                        {
+                            name: "gps",
+                            pose: [-0.679, 0.0, 1.920, 0.0, 0.0, 0.0]
+                        },
+                        {
+                            name: "gps2",
+                            pose: pose_gps2
+                        }
+                    ]
+                }
+
+                ::RockGazebo::Syskit::ERB.pre_render_gazebo_erb_model(
+                    "model://simple_model_erb",
+                    erb_args: erb_args,
+                    output_file_name: "model.sdf",
+                    output_folder_name: "simple_model_erb"
+                )
+
+                Conf.sdf.load_sdf(
+                    expand_fixture_world("attached_simple_model_erb.world")
+                )
+
+                # Delegate to standard use_gazebo_model
+                @profile.use_gazebo_model(
+                    "model://simple_model_erb",
+                    as: "included_model",
+                    use_world: false
+                )
+
+
+                tr = @profile.transformer
+                assert tr.frame?("attachment")
+                assert tr.has_frame?("included_model::gps")
+                assert tr.frame?("included_model::gps2")
+
+                gps2_root_tf = Eigen::Vector3.new(
+                    pose_gps2[0], pose_gps2[1], pose_gps2[2])
+                assert_equal(
+                    gps2_root_tf,
+                    tr.transform_for("included_model::gps2", "included_model::root").translation
+                )
+                # Resolves root to gps2
+                transform = tr.resolve_static_chain(
+                    "included_model::root", "included_model::gps2")
+                assert_equal(
+                    -gps2_root_tf,
+                    transform.translation
+                )
+
+                # Resolves attachment to gps2 (composes attachment -> included_model -> root -> gps2)
+                transform = tr.resolve_static_chain("attachment", "included_model::gps2")
+                assert_equal(
+                    -(gps2_root_tf + Eigen::Vector3.UnitX),
+                    transform.translation
+                )
             end
         end
     end

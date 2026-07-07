@@ -1,0 +1,25 @@
+<sdf version="1.6">
+    <world name="test">
+        <model name="attachment">
+            <link name="in_attachment" />
+            <include>
+                <pose>1 0 0 0 0 0</pose>
+                <name>included_model</name>
+                <uri>model://simple_model_erb</uri>
+            </include>
+            <joint name="attach_to_world" type="fixed">
+                <parent>world</parent>
+                <child>included_model::root</child>
+            </joint>
+            <joint name="attach_to_parent" type="fixed">
+                <parent>in_attachment</parent>
+                <child>included_model::root</child>
+            </joint>
+        </model>
+
+        <model name="other_model">
+            <link name="l" />
+        </model>
+    </world>
+</sdf>
+

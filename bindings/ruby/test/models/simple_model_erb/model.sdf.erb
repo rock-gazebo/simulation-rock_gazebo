@@ -17,7 +17,7 @@
                 <pose><%= gps[:pose].join(' ') %></pose>
             </link>
             <joint name="<%= gps[:name] %>_attachment" type="fixed">
-                <parent>body</parent>
+                <parent>root</parent>
                 <child><%= gps[:name] %></child>
             </joint>
         <% end %>
