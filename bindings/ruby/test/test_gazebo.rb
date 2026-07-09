@@ -1,10 +1,91 @@
 # frozen_string_literal: true
 
+require 'rb-inotify'
 require "rock_gazebo/test"
 require "rock/gazebo"
+require_relative 'helpers'
 
 module Rock
     describe Gazebo do
+        include Helpers
+
+        describe ".download_missing_models" do
+            before do
+                setup_gazebo_erb_sandbox
+                @original_model_path = Rock::Gazebo.model_path.dup
+                @original_download_path = Rock::Gazebo.download_path
+
+                # Point model search path and download path into sandbox
+                Rock::Gazebo.model_path = [@sandbox_dir]
+                Rock::Gazebo.download_path = @sandbox_dir
+                @stable_temp_dir = File.join(@sandbox_dir, "gazebo_erb_models")
+                ::FileUtils.mkdir_p(@stable_temp_dir)
+            end
+
+            after do
+                Rock::Gazebo.model_path = @original_model_path
+                Rock::Gazebo.download_path = @original_download_path
+                teardown_gazebo_erb_sandbox
+            end
+
+            it "immediately returns if the model already exists in the stable temp directory" do
+                model_name = "test_model"
+                model_dir = File.join(@stable_temp_dir, model_name)
+                ::FileUtils.mkdir_p(model_dir)
+
+                File.write(File.join(model_dir, "model.config"), "<model></model>")
+                File.write(File.join(model_dir, "model.sdf"), "<sdf></sdf>")
+
+                flexmock(SDF::Root).should_receive(:load).with("scene.world").once.and_return(true)
+
+                flexmock(::INotify::Notifier).should_receive(:new).never
+                flexmock(Rock::Gazebo).should_receive(:download_model).never
+
+                Rock::Gazebo.download_missing_models("scene.world", wait: true)
+            end
+
+            it "blocks using inotify and wakes up instantly when the model folder is created" do
+                model_name = "delayed_model"
+                model_dir = File.join(@stable_temp_dir, model_name)
+
+                mock_err = SDF::XML::NoSuchModel.new(model_name)
+                flexmock(SDF::Root).should_receive(:load).with("scene.world").and_raise(mock_err).once
+
+                Thread.new do
+                    sleep 0.1
+                    ::FileUtils.mkdir_p(model_dir)
+                    File.write(File.join(model_dir, "model.config"), "<model></model>")
+                end
+
+                flexmock(SDF::Root).should_receive(:load).with("scene.world").and_return(true).once
+                flexmock(SDF::XML).should_receive(:clear_cache).once
+
+                Rock::Gazebo.download_missing_models("scene.world", wait: true, timeout: 2)
+            end
+
+            it "raises a NoSuchModel error if the wait timeout expires before the model is created" do
+                model_name = "non_existent_model"
+                mock_err = SDF::XML::NoSuchModel.new(model_name)
+
+                flexmock(SDF::Root).should_receive(:load).with("scene.world").and_raise(mock_err).once
+
+                assert_raises(SDF::XML::NoSuchModel) do
+                    Rock::Gazebo.download_missing_models("scene.world", wait: true, timeout: 0.1)
+                end
+            end
+
+            it "does not wait and falls back immediately to standard downloader if wait is false" do
+                model_name = "missing_no_wait"
+                mock_err = SDF::XML::NoSuchModel.new(model_name)
+
+                flexmock(SDF::Root).should_receive(:load).with("scene.world").and_raise(mock_err).once
+                flexmock(Rock::Gazebo).should_receive(:download_model).with(model_name).once.and_return(true)
+                flexmock(SDF::Root).should_receive(:load).with("scene.world").and_return(true).once
+
+                Rock::Gazebo.download_missing_models("scene.world", wait: false)
+            end
+        end
+
         describe ".process_sdf_world" do
             it "resolve the 'filename' argument of a <task ...> element "\
                "in <plugin ...>" do

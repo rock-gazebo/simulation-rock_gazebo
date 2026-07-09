@@ -217,4 +217,17 @@ module Helpers
             end
         end
     end
+
+    def setup_gazebo_erb_sandbox
+        require 'tmpdir'
+        @sandbox_dir = Dir.mktmpdir("gazebo_test_")
+        flexmock(Dir).should_receive(:tmpdir).and_return(@sandbox_dir).by_default
+        @sandbox_dir
+    end
+
+    def teardown_gazebo_erb_sandbox
+        if @sandbox_dir
+            ::FileUtils.remove_entry(@sandbox_dir) if File.exist?(@sandbox_dir)
+        end
+    end
 end
