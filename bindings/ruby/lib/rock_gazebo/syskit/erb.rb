@@ -193,6 +193,13 @@ module RockGazebo
                     ::SDF::XML.clear_cache
                 end
 
+                # 8. Create stable temp folder symlink pointing to active log dir
+                if defined?(Roby) && Roby.app.respond_to?(:created_log_dir?) && Roby.app.created_log_dir?
+                    # active_sdf_log_dir = File.join(Roby.app.log_dir, "sdf")
+                    stable_temp_dir = File.join(Dir.tmpdir, "gazebo_erb_models")
+                    ::FileUtils.ln_sf(sdf_file_destination, stable_temp_dir)
+                end
+
                 sdf_file_destination
             end
         end

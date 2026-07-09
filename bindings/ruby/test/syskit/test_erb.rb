@@ -2,6 +2,7 @@
 
 require 'rock_gazebo/syskit/erb'
 require 'rock_gazebo/syskit/test'
+require_relative 'helpers'
 
 module RockGazebo
     module Syskit
@@ -285,6 +286,26 @@ module RockGazebo
                 assert_equal(
                     -(gps2_root_tf + Eigen::Vector3.UnitX),
                     transform.translation
+                )
+            end
+
+            it "creates a stable temp folder symlink pointing to active log dir when created_log_dir is true" do
+                log_dir = "/tmp/test_roby_log_dir"
+                output_folder_name = "symlink_test_model"
+
+                flexmock(Roby.app).should_receive(:created_log_dir?).and_return(true).twice
+                flexmock(Roby.app).should_receive(:log_dir).and_return(log_dir).once
+
+                expected_src = File.join(log_dir, "sdf", output_folder_name)
+                expected_dest = File.join(Dir.tmpdir, "gazebo_erb_models")
+                flexmock(::FileUtils).should_receive(:ln_sf).with(expected_src, expected_dest).once
+
+                erb_args = { model_name: "symlink_test_model", gps_sensors: [] }
+                ::RockGazebo::Syskit::ERB.pre_render_gazebo_erb_model(
+                    "model://simple_model_erb",
+                    erb_args: erb_args,
+                    output_file_name: "model.sdf",
+                    output_folder_name: "symlink_test_model"
                 )
             end
         end
