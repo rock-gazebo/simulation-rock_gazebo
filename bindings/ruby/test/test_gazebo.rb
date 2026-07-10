@@ -2,7 +2,6 @@
 
 require 'rb-inotify'
 require "rock_gazebo/test"
-require "rock/gazebo"
 require_relative 'helpers'
 
 module Rock
@@ -20,6 +19,7 @@ module Rock
                 Rock::Gazebo.download_path = @sandbox_dir
                 @stable_temp_dir = File.join(@sandbox_dir, "gazebo_erb_models")
                 ::FileUtils.mkdir_p(@stable_temp_dir)
+
             end
 
             after do
@@ -54,7 +54,29 @@ module Rock
                 Thread.new do
                     sleep 0.1
                     ::FileUtils.mkdir_p(model_dir)
-                    File.write(File.join(model_dir, "model.config"), "<model></model>")
+                    File.write(File.join(model_dir, "model.sdf"), "<sdf></sdf>")
+                end
+
+                flexmock(SDF::Root).should_receive(:load).with("scene.world").and_return(true).once
+                flexmock(SDF::XML).should_receive(:clear_cache).once
+
+                Rock::Gazebo.download_missing_models("scene.world", wait: true, timeout: 2)
+            end
+
+            it " blocks when there is an existing model path with the correct name but \
+            without .sdf (common for .erb model path)" do
+                model_dir = File.join(@stable_temp_dir, 'simple_model_erb')
+
+                flexmock(SDF::Root)
+                    .should_receive(:load)
+                    .with("scene.world")
+                    .and_raise(Errno::ENOENT, File.expand_path(File.join("models", "simple_model_erb", "model.sdf"),__dir__) )
+                    .once
+
+                Thread.new do
+                    sleep 0.1
+                    ::FileUtils.mkdir_p(model_dir)
+                    File.write(File.join(model_dir, "model.sdf"), "<sdf></sdf>")
                 end
 
                 flexmock(SDF::Root).should_receive(:load).with("scene.world").and_return(true).once
