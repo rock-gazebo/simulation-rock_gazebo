@@ -69,47 +69,6 @@ module RockGazebo
                 end
             end
 
-            it "save_as_sdf_model" do
-                file_to_save = <<~XML
-                        <?xml version="1.0"?>
-                        <model>
-                            <name>"a_model"</name>
-                            <version>1.0</version>
-                            <sdf version="1.6">"a_sdf_file"</sdf>
-                        </model>
-                    XML
-                ERB.save_as_sdf_model(file_to_save, "/tmp/sdf")
-
-                assert File.file?("/tmp/sdf/model.sdf")
-
-                file = File.read("/tmp/sdf/model.sdf")
-                assert_equal(file_to_save, file)
-
-                ERB.save_as_sdf_model(file_to_save, "/tmp/sdf", "a_model.sdf")
-
-                assert File.file?("/tmp/sdf/a_model.sdf")
-
-                file = File.read("/tmp/sdf/a_model.sdf")
-                assert_equal(file_to_save, file)
-            end
-
-            it "save_as_sdf_model_wrong_extension" do
-                file_to_save = <<~XML
-                        <?xml version="1.0"?>
-                        <model>
-                            <name>"a_model"</name>
-                            <version>1.0</version>
-                            <sdf version="1.6">"a_sdf_file"</sdf>
-                        </model>
-                    XML
-                assert_raises(ArgumentError) do
-                    ERB.save_as_sdf_model(
-                        file_to_save, "/tmp/sdf", "wrong_extendsion.wrong")
-                end
-
-                assert !File.file?("/tmp/sdf/wrong_extendsion.wrong")
-            end
-
             it "parse_erb_as_str" do
                 erb_content = <<~XML
                     <?xml version="1.0" ?>
@@ -210,103 +169,157 @@ module RockGazebo
                 end
             end
 
-            it "save_as_sdf_model_overwrites_existing_file" do
-                destination_dir = "/tmp/sdf_idempotent"
-                file_name = "test_overwrite.sdf"
-                full_path = File.join(destination_dir, file_name)
+            it "save_as_sdf_model_wrong_extension" do
+                file_to_save = <<~XML
+                        <?xml version="1.0"?>
+                        <model>
+                            <name>"a_model"</name>
+                            <version>1.0</version>
+                            <sdf version="1.6">"a_sdf_file"</sdf>
+                        </model>
+                    XML
+                assert_raises(ArgumentError) do
+                    ERB.save_as_sdf_model(
+                        file_to_save, "/tmp/sdf", "wrong_extendsion.wrong")
+                end
 
-                # Ensure clean start
-                File.delete(full_path) if File.file?(full_path)
-
-                # Write initial content
-                ERB.save_as_sdf_model("<initial/>", destination_dir, file_name)
-                assert_equal "<initial/>", File.read(full_path)
-
-                # Write new content and verify it overwrites completely
-                ERB.save_as_sdf_model("<new_content/>", destination_dir, file_name)
-                assert_equal "<new_content/>", File.read(full_path)
+                assert !File.file?("/tmp/sdf/wrong_extendsion.wrong")
             end
 
-            it "imports the root model in the transformer" do
-                pose_gps2 = [2.571, 0.044, 0.808, 0, 0, 0]
-                erb_args = {
-                    model_name: "simple test model",
-                    gps_sensors: [
-                        {
-                            name: "gps",
-                            pose: [-0.679, 0.0, 1.920, 0.0, 0.0, 0.0]
-                        },
-                        {
-                            name: "gps2",
-                            pose: pose_gps2
-                        }
-                    ]
-                }
+            describe "tests_that_save_to_test_folder" do
+                before(:all) do
+                    @test_folder = "/tmp/test_erb/"
+                end
 
-                ::RockGazebo::Syskit::ERB.pre_render_gazebo_erb_model(
-                    "model://simple_model_erb",
-                    erb_args: erb_args,
-                    output_file_name: "model.sdf",
-                    output_folder_name: "simple_model_erb"
-                )
+                after(:all) do
+                    ::FileUtils.rm_rf(@test_folder)
+                end
 
-                Conf.sdf.load_sdf(
-                    expand_fixture_world("attached_simple_model_erb.world")
-                )
+                it "save_as_sdf_model" do
+                    file_to_save = <<~XML
+                            <?xml version="1.0"?>
+                            <model>
+                                <name>"a_model"</name>
+                                <version>1.0</version>
+                                <sdf version="1.6">"a_sdf_file"</sdf>
+                            </model>
+                        XML
+                    ERB.save_as_sdf_model(file_to_save, @test_folder)
+                    saved_model_path = File.join(@test_folder, "model.sdf")
 
-                # Delegate to standard use_gazebo_model
-                @profile.use_gazebo_model(
-                    "model://simple_model_erb",
-                    as: "included_model",
-                    use_world: false
-                )
+                    assert File.file?(saved_model_path)
+
+                    file = File.read(saved_model_path)
+                    assert_equal(file_to_save, file)
+
+                    ERB.save_as_sdf_model(file_to_save, @test_folder, "a_model.sdf")
+                    saved_model_path = File.join(@test_folder, "a_model.sdf")
+                    assert File.file?(saved_model_path)
+
+                    file = File.read(saved_model_path)
+                    assert_equal(file_to_save, file)
+                end
+
+                it "save_as_sdf_model_overwrites_existing_file" do
+                    file_name = "test_overwrite.sdf"
+                    full_path = File.join(@test_folder, file_name)
+
+                    # Ensure clean start
+                    File.delete(full_path) if File.file?(full_path)
+
+                    # Write initial content
+                    ERB.save_as_sdf_model("<initial/>", @test_folder, file_name)
+                    assert_equal "<initial/>", File.read(full_path)
+
+                    # Write new content and verify it overwrites completely
+                    ERB.save_as_sdf_model("<new_content/>", @test_folder, file_name)
+                    assert_equal "<new_content/>", File.read(full_path)
+                end
+
+                it "imports the root model in the transformer" do
+                    pose_gps2 = [2.571, 0.044, 0.808, 0, 0, 0]
+                    erb_args = {
+                        model_name: "simple test model",
+                        gps_sensors: [
+                            {
+                                name: "gps",
+                                pose: [-0.679, 0.0, 1.920, 0.0, 0.0, 0.0]
+                            },
+                            {
+                                name: "gps2",
+                                pose: pose_gps2
+                            }
+                        ]
+                    }
+
+                    flexmock(Roby.app).should_receive(:created_log_dir?).and_return(true).twice
+                    flexmock(Roby.app).should_receive(:log_dir).and_return(@test_folder).once
+                    ::RockGazebo::Syskit::ERB.pre_render_gazebo_erb_model(
+                        "model://simple_model_erb",
+                        erb_args: erb_args,
+                        output_file_name: "model.sdf",
+                        output_folder_name: "simple_model_erb"
+                    )
+
+                    Conf.sdf.load_sdf(
+                        expand_fixture_world("attached_simple_model_erb.world")
+                    )
+
+                    # Delegate to standard use_gazebo_model
+                    @profile.use_gazebo_model(
+                        "model://simple_model_erb",
+                        as: "included_model",
+                        use_world: false
+                    )
 
 
-                tr = @profile.transformer
-                assert tr.frame?("attachment")
-                assert tr.has_frame?("included_model::gps")
-                assert tr.frame?("included_model::gps2")
+                    tr = @profile.transformer
+                    assert tr.frame?("attachment")
+                    assert tr.has_frame?("included_model::gps")
+                    assert tr.frame?("included_model::gps2")
 
-                gps2_root_tf = Eigen::Vector3.new(
-                    pose_gps2[0], pose_gps2[1], pose_gps2[2])
-                assert_equal(
-                    gps2_root_tf,
-                    tr.transform_for("included_model::gps2", "included_model::root").translation
-                )
-                # Resolves root to gps2
-                transform = tr.resolve_static_chain(
-                    "included_model::root", "included_model::gps2")
-                assert_equal(
-                    -gps2_root_tf,
-                    transform.translation
-                )
+                    gps2_root_tf = Eigen::Vector3.new(
+                        pose_gps2[0], pose_gps2[1], pose_gps2[2])
+                    assert_equal(
+                        gps2_root_tf,
+                        tr.transform_for("included_model::gps2", "included_model::root").translation
+                    )
+                    # Resolves root to gps2
+                    transform = tr.resolve_static_chain(
+                        "included_model::root", "included_model::gps2")
+                    assert_equal(
+                        -gps2_root_tf,
+                        transform.translation
+                    )
 
-                # Resolves attachment to gps2 (composes attachment -> included_model -> root -> gps2)
-                transform = tr.resolve_static_chain("attachment", "included_model::gps2")
-                assert_equal(
-                    -(gps2_root_tf + Eigen::Vector3.UnitX),
-                    transform.translation
-                )
-            end
+                    # Resolves attachment to gps2 (composes attachment -> included_model -> root -> gps2)
+                    transform = tr.resolve_static_chain("attachment", "included_model::gps2")
+                    assert_equal(
+                        -(gps2_root_tf + Eigen::Vector3.UnitX),
+                        transform.translation
+                    )
+                ensure
+                    ::FileUtils.rm_f("/tmp/gazebo_erb_models/simple_model_erb")
+                end
 
-            it "creates a stable temp folder symlink pointing to active log dir when created_log_dir is true" do
-                log_dir = "/tmp/test_roby_log_dir"
-                output_folder_name = "symlink_test_model"
+                it "creates a stable temp folder symlink pointing to active log dir when created_log_dir is true" do
+                    output_folder_name = "symlink_test_model"
 
-                flexmock(Roby.app).should_receive(:created_log_dir?).and_return(true).twice
-                flexmock(Roby.app).should_receive(:log_dir).and_return(log_dir).once
+                    flexmock(Roby.app).should_receive(:created_log_dir?).and_return(true).twice
+                    flexmock(Roby.app).should_receive(:log_dir).and_return(@test_folder).once
 
-                expected_src = File.join(log_dir, "sdf", output_folder_name)
-                expected_dest = File.join(Dir.tmpdir, "gazebo_erb_models")
-                flexmock(::FileUtils).should_receive(:ln_sf).with(expected_src, expected_dest).once
+                    expected_src = File.join(@test_folder, "sdf", output_folder_name)
+                    expected_dest = File.join(::RockGazebo::Syskit::ERB::STABLE_TMP_DIR, output_folder_name)
+                    flexmock(::FileUtils).should_receive(:ln_s).with(expected_src, expected_dest).once
 
-                erb_args = { model_name: "symlink_test_model", gps_sensors: [] }
-                ::RockGazebo::Syskit::ERB.pre_render_gazebo_erb_model(
-                    "model://simple_model_erb",
-                    erb_args: erb_args,
-                    output_file_name: "model.sdf",
-                    output_folder_name: "symlink_test_model"
-                )
+                    erb_args = { model_name: "symlink_test_model", gps_sensors: [] }
+                    ::RockGazebo::Syskit::ERB.pre_render_gazebo_erb_model(
+                        "model://simple_model_erb",
+                        erb_args: erb_args,
+                        output_file_name: "model.sdf",
+                        output_folder_name: "symlink_test_model"
+                    )
+                end
             end
         end
     end

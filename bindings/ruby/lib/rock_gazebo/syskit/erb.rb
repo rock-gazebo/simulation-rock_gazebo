@@ -1,11 +1,16 @@
 # frozen_string_literal: true
 
 require 'erb'
+require 'fileutils'
+require 'tmpdir'
 
 module RockGazebo
     module Syskit
         module ERB
             module_function
+
+            STABLE_TMP_DIR = File.join(Dir.tmpdir, "gazebo_erb_models").freeze
+
             # Open an .erb file and returns its content as a string
             #
             # @param [String] file_path path to the .erb template file
@@ -106,7 +111,7 @@ module RockGazebo
                     if Roby.app.created_log_dir?
                         File.join(Roby.app.log_dir, "sdf")
                     else
-                        File.join(Dir.tmpdir, "gazebo_erb_models")
+                        STABLE_TMP_DIR
                     end
 
                 unique_name = base_model_name
@@ -158,9 +163,6 @@ module RockGazebo
                 output_file_name: "model.sdf",
                 output_folder_name: nil
             )
-                require 'fileutils'
-                require 'tmpdir'
-
                 # 1. Resolve full path to template
                 full_path = resolve_erb_template_path(*path)
                 template_dir = File.dirname(full_path)
@@ -195,12 +197,22 @@ module RockGazebo
 
                 # 8. Create stable temp folder symlink pointing to active log dir
                 if defined?(Roby) && Roby.app.respond_to?(:created_log_dir?) && Roby.app.created_log_dir?
-                    stable_temp_dir = File.join(Dir.tmpdir, "gazebo_erb_models")
+                    stable_temp_dir = STABLE_TMP_DIR
                     ::FileUtils.mkdir_p(stable_temp_dir)
-                    ::FileUtils.ln_sf(sdf_file_destination, stable_temp_dir)
+
+                    target_link = File.join(stable_temp_dir, File.basename(sdf_file_destination))
+                    ::FileUtils.rm_rf(target_link)
+                    ::FileUtils.ln_s(sdf_file_destination, target_link)
                 end
 
                 sdf_file_destination
+            end
+
+            def unlink_gazebo_model(sdf_file_destination)
+                stable_temp_dir = STABLE_TMP_DIR
+                link_name = File.basename(sdf_file_destination)
+                full_link_path = File.join(stable_temp_dir, link_name)
+                ::FileUtils.rm_f(full_link_path)
             end
         end
     end

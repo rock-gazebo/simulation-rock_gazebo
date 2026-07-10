@@ -14,6 +14,7 @@ module RockGazebo
             Roby.app.on_clear_models do
                 Conf.sdf.world_file_path = nil
                 Conf.sdf.has_profile_loaded = false
+                ::Syskit.conf.unlink_gazebo_models
             end
 
             # Load a SDF world into the Syskit instance
@@ -56,7 +57,15 @@ module RockGazebo
             def pre_render_gazebo_erb_model(*path, **options)
                 require 'rock_gazebo/syskit/erb'
                 setup_gazebo_model_path
-                ::RockGazebo::Syskit::ERB.pre_render_gazebo_erb_model(*path, **options)
+                @rendered_erb_model ||= []
+                @rendered_erb_model <<
+                    ::RockGazebo::Syskit::ERB.pre_render_gazebo_erb_model(*path, **options)
+            end
+
+            def unlink_gazebo_models()
+                @rendered_erb_model&.each do |model_path|
+                    ::RockGazebo::Syskit::ERB.unlink_gazebo_model(model_path)
+                end
             end
 
             # Find the path to the world file, using the Roby search path if needed
