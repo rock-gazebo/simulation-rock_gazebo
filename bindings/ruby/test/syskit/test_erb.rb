@@ -252,8 +252,8 @@ module RockGazebo
                         ]
                     }
 
-                    flexmock(Roby.app).should_receive(:created_log_dir?).and_return(true).twice
-                    flexmock(Roby.app).should_receive(:log_dir).and_return(@test_folder).once
+                    flexmock(Roby.app).should_receive(:created_log_dir?).and_return(true)
+                    flexmock(Roby.app).should_receive(:log_dir).and_return(@test_folder)
                     ::RockGazebo::Syskit::ERB.pre_render_gazebo_erb_model(
                         "model://simple_model_erb",
                         erb_args: erb_args,
@@ -305,8 +305,8 @@ module RockGazebo
                 it "creates a stable temp folder symlink pointing to active log dir when created_log_dir is true" do
                     output_folder_name = "symlink_test_model"
 
-                    flexmock(Roby.app).should_receive(:created_log_dir?).and_return(true).twice
-                    flexmock(Roby.app).should_receive(:log_dir).and_return(@test_folder).once
+                    flexmock(Roby.app).should_receive(:created_log_dir?).and_return(true)
+                    flexmock(Roby.app).should_receive(:log_dir).and_return(@test_folder)
 
                     expected_src = File.join(@test_folder, "sdf", output_folder_name)
                     expected_dest = File.join(::RockGazebo::Syskit::ERB::STABLE_TMP_DIR, output_folder_name)
@@ -319,6 +319,42 @@ module RockGazebo
                         output_file_name: "model.sdf",
                         output_folder_name: "symlink_test_model"
                     )
+                end
+
+                it "pre_render_gazebo_erb_model twice in a row" do
+                    pose_gps2 = [2.571, 0.044, 0.808, 0, 0, 0]
+                    erb_args = {
+                        model_name: "parse_erb_twice",
+                        gps_sensors: [
+                            {
+                                name: "gps",
+                                pose: [-0.679, 0.0, 1.920, 0.0, 0.0, 0.0]
+                            },
+                            {
+                                name: "gps2",
+                                pose: pose_gps2
+                            }
+                        ]
+                    }
+
+                    flexmock(Roby.app).should_receive(:created_log_dir?).and_return(true)
+                    flexmock(Roby.app).should_receive(:log_dir).and_return(@test_folder)
+                    ::RockGazebo::Syskit::ERB.pre_render_gazebo_erb_model(
+                        "model://simple_model_erb",
+                        erb_args: erb_args,
+                        output_file_name: "model.sdf",
+                        output_folder_name: "simple_model_erb"
+                    )
+                    saved_model_path = File.join(@test_folder, "sdf", "simple_model_erb", "model.sdf")
+                    assert File.file?(saved_model_path)
+
+                    ::RockGazebo::Syskit::ERB.pre_render_gazebo_erb_model(
+                        "model://simple_model_erb",
+                        erb_args: erb_args,
+                        output_file_name: "model.sdf",
+                        output_folder_name: "simple_model_erb"
+                    )
+                    assert File.file?(saved_model_path)
                 end
             end
         end

@@ -85,10 +85,32 @@ module RockGazebo
                     path_string = File.join(path_string, "model.sdf.erb")
                 end
 
-                _, resolved_paths = Rock::Gazebo.resolve_worldfiles_and_models_arguments(
-                    [path_string], path_resolver: Roby.app
-                )
-                full_path = resolved_paths.first
+                # Filter out output/temp directories from model_path to resolve the template source
+                original_paths = Rock::Gazebo.model_path
+                begin
+                    # 1. Reject standard stable tmp dir
+                    filtered_paths = original_paths.reject do |p|
+                        p == STABLE_TMP_DIR || p.start_with?(STABLE_TMP_DIR + File::SEPARATOR)
+                    end
+
+                    # 2. Reject dynamic log-based sdf output directory if active
+                    if defined?(Roby) && Roby.app.respond_to?(:created_log_dir?) && Roby.app.created_log_dir?
+                        log_sdf = File.join(Roby.app.log_dir, "sdf")
+                        filtered_paths = filtered_paths.reject do |p|
+                            p == log_sdf || p.start_with?(log_sdf + File::SEPARATOR)
+                        end
+                    end
+
+                    Rock::Gazebo.model_path = filtered_paths
+
+                    _, resolved_paths = Rock::Gazebo.resolve_worldfiles_and_models_arguments(
+                        [path_string], path_resolver: Roby.app
+                    )
+                    full_path = resolved_paths.first
+                ensure
+                    # Restore the original search path so Gazebo can still find rendered models
+                    Rock::Gazebo.model_path = original_paths
+                end
 
                 if File.directory?(full_path)
                     File.join(full_path, "model.sdf.erb")
