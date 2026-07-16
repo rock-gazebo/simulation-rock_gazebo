@@ -106,6 +106,48 @@ module Rock
 
                 Rock::Gazebo.download_missing_models("scene.world", wait: false)
             end
+
+            it "waits at most once during the execution and falls back to download on subsequent failures" do
+                model_name = "missing_model"
+                mock_err = SDF::XML::NoSuchModel.new(model_name)
+
+                # First load attempt fails
+                flexmock(SDF::Root).should_receive(:load).with("scene.world").and_raise(mock_err).once
+
+                # During the first wait, wait succeeds and clears cache, retries load
+                flexmock(Rock::Gazebo).should_receive(:wait_for_model_generation).with(model_name, 2).and_return(true).once
+                flexmock(SDF::XML).should_receive(:clear_cache).once
+
+                # Second load attempt also fails
+                flexmock(SDF::Root).should_receive(:load).with("scene.world").and_raise(mock_err).once
+
+                # Should NOT call wait_for_model_generation again. Instead, it should immediately fall back to fallback_download
+                flexmock(Rock::Gazebo).should_receive(:fallback_download).with(model_name, "scene.world").once.and_return(true)
+
+                # Third load attempt succeeds
+                flexmock(SDF::Root).should_receive(:load).with("scene.world").and_return(true).once
+
+                Rock::Gazebo.download_missing_models("scene.world", wait: true, timeout: 2)
+            end
+
+            it "raises a NoSuchModel error if fallback_download does not resolve the model, preventing infinite loops" do
+                model_name = "permanently_missing"
+                mock_err = SDF::XML::NoSuchModel.new(model_name)
+
+                # Load fails
+                flexmock(SDF::Root).should_receive(:load).with("scene.world").and_raise(mock_err).once
+
+                # Fallback download is attempted and succeeds (but does not actually resolve the model)
+                flexmock(Rock::Gazebo).should_receive(:fallback_download).with(model_name, "scene.world").once.and_return(true)
+
+                # Second load fails
+                flexmock(SDF::Root).should_receive(:load).with("scene.world").and_raise(mock_err).once
+
+                # Since downloaded_models already includes permanently_missing, it raises NoSuchModel
+                assert_raises(SDF::XML::NoSuchModel) do
+                    Rock::Gazebo.download_missing_models("scene.world", wait: false)
+                end
+            end
         end
 
         describe ".process_sdf_world" do
