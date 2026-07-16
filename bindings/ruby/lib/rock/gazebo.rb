@@ -12,12 +12,10 @@ module Rock
 
         def self.default_model_path(path_resolver: default_path_resolver)
             require 'tmpdir'
-            path_resolver.find_dirs('models', 'sdf', all: true, order: :specific_first) +
+            [File.join(Dir.tmpdir, "gazebo_erb_models")] +
+                path_resolver.find_dirs('models', 'sdf', all: true, order: :specific_first) +
                 (ENV['GAZEBO_MODEL_PATH']||"").split(':') +
-                [
-                  File.join(Dir.home, '.gazebo', 'models'),
-                  File.join(Dir.tmpdir, "gazebo_erb_models")
-                ]
+                [ File.join(Dir.home, '.gazebo', 'models') ]
         end
 
         def self.model_path(path_resolver: default_path_resolver)
