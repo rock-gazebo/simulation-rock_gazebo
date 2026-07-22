@@ -1,7 +1,8 @@
+require 'minitar'
 require 'rock/bundles' unless ENV["SYSKIT_USE_ROCK_BUNDLES"] == "0"
 require 'rock_gazebo/path_to_plugin'
 require 'sdf'
-require 'minitar'
+require 'tmpdir'
 
 require 'utilrb/logger'
 
@@ -11,7 +12,6 @@ module Rock
         extend Logger::Forward
 
         def self.default_model_path(path_resolver: default_path_resolver)
-            require 'tmpdir'
             [File.join(Dir.tmpdir, "gazebo_erb_models")] +
                 path_resolver.find_dirs('models', 'sdf', all: true, order: :specific_first) +
                 (ENV['GAZEBO_MODEL_PATH']||"").split(':') +

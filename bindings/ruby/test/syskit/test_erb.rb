@@ -349,7 +349,7 @@ module RockGazebo
 
                     flexmock(Roby.app).should_receive(:created_log_dir?).and_return(true)
                     flexmock(Roby.app).should_receive(:log_dir).and_return(@test_folder)
-                    ::RockGazebo::Syskit::ERB.pre_render_gazebo_erb_model(
+                    ::RockGazebo::Syskit::ERB.pre_render_erb_sdf_model(
                         "model://simple_model_erb",
                         erb_args: erb_args,
                         output_file_name: "model.sdf",
@@ -408,7 +408,7 @@ module RockGazebo
                     flexmock(::FileUtils).should_receive(:ln_s).with(expected_src, expected_dest).once
 
                     erb_args = { model_name: "symlink_test_model", gps_sensors: [] }
-                    ::RockGazebo::Syskit::ERB.pre_render_gazebo_erb_model(
+                    ::RockGazebo::Syskit::ERB.pre_render_erb_sdf_model(
                         "model://simple_model_erb",
                         erb_args: erb_args,
                         output_file_name: "model.sdf",
@@ -416,7 +416,7 @@ module RockGazebo
                     )
                 end
 
-                it "pre_render_gazebo_erb_model twice in a row" do
+                it "pre_render_erb_sdf_model twice in a row" do
                     pose_gps2 = [2.571, 0.044, 0.808, 0, 0, 0]
                     erb_args = {
                         model_name: "parse_erb_twice",
@@ -434,7 +434,7 @@ module RockGazebo
 
                     flexmock(Roby.app).should_receive(:created_log_dir?).and_return(true)
                     flexmock(Roby.app).should_receive(:log_dir).and_return(@test_folder)
-                    ::RockGazebo::Syskit::ERB.pre_render_gazebo_erb_model(
+                    ::RockGazebo::Syskit::ERB.pre_render_erb_sdf_model(
                         "model://simple_model_erb",
                         erb_args: erb_args,
                         output_file_name: "model.sdf",
@@ -443,7 +443,7 @@ module RockGazebo
                     saved_model_path = File.join(@test_folder, "sdf", "simple_model_erb", "model.sdf")
                     assert File.file?(saved_model_path)
 
-                    ::RockGazebo::Syskit::ERB.pre_render_gazebo_erb_model(
+                    ::RockGazebo::Syskit::ERB.pre_render_erb_sdf_model(
                         "model://simple_model_erb",
                         erb_args: erb_args,
                         output_file_name: "model.sdf",

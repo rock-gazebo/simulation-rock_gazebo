@@ -54,12 +54,12 @@ module RockGazebo
             # Pre-renders an ERB template and registers its search path
             #
             # @return [String] the folder path of the generated model
-            def pre_render_gazebo_erb_model(*path, **options)
+            def pre_render_erb_sdf_model(*path, **options)
                 require 'rock_gazebo/syskit/erb'
                 setup_gazebo_model_path
                 @rendered_erb_model ||= []
                 @rendered_erb_model <<
-                    ::RockGazebo::Syskit::ERB.pre_render_gazebo_erb_model(*path, **options)
+                    ::RockGazebo::Syskit::ERB.pre_render_erb_sdf_model(*path, **options)
             end
 
             def unlink_gazebo_models()

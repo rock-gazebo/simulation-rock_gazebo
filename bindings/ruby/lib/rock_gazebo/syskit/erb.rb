@@ -45,7 +45,6 @@ module RockGazebo
                     raise ArgumentError, "Output file must have a '.sdf' extension: #{file_name}"
                 end
 
-                require 'fileutils'
                 begin
                     ::FileUtils.mkdir_p(sdf_folder_destination)
                 rescue Errno::EACCES
@@ -179,7 +178,7 @@ module RockGazebo
             # Pre-renders an ERB template into a physical model directory and registers its search path
             #
             # @return [String] the folder path of the generated model
-            def pre_render_gazebo_erb_model(
+            def pre_render_erb_sdf_model(
                 *path,
                 erb_args: {},
                 output_file_name: "model.sdf",
