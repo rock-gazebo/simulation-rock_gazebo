@@ -1,6 +1,13 @@
 <?xml version="1.0" ?>
+<%
+	default_gps_pose = [-0.679, 0.0, 1.920, 0.0, 0.0, 0.0]
+	default_gps2_pose = [2.571, 0.044, 0.808, 0.0, 0.0, 0.0]
+
+    gps1_pose = (defined?(gps_sensors) && gps_sensors.dig(:gps, :pose)) || default_gps_pose
+    gps2_pose = (defined?(gps_sensors) && gps_sensors.dig(:gps2, :pose)) || default_gps2_pose
+%>
 <sdf version="1.6">
-    <model name="<%= model_name %>">
+    <model name="simple_model_erb">
         <link name="root">
             <sensor name="g" type="gps" />
         </link>
@@ -12,15 +19,21 @@
             </axis>
         </joint>
 
-        <% gps_sensors.each do |gps| %>
-            <link name="<%= gps[:name] %>">
-                <pose><%= gps[:pose].join(' ') %></pose>
-            </link>
-            <joint name="<%= gps[:name] %>_attachment" type="fixed">
-                <parent>root</parent>
-                <child><%= gps[:name] %></child>
-            </joint>
-        <% end %>
+        <link name="gps">
+            <pose><%= gps1_pose.join(' ') %></pose>
+        </link>
+        <joint name="gps_attachment" type="fixed">
+            <parent>root</parent>
+            <child>gps</child>
+        </joint>
+
+        <link name="gps2">
+            <pose><%= gps2_pose.join(' ') %></pose>
+        </link>
+        <joint name="gps2_attachment" type="fixed">
+            <parent>root</parent>
+            <child>gps2</child>
+        </joint>
 
         <plugin name="gps_test">
             <task model="rock_gazebo::GPSTask"/>
