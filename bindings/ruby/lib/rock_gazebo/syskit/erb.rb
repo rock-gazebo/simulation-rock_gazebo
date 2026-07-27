@@ -103,7 +103,7 @@ module RockGazebo
                     Rock::Gazebo.model_path = filtered_paths
 
                     _, resolved_paths = Rock::Gazebo.resolve_worldfiles_and_models_arguments(
-                        [path_string], path_resolver: Roby.app
+                        [path_string]
                     )
                     full_path = resolved_paths.first
                 ensure
@@ -129,7 +129,9 @@ module RockGazebo
             # @return [String] the unique destination folder path
             def erb_unique_destination_dir(base_model_name, override = true)
                 base_destination =
-                    if Roby.app.created_log_dir?
+                    if defined?(Roby) &&
+                        Roby.app.respond_to?(:created_log_dir?) &&
+                        Roby.app.created_log_dir?
                         File.join(Roby.app.log_dir, "sdf")
                     else
                         STABLE_TMP_DIR

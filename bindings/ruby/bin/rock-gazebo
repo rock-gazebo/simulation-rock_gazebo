@@ -9,6 +9,8 @@ Rock::Gazebo.logger.level = Logger::INFO
 download_only  = false
 parse_sdf_only = false
 update_models  = false
+sdf_model_params = {}
+templated_models = []
 
 gui = 'vizkit'
 gzserver_args = Array.new
@@ -45,6 +47,13 @@ options = OptionParser.new do |opt|
         gzserver_args << '--pause'
         Rock::Gazebo.logger.level = Logger::DEBUG
     end
+    opt.on '--sdf-model-params=YAML_OR_JSON', String, 'YAML or JSON parameters for SDF templated model' do |model_params|
+        require 'yaml'
+        sdf_model_params = YAML.safe_load(model_params) || {}
+    end
+    opt.on '--templated-model=MODEL', String, 'SDF model to pre-render before scene resolution (can be specified multiple times)' do |model|
+        templated_models << model
+    end
 end
 
 args = options.parse(ARGV)
@@ -68,6 +77,25 @@ else
     Bundles.setup_search_paths
 end
 SDF::XML.model_path = Rock::Gazebo.model_path
+
+if !templated_models.empty?
+    require 'rock_gazebo/syskit/erb'
+
+    templated_models.each do |model|
+        if model =~ /^model:\/\/([^\/]+)/
+            base_name = $1
+        else
+            base_name = File.basename(model)
+        end
+
+
+        ::RockGazebo::Syskit::ERB.pre_render_erb_sdf_model(
+            model,
+            erb_args: sdf_model_params,
+            output_folder_name: base_name
+        )
+    end
+end
 
 _, args = Rock::Gazebo.resolve_worldfiles_and_models_arguments(args)
 scene = args.first
