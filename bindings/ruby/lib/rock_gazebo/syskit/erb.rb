@@ -68,7 +68,7 @@ module RockGazebo
             # @param [String] erb_content ERB template file content as string
             # @param [Hash] erb_args the configuration arguments to evaluate
             # @return [String] the raw rendered XML string representing the model
-            def parse_erb_as_str(erb_content, erb_args)
+            def parse_erb_as_str(erb_content, **erb_args)
                 erb_engine = ::ERB.new(erb_content, trim_mode: '-')
 
                 # Render the ERB template with the passed hash arguments
@@ -192,7 +192,7 @@ module RockGazebo
 
                 # 2. Render template string
                 erb_content = read_erb_file(full_path)
-                solved_erb_as_sdf_str = parse_erb_as_str(erb_content, erb_args)
+                solved_erb_as_sdf_str = parse_erb_as_str(erb_content, **erb_args)
 
                 # 3. Determine unique output path & names
                 base_name = output_folder_name || File.basename(template_dir)
@@ -235,7 +235,7 @@ module RockGazebo
                 stable_temp_dir = STABLE_TMP_DIR
                 link_name = File.basename(sdf_file_destination)
                 full_link_path = File.join(stable_temp_dir, link_name)
-                ::FileUtils.rm_f(full_link_path)
+                ::FileUtils.rm_f(full_link_path) if File.symlink?(full_link_path)
             end
         end
     end
