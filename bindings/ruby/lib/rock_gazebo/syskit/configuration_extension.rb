@@ -1,4 +1,6 @@
 # frozen_string_literal: true
+require_relative 'erb'
+require_relative 'erb_loader'
 
 module RockGazebo
     module Syskit
@@ -9,6 +11,19 @@ module RockGazebo
                 Conf.sdf.world_path = world_path if world_path
                 Conf.gazebo.use_sim_time = false
                 Conf.gazebo.localhost = true
+
+                ConfigurationExtension.prune_stale_symlinks
+            end
+
+            def self.prune_stale_symlinks
+                stable_temp_dir = ::RockGazebo::Syskit::ERB::STABLE_TMP_DIR
+                if File.directory?(stable_temp_dir)
+                    Dir.glob(File.join(stable_temp_dir, "*")).each do |symlink_path|
+                        if File.symlink?(symlink_path) && !File.exist?(symlink_path)
+                            ::FileUtils.rm_f(symlink_path)
+                        end
+                    end
+                end
             end
 
             Roby.app.on_clear_models do
@@ -18,7 +33,7 @@ module RockGazebo
             end
 
             # Load a SDF world into the Syskit instance
-            def use_sdf_world(*path, world_name: nil)
+            def use_sdf_world(*path, world_name: nil, loader: nil)
                 if Conf.sdf.world_file_path
                     raise LoadError, "use_sdf_world already called"
                 elsif Conf.sdf.has_profile_loaded?
@@ -34,9 +49,10 @@ module RockGazebo
                         #{override_path}, overriding the parameter #{File.join(*path)}
                         given to #use_sdf_world
                     MSG
-                    path = override_path
+                    path = [override_path]
                 end
 
+                loader&.load(self)
                 setup_gazebo_model_path
                 full_path = resolve_world_path(*path)
                 Robot.info "loading world from #{full_path}"
@@ -55,11 +71,17 @@ module RockGazebo
             #
             # @return [String] the folder path of the generated model
             def pre_render_erb_sdf_model(*path, **options)
-                require 'rock_gazebo/syskit/erb'
                 setup_gazebo_model_path
                 @rendered_erb_model ||= []
-                @rendered_erb_model <<
-                    ::RockGazebo::Syskit::ERB.pre_render_erb_sdf_model(*path, **options)
+                rendered_path = ::RockGazebo::Syskit::ERB.pre_render_erb_sdf_model(*path, **options)
+
+                target_base_name = File.basename(rendered_path)
+                if @rendered_erb_model.any? { |p| File.basename(p) == target_base_name }
+                    Robot.warn "SDF model collision detected: another model with the same basename '#{target_base_name}' has already been pre-rendered in this session. It will be overwritten!"
+                end
+
+                @rendered_erb_model << rendered_path
+                rendered_path
             end
 
             def unlink_gazebo_models()
@@ -117,9 +139,9 @@ module RockGazebo
             def use_gazebo_world(
                 *path, world_name: nil, localhost: Conf.gazebo.localhost?,
                 read_only: false, read_only_task_models: [], logger_name: nil,
-                period: 0.1
+                period: 0.1, loader: nil
             )
-                world = use_sdf_world(*path, world_name: world_name)
+                world = use_sdf_world(*path, world_name: world_name, loader: loader)
                 Rock::Gazebo.process_gazebo_world(world)
                 deployment_model =
                     ConfigurationExtension.world_to_orogen(world, period: period)
