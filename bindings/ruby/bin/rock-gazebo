@@ -2,6 +2,7 @@
 
 require 'optparse'
 require 'rock/gazebo'
+require 'rock_gazebo/syskit/erb'
 
 NO_GUI=%w{off no}
 GUI_MODES=%w{vizkit gzclient}
@@ -79,15 +80,12 @@ end
 SDF::XML.model_path = Rock::Gazebo.model_path
 
 if !templated_models.empty?
-    require 'rock_gazebo/syskit/erb'
-
     templated_models.each do |model|
         if model =~ /^model:\/\/([^\/]+)/
             base_name = $1
         else
             base_name = File.basename(model)
         end
-
 
         ::RockGazebo::Syskit::ERB.pre_render_erb_sdf_model(
             model,
