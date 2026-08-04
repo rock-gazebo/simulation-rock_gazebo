@@ -84,7 +84,6 @@ module RockGazebo
             #   none match the name provided as world_name
             def sdf_world_from_path(path, world_name: nil)
                 sdf = ::SDF::Root.load(path, flatten: false)
-                Rock::Gazebo.process_sdf_file(sdf)
                 worlds = sdf.each_world.to_a
                 if world_name
                     world = worlds.find { |w| w.name == world_name }
