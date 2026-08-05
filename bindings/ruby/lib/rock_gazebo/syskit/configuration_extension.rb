@@ -43,7 +43,7 @@ module RockGazebo
                 full_path = resolve_world_path(*path)
                 Robot.info "loading world from #{full_path}"
                 loader ||= SDFLoader.new
-                loader.load(self, full_path, world_name: world_name)
+                loader.load(Conf, full_path, world_name: world_name)
             end
 
             # Add all models/sdf folders in our dependent bundles
