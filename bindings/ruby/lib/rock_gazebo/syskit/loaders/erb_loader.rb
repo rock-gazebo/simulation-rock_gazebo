@@ -40,7 +40,6 @@ module RockGazebo
             def initialize(*templates)
                 # Unwrap the outer array if multiple templates were passed inside an explicit Array
                 templates = templates.first if templates.size == 1 && templates.first.is_a?(Array)
-
                 @templates = templates.map do |template|
                     case template
                     when ModelTemplate
@@ -55,9 +54,9 @@ module RockGazebo
                 end
             end
 
-            # Renders all registered templates into in-memory REXML Documents, registers them
-            # in the model cache, and completes the loading procedure.
-            def load(syskit_conf, path, world_name: nil)
+            # Renders all registered templates into in-memory REXML Documents and registers them
+            # in the model cache
+            def process_templates
                 @templates.each do |t|
                     target_name = t.virtual_model_name || File.basename(t.model)
 
@@ -89,7 +88,12 @@ module RockGazebo
                         metadata: metadata
                     )
                 end
+            end
 
+            # Renders all registered templates into in-memory REXML Documents, registers them
+            # in the model cache, and completes the loading procedure.
+            def load(syskit_conf, path, world_name: nil)
+                process_templates
                 syskit_conf.sdf.load_sdf(path, world_name: world_name)
             end
         end

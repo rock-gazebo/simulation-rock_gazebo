@@ -2,6 +2,7 @@
 
 require 'optparse'
 require 'rock/gazebo'
+require 'rock_gazebo/syskit/loaders/erb_loader'
 
 NO_GUI=%w{off no}
 GUI_MODES=%w{vizkit gzclient}
@@ -9,6 +10,7 @@ Rock::Gazebo.logger.level = Logger::INFO
 download_only  = false
 parse_sdf_only = false
 update_models  = false
+templated_models = []
 
 gui = 'vizkit'
 gzserver_args = Array.new
@@ -45,6 +47,9 @@ options = OptionParser.new do |opt|
         gzserver_args << '--pause'
         Rock::Gazebo.logger.level = Logger::DEBUG
     end
+    opt.on '--templated-model=MODEL', String, 'SDF model to pre-render before scene resolution (can be specified multiple times)' do |model|
+        templated_models << model
+    end
 end
 
 args = options.parse(ARGV)
@@ -68,6 +73,10 @@ else
     Bundles.setup_search_paths
 end
 SDF::XML.model_path = Rock::Gazebo.model_path
+
+if !templated_models.empty?
+    RockGazebo::Syskit::ERBLoader.new(templated_models).process_templates
+end
 
 _, args = Rock::Gazebo.resolve_worldfiles_and_models_arguments(args)
 scene = args.first
@@ -135,4 +144,3 @@ ensure
         end
     end
 end
-
