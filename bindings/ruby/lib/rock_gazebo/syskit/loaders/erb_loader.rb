@@ -61,20 +61,20 @@ module RockGazebo
                 @templates.each do |t|
                     target_name = t.virtual_model_name || File.basename(t.model)
 
-                    if ::SDF::XML.cached_model?(target_name)
+                    if ::SDF::XML.cached_model(target_name)
                         raise ArgumentError,
                               "Model cache collision: a model named '#{target_name}' is already registered. " \
                               "To load the same template multiple times with different arguments, " \
                               "you must provide an explicit 'virtual_model_name' for each."
                     end
 
-                    # 1. Pre-render directly to a REXML::Document
+                    # Pre-render directly to a REXML::Document
                     parsed_xml = ::RockGazebo::Syskit::ERB.pre_render_erb_sdf_model(
                         t.model,
                         erb_args: t.erb_args
                     )
 
-                    # 2. Resolve inclusions & relative URIs inside the loader (Orchestration)
+                    # Resolve inclusions and relative URIs
                     virtual_path = "virtual://#{target_name}"
                     resolved_xml, metadata = ::SDF::XML.resolve_sdf_xml(
                         parsed_xml,
@@ -83,7 +83,6 @@ module RockGazebo
                         path: virtual_path
                     )
 
-                    # 3. Pure cache registration of the finished product
                     ::SDF::XML.register_in_memory_model(
                         target_name,
                         resolved_xml,
