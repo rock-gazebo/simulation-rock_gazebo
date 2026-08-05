@@ -18,10 +18,16 @@ module RockGazebo
             describe '#use_sdf_model' do
                 it 'raises if the path does not resolve to a SDF file' do
                     e = assert_raises(ArgumentError) do
+                        @profile.use_sdf_model 'does_not_exist'
+                    end
+                    assert_equal 'does_not_exist cannot be resolved to a valid SDF file',
+                                 e.message
+                end
+
+                it 'raises if wrong type of argument is passed' do
+                    e = assert_raises(ArgumentError) do
                         @profile.use_sdf_model 'does', 'not', 'exist'
                     end
-                    assert_equal 'does/not/exist cannot be resolved to a valid SDF file',
-                                 e.message
                 end
 
                 it 'raises if the path resolves to a SDF file that '\

@@ -107,7 +107,11 @@ module RockGazebo
                 # won't be configured properly
                 Conf.sdf.has_profile_loaded = true
 
-                @sdf = resolve_sdf_model(*path)
+                @sdf = if (model = ::SDF::XML.cached_model(*path))
+                         ::SDF::Root.new(model.xml.root, model.metadata)
+                       else
+                         resolve_sdf_model(*path)
+                       end
                 @sdf_model = @sdf.each_model.first
                 @sdf_model.name = as if as
                 transformer.parse_sdf_model(@sdf_model, filter: filter)

@@ -132,7 +132,7 @@ module RockGazebo
                         }
                     ]
                 }
-                resulting_sdf = ERB.parse_erb_as_str(erb_content, erb_args)
+                resulting_sdf = ERB.parse_erb_as_str(erb_content, **erb_args)
 
                 expected_content = <<~XML
                     <?xml version="1.0" ?>
@@ -227,7 +227,7 @@ module RockGazebo
                     random_array: [1, 2, 3],
                     random_hash: { key1: "value1", key2: "value2" }
                 }
-                resulting_sdf = ERB.parse_erb_as_str(erb_content, erb_args)
+                resulting_sdf = ERB.parse_erb_as_str(erb_content, **erb_args)
 
                 expected_content = <<~XML
                     <?xml version="1.0" ?>
@@ -277,7 +277,7 @@ module RockGazebo
                 erb_content = "<model name='<%= model_name %>'></model>"
                 # Missing :model_name in erb_args
                 assert_raises(NameError) do
-                    ERB.parse_erb_as_str(erb_content, {})
+                    ERB.parse_erb_as_str(erb_content)
                 end
             end
 

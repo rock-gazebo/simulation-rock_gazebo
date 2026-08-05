@@ -109,7 +109,7 @@ module RockGazebo
 
                     loader.load(mock_conf, "some_world.world")
 
-                    assert ::SDF::XML.cached_model?("test_model")
+                    assert ::SDF::XML.cached_model("test_model")
 
                     cached_xml = ::SDF::XML.instance_variable_get(:@gazebo_models)[nil]["test_model"].xml
                     assert_equal mock_xml.to_s, cached_xml.to_s
@@ -139,8 +139,8 @@ module RockGazebo
 
                     loader.load(mock_conf, "some_world.world")
 
-                    assert ::SDF::XML.cached_model?("test_model_low_noise")
-                    refute ::SDF::XML.cached_model?("test_model")
+                    assert ::SDF::XML.cached_model("test_model_low_noise")
+                    refute ::SDF::XML.cached_model("test_model")
                 end
 
                 it "raises an ArgumentError if a model cache collision occurs" do
