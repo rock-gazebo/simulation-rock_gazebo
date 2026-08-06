@@ -14,7 +14,6 @@ require 'transformer/syskit'
 Syskit.conf.transformer_enabled = true
 
 require 'transformer/sdf'
-require 'rock_gazebo/syskit/erb'
 require 'rock_gazebo/syskit/features'
 require 'rock_gazebo/syskit/sdf'
 require 'rock_gazebo/syskit/configuration_extension'
@@ -22,6 +21,3 @@ require 'rock_gazebo/syskit/profile_extension'
 require 'rock_gazebo/syskit/robot_definition_extension'
 require 'rock_gazebo/syskit/instance_requirements_extension'
 require 'rock_gazebo/syskit/master_device_instance_extension'
-
-require 'rock_gazebo/syskit/loaders/sdf_loader'
-require 'rock_gazebo/syskit/loaders/erb_loader'
