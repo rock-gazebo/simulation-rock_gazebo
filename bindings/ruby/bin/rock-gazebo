@@ -76,7 +76,7 @@ if update_models
     Rock::Gazebo.update_existing_models
 end
 
-Rock::Gazebo.download_missing_models(scene)
+Rock::Gazebo.download_missing_models(scene, loader: SDF::ERBLoader.new)
 
 if parse_sdf_only
     args.each do |path|
@@ -135,4 +135,3 @@ ensure
         end
     end
 end
-

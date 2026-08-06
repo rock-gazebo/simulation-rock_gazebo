@@ -153,8 +153,8 @@ module Rock
         #   describes a SDF file (either a path, or a model:// URI)
         # @return [SDF::Root]
         # @see process_sdf_file
-        def self.process_gazebo_file(sdf, loader: create_rtt_loader)
-            sdf = process_sdf_file(sdf)
+        def self.process_gazebo_file(sdf, loader: create_rtt_loader, model_loader: SDF::Loader.new)
+            sdf = process_sdf_file(sdf, loader: model_loader)
 
             # post-process the rock_components info
             sdf.each_world { |w| process_gazebo_world(w, loader: loader) }
