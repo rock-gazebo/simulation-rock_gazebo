@@ -76,7 +76,7 @@ if update_models
     Rock::Gazebo.update_existing_models
 end
 
-::SDF::XML.default_loader = ::SDF::ERBLoader.new
+::SDF::XML.default_loader = ::SDF::Loader.new
 Rock::Gazebo.download_missing_models(scene)
 
 if parse_sdf_only
