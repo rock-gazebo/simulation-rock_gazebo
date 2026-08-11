@@ -17,7 +17,7 @@ module RockGazebo
             end
 
             # Load a SDF world into the Syskit instance
-            def use_sdf_world(*path, world_name: nil, loader: ::SDF::Loader.new)
+            def use_sdf_world(*path, world_name: nil)
                 if Conf.sdf.world_file_path
                     raise LoadError, "use_sdf_world already called"
                 elsif Conf.sdf.has_profile_loaded?
@@ -39,7 +39,7 @@ module RockGazebo
                 setup_gazebo_model_path
                 full_path = resolve_world_path(*path)
                 Robot.info "loading world from #{full_path}"
-                Conf.sdf.load_sdf(full_path, world_name: world_name, loader: loader)
+                Conf.sdf.load_sdf(full_path, world_name: world_name)
             end
 
             # Add all models/sdf folders in our dependent bundles
@@ -97,9 +97,9 @@ module RockGazebo
             def use_gazebo_world(
                 *path, world_name: nil, localhost: Conf.gazebo.localhost?,
                 read_only: false, read_only_task_models: [], logger_name: nil,
-                period: 0.1, loader: ::SDF::Loader.new
+                period: 0.1
             )
-                world = use_sdf_world(*path, world_name: world_name, loader: loader)
+                world = use_sdf_world(*path, world_name: world_name)
                 Rock::Gazebo.process_gazebo_world(world)
                 deployment_model =
                     ConfigurationExtension.world_to_orogen(world, period: period)

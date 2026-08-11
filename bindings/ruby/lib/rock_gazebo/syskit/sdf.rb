@@ -31,14 +31,14 @@ module RockGazebo
             #   a world of the given name in the loaded file. Otherwise, the loaded
             #   file must have a single world
             # @return [SDF::World]
-            def load_sdf(*path, world_name: nil, loader: ::SDF::Loader.new)
+            def load_sdf(*path, world_name: nil)
                 path = File.join(*path)
                 _, resolved_paths =
                     Rock::Gazebo.resolve_worldfiles_and_models_arguments([path])
                 full_path = resolved_paths.first
                 full_path = autodetect_sdf_file_path(full_path)
                 ::SDF::XML.model_path = Rock::Gazebo.model_path
-                world = sdf_world_from_path(full_path, world_name: world_name, loader: loader)
+                world = sdf_world_from_path(full_path, world_name: world_name)
                 use_sdf_world(world, path: full_path)
             end
 
@@ -82,8 +82,8 @@ module RockGazebo
             #   world_name is not set
             # @raise ArgumentError if the SDF file has more than one world and
             #   none match the name provided as world_name
-            def sdf_world_from_path(path, world_name: nil, loader: ::SDF::Loader.new)
-                sdf = ::SDF::Root.load(path, flatten: false, loader: loader)
+            def sdf_world_from_path(path, world_name: nil)
+                sdf = ::SDF::Root.load(path, flatten: false)
                 worlds = sdf.each_world.to_a
                 if world_name
                     world = worlds.find { |w| w.name == world_name }

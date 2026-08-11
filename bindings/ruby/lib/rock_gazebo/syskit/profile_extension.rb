@@ -55,7 +55,7 @@ module RockGazebo
             #
             # @return [SDF::Root] the root. The method already validates that
             #   this root has exactly one Model child
-            def resolve_sdf_model(*path, loader: ::SDF::Loader.new)
+            def resolve_sdf_model(*path)
                 if path.size == 1 && !path.first.respond_to?(:to_str)
                     # Assume this is a SDF::Model object
                     return path.first
@@ -74,7 +74,7 @@ module RockGazebo
                     end
                 end
 
-                sdf = ::SDF::Root.load(full_path, flatten: false, loader: loader)
+                sdf = ::SDF::Root.load(full_path, flatten: false)
                 models = sdf.each_model.to_a
                 if models.size > 1
                     raise ArgumentError,
@@ -93,7 +93,7 @@ module RockGazebo
             # Setup the transformer based on the given model
             #
             # @return [Model]
-            def use_sdf_model(*path, filter: nil, as: nil, loader: ::SDF::Loader.new)
+            def use_sdf_model(*path, filter: nil, as: nil)
                 if @sdf
                     raise AlreadyLoaded,
                           "SDF model already loaded, " \
@@ -107,7 +107,7 @@ module RockGazebo
                 # won't be configured properly
                 Conf.sdf.has_profile_loaded = true
 
-                @sdf = resolve_sdf_model(*path, loader: loader)
+                @sdf = resolve_sdf_model(*path)
                 @sdf_model = @sdf.each_model.first
                 @sdf_model.name = as if as
                 transformer.parse_sdf_model(@sdf_model, filter: filter)
@@ -173,10 +173,9 @@ module RockGazebo
                 *path,
                 filter: nil, as: nil, reuse: nil,
                 use_world: RockGazebo::Syskit.use_gazebo_model_calls_use_gazebo_world,
-                prefix_device_with_name: RockGazebo::Syskit.prefix_device_with_name,
-                loader: ::SDF::Loader.new
+                prefix_device_with_name: RockGazebo::Syskit.prefix_device_with_name
             )
-                use_sdf_model(*path, as: as, filter: filter, loader: loader)
+                use_sdf_model(*path, as: as, filter: filter)
 
                 model_in_world = resolve_model_in_world
 

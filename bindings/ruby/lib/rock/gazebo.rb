@@ -130,8 +130,8 @@ module Rock
         # @param [SDF::Root,String] sdf the preloaded SDF world, or a string that
         #   describes a SDF file (either a path, or a model:// URI)
         # @return [SDF::Root]
-        def self.process_sdf_file(sdf, loader: SDF::Loader.new)
-            sdf = SDF::Root.load(sdf, loader: loader) if sdf.respond_to?(:to_str)
+        def self.process_sdf_file(sdf)
+            sdf = SDF::Root.load(sdf) if sdf.respond_to?(:to_str)
             sdf
         end
 
@@ -153,8 +153,8 @@ module Rock
         #   describes a SDF file (either a path, or a model:// URI)
         # @return [SDF::Root]
         # @see process_sdf_file
-        def self.process_gazebo_file(sdf, loader: create_rtt_loader, model_loader: SDF::Loader.new)
-            sdf = process_sdf_file(sdf, loader: model_loader)
+        def self.process_gazebo_file(sdf, loader: create_rtt_loader)
+            sdf = process_sdf_file(sdf)
 
             # post-process the rock_components info
             sdf.each_world { |w| process_gazebo_world(w, loader: loader) }
@@ -279,8 +279,8 @@ module Rock
             @download_path = File.expand_path(path)
         end
 
-        def self.download_missing_models(world_path, loader: SDF::Loader.new)
-            SDF::Root.load(world_path, loader: loader)
+        def self.download_missing_models(world_path)
+            SDF::Root.load(world_path)
         rescue SDF::XML::NoSuchModel => missing_model
             model_name = missing_model.model_name
             if !SDF::XML.model_path.include?(download_path)
