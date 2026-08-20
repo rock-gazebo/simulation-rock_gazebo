@@ -53,14 +53,14 @@ module RockGazebo
                 full_path = File.join(*path)
                 return full_path if File.exist?(full_path)
 
-                %w[world sdf.erb].each do |ext|
+                %w[world sdf sdf.erb].each do |ext|
                     full_path = File.join(*path, "#{path.last}.#{ext}")
                     return full_path if File.exist?(full_path)
                 end
 
                 if path.size == 1
                     name = path.first
-                    %w[world sdf.erb].each do |ext|
+                    %w[world sdf sdf.erb].each do |ext|
                         full_path = Roby.app.find_file(
                             "scenes", name, "#{name}.#{ext}",
                             all: false, order: :specific_first
