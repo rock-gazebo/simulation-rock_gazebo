@@ -53,16 +53,20 @@ module RockGazebo
                 full_path = File.join(*path)
                 return full_path if File.exist?(full_path)
 
-                full_path = File.join(*path, "#{path.last}.world")
-                return full_path if File.exist?(full_path)
+                %w[world world.erb sdf sdf.erb].each do |ext|
+                    full_path = File.join(*path, "#{path.last}.#{ext}")
+                    return full_path if File.exist?(full_path)
+                end
 
                 if path.size == 1
                     name = path.first
-                    full_path = Roby.app.find_file(
-                        "scenes", name, "#{name}.world",
-                        all: false, order: :specific_first
-                    )
-                    return full_path if full_path
+                    %w[world world.erb sdf sdf.erb].each do |ext|
+                        full_path = Roby.app.find_file(
+                            "scenes", name, "#{name}.#{ext}",
+                            all: false, order: :specific_first
+                        )
+                        return full_path if full_path
+                    end
                 end
 
                 raise ArgumentError,
