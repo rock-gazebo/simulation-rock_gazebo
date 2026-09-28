@@ -65,19 +65,22 @@ module Rock
                     require 'sdf'
                     model_dir = File.dirname(SDF::XML.model_path_from_name(model_name, model_path: model_path))
                     filtered_argv << File.join(model_dir, filename)
-                elsif File.extname(arg) == '.world'
-                    worldname = File.basename(arg, '.world')
-                    if resolved_path = path_resolver&.find_file('scenes', worldname, arg, order: :specific_first)
+                elsif arg =~ /\.(world|sdf)(?:\.erb)?$/
+                    worldname = File.basename(arg.sub($&, ''))
+                    if resolved_path = Bundles.find_file('scenes', worldname, arg, order: :specific_first)
                         filtered_argv << resolved_path
                     else
                         filtered_argv << arg
                     end
-                elsif resolved_path = path_resolver&.find_file('scenes', arg, "#{arg}.world", order: :specific_first)
-                    filtered_argv << resolved_path
-                elsif resolved_path = path_resolver&.find_file(arg, "#{arg}.world", order: :specific_first)
-                    filtered_argv << resolved_path
                 else
-                    filtered_argv << arg
+                    resolved_path = nil
+                    ['.world', '.sdf', '.world.erb', '.sdf.erb'].each do |ext|
+                        resolved_path = Bundles.find_file('scenes', arg, "#{arg}#{ext}", order: :specific_first) ||
+                                        Bundles.find_file(arg, "#{arg}#{ext}", order: :specific_first)
+                        break if resolved_path
+                    end
+
+                    filtered_argv << (resolved_path || arg)
                 end
             end
             return model_path, filtered_argv
