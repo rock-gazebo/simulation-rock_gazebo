@@ -129,7 +129,8 @@ module RockGazebo
                 model_dev,
                 as: nil, joint_names: [],
                 ignore_joint_names: false,
-                position_offsets: []
+                position_offsets: [],
+                control_modes: []
             )
                 joint_sdfs = sdf_export_resolve_joint_sdf(model_dev, joint_names)
                 joint_names = joint_sdfs.map do |el|
@@ -142,7 +143,8 @@ module RockGazebo
                     'joint_export',
                     as: as, joint_names: joint_names,
                     position_offsets: position_offsets,
-                    ignore_joint_names: ignore_joint_names
+                    ignore_joint_names: ignore_joint_names,
+                    control_modes: control_modes
                 )
 
                 driver_def.add_models([driver_m])
