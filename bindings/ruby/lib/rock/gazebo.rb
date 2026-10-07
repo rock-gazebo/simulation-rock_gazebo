@@ -101,9 +101,9 @@ module Rock
             SDF::XML.model_path.concat(model_path)
             @tempfiles ||= Array.new
             args = args.map do |arg|
-                if arg =~ /\.sdf$|\.world$/
+                if arg =~ /\.(world|sdf)(?:\.erb)?$/
                     world = process_gazebo_file(arg)
-                    processed_world = Tempfile.new
+                    processed_world = Tempfile.new(["rock_gazebo", ".world"])
                     processed_world.write(world.xml.to_s)
                     processed_world.flush
                     @tempfiles << processed_world
@@ -144,6 +144,7 @@ module Rock
         #
         # @return [OroGen::Loaders::RTT]
         def self.create_rtt_loader
+            require 'orogen'
             OroGen::Loaders::RTT.new(ENV["OROCOS_TARGET"] || "gnulinux")
         end
 
