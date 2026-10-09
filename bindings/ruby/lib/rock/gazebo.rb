@@ -91,7 +91,7 @@ module Rock
             self.model_path = self.default_model_path
         end
 
-        SDF_EXTENSIONS = %w[.sdf .world].freeze
+        SDF_EXTENSIONS = %w[.sdf .world .sdf.erb .world.erb].freeze
 
         def self.prepare_spawn(cmd, *cmdline, env: {})
             if cmdline.first.kind_of?(Hash)
@@ -102,10 +102,10 @@ module Rock
             SDF::XML.model_path.concat(model_path)
             @tempfiles ||= Array.new
             args = args.map do |arg|
-                next arg unless SDF_EXTENSIONS.include?(File.extname(arg))
+                next arg unless arg.end_with?(*SDF_EXTENSIONS)
 
                 world = process_gazebo_file(arg)
-                processed_world = Tempfile.new
+                processed_world = Tempfile.new(["rock_gazebo", ".world"])
                 processed_world.write(world.xml.to_s)
                 processed_world.flush
                 @tempfiles << processed_world
