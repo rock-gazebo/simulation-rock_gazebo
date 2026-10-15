@@ -3,6 +3,7 @@
 require "orogen"
 require "rock_gazebo/test"
 require "rock/gazebo"
+require 'minitest/autorun'
 
 module Rock
     describe Gazebo do
@@ -23,8 +24,6 @@ module Rock
                 task = REXML::XPath.first(xml, "//task")
                 assert_equal "some::Task_project_path", task.attributes["filename"]
             end
-
-            it ""
 
             it "auto-loads a task's dependent typekits" do
                 loader = flexmock
@@ -94,6 +93,26 @@ module Rock
                           .and_return("#{name}_transport_#{transport}_path")
                 end
                 mock
+            end
+        end
+        describe ".prepare_spawn" do
+            it "preprocesses .world.erb files and passes a generated tempfile" do
+                file = Tempfile.new(["test", ".world.erb"])
+                file.write("<sdf version='1.6'><world name='default'><plugin name='p' filename='f'/></world></sdf>")
+                file.flush
+
+                spawn_args = nil
+                Gazebo.prepare_spawn("gz", "sim", file.path) do |args|
+                    spawn_args = args
+                end
+
+                refute_equal file.path, spawn_args.last
+                assert spawn_args.last.end_with?(".world")
+                assert File.exist?(spawn_args.last)
+                content = File.read(spawn_args.last)
+                assert_match(/<world name='default'>/, content)
+            ensure
+                file&.close!
             end
         end
     end
