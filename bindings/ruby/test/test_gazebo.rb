@@ -105,5 +105,26 @@ module Rock
                 mock
             end
         end
+
+        describe ".prepare_spawn" do
+            it "preprocesses .world.erb files and passes a generated tempfile" do
+                file = Tempfile.new(["test", ".world.erb"])
+                file.write("<sdf version='1.6'><world name='default'><plugin name='p' filename='f'/></world></sdf>")
+                file.flush
+
+                spawn_args = nil
+                Gazebo.prepare_spawn("gserver", file.path) do |args|
+                    spawn_args = args
+                end
+
+                refute_equal file.path, spawn_args.last
+                assert spawn_args.last.end_with?(".world")
+                assert File.exist?(spawn_args.last)
+                content = File.read(spawn_args.last)
+                assert_match(/<world name='default'>/, content)
+            ensure
+                file&.close!
+            end
+        end
     end
 end
