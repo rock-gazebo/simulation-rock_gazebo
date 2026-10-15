@@ -120,8 +120,23 @@ describe 'rock_gazebo::ModelTask' do
                 joints: %w[m::child::j_00 m::j_01],
                 port_period: Time.at(0)
             )]
-            samples = configure_start_read_samples_and_stop 'test_samples', 0.5
-            assert (22..28).include?(samples.size)
+            
+            reader = create_active_reader('test_samples', type: :buffer, size: 100)
+            
+            samples = []
+            poll_until(timeout: 10, message: "did not receive 25 samples") do
+                while (s = reader.read_new)
+                    samples << s
+                end
+                samples.size >= 25
+            end
+            @task.stop
+            
+            samples = samples.first(25)
+            assert_equal 25, samples.size
+
+            time_delta = samples.last.time - samples.first.time
+            assert_in_delta 0.48, time_delta, 0.001
         end
 
         it 'allows to control the output period of a joint export' do
@@ -130,8 +145,23 @@ describe 'rock_gazebo::ModelTask' do
                 joints: %w[m::child::j_00 m::j_01],
                 port_period: Time.at(0.1)
             )]
-            samples = configure_start_read_samples_and_stop 'test_samples', 0.5
-            assert (4..6).include?(samples.size)
+            
+            reader = create_active_reader('test_samples', type: :buffer, size: 100)
+            
+            samples = []
+            poll_until(timeout: 10, message: "did not receive 5 samples") do
+                while (s = reader.read_new)
+                    samples << s
+                end
+                samples.size >= 5
+            end
+            @task.stop
+            
+            samples = samples.first(5)
+            assert_equal 5, samples.size
+
+            time_delta = samples.last.time - samples.first.time
+            assert_in_delta 0.4, time_delta, 0.01
         end
 
         it "handles joints given relatively to the model" do
