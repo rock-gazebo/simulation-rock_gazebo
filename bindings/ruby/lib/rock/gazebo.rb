@@ -125,6 +125,10 @@ module Rock
             Array[env, cmd, '-s', RockGazebo::PATH_TO_PLUGIN, *args]
         end
 
+        def self.default_sdf_loader
+            @default_sdf_loader ||= SDF::Loader.new(erb_args: { "gz_new" => true })
+        end
+
         # Perform Rock-specific post-processing of the SDF world
         #
         # This method handles use-cases that do not involve gazebo. Use
@@ -133,9 +137,10 @@ module Rock
         # @param [SDF::Root,String] sdf the preloaded SDF world, or a string that
         #   describes a SDF file (either a path, or a model:// URI)
         # @return [SDF::Root]
-        def self.process_sdf_file(sdf)
-            sdf = SDF::Root.load(sdf, flatten: false) if sdf.respond_to?(:to_str)
-            sdf
+        def self.process_sdf_file(sdf, loader: default_sdf_loader)
+            return sdf unless sdf.respond_to?(:to_str)
+
+            SDF::Root.load(sdf, flatten: false, loader: loader)
         end
 
         # @api private
@@ -278,8 +283,8 @@ module Rock
             @download_path = File.expand_path(path)
         end
 
-        def self.download_missing_models(world_path)
-            SDF::Root.load(world_path)
+        def self.download_missing_models(world_path, loader: default_sdf_loader)
+            SDF::Root.load(world_path, loader: loader)
         rescue SDF::XML::NoSuchModel => missing_model
             model_name = missing_model.model_name
             if !SDF::XML.model_path.include?(download_path)
