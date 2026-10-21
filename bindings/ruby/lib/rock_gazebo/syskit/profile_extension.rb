@@ -218,6 +218,21 @@ module RockGazebo
                 transformer.static_transform(pose, from_frame => to_frame)
             end
 
+            # Expose the world-level plugin tasks on the profile's robot
+            #
+            # This obviously should be done only once per system, as these
+            # are world-global
+            def use_gazebo_world_plugin_tasks
+                sdf_world.each_direct_plugin do |plugin|
+                    robot.gazebo_define_plugin_devices(
+                        sdf_world, sdf_world, plugin,
+                        model_name: nil,
+                        prefix_device_with_name: true,
+                        deployment_prefix: "gazebo::"
+                    )
+                end
+            end
+
             # Exports the world into the transformer and expose the models
             # within the gazebo world as devices on the robot interface
             def use_gazebo_world(reuse: nil)

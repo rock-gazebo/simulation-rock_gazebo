@@ -91,27 +91,27 @@ module Rock
             self.model_path = self.default_model_path
         end
 
-        def self.prepare_spawn(cmd, *cmdline)
-            env = Hash.new
+        SDF_EXTENSIONS = %w[.sdf .world .sdf.erb .world.erb].freeze
+
+        def self.prepare_spawn(cmd, *cmdline, env: {})
             if cmdline.first.kind_of?(Hash)
-                env = cmdline.shift
+                env = cmdline.shift.merge(env)
             end
 
             model_path, args = resolve_worldfiles_and_models_arguments(cmdline)
             SDF::XML.model_path.concat(model_path)
             @tempfiles ||= Array.new
             args = args.map do |arg|
-                if arg =~ /\.(world|sdf)(?:\.erb)?$/
-                    world = process_gazebo_file(arg)
-                    processed_world = Tempfile.new(["rock_gazebo", ".world"])
-                    processed_world.write(world.xml.to_s)
-                    processed_world.flush
-                    @tempfiles << processed_world
-                    processed_world.path
-                else arg
-                end
+                next arg unless arg.end_with?(*SDF_EXTENSIONS)
+
+                world = process_gazebo_file(arg)
+                processed_world = Tempfile.new(["rock_gazebo", ".world"])
+                processed_world.write(world.xml.to_s)
+                processed_world.flush
+                @tempfiles << processed_world
+                processed_world.path
             end
-            yield(Array[env, cmd, '-s', RockGazebo::PATH_TO_PLUGIN, *args])
+            yield(Array[env, cmd, *args])
         end
 
         def self.compute_spawn_arguments(cmd, *cmdline)
@@ -125,6 +125,10 @@ module Rock
             Array[env, cmd, '-s', RockGazebo::PATH_TO_PLUGIN, *args]
         end
 
+        def self.default_sdf_loader
+            @default_sdf_loader ||= SDF::Loader.new(erb_args: { "gz_new" => true })
+        end
+
         # Perform Rock-specific post-processing of the SDF world
         #
         # This method handles use-cases that do not involve gazebo. Use
@@ -133,9 +137,10 @@ module Rock
         # @param [SDF::Root,String] sdf the preloaded SDF world, or a string that
         #   describes a SDF file (either a path, or a model:// URI)
         # @return [SDF::Root]
-        def self.process_sdf_file(sdf)
-            sdf = SDF::Root.load(sdf) if sdf.respond_to?(:to_str)
-            sdf
+        def self.process_sdf_file(sdf, loader: default_sdf_loader)
+            return sdf unless sdf.respond_to?(:to_str)
+
+            SDF::Root.load(sdf, flatten: false, loader: loader)
         end
 
         # @api private
@@ -170,6 +175,11 @@ module Rock
         # @param [OroGen::Loaders::Base] loader
         # @return [void]
         def self.process_gazebo_world(world, loader: create_rtt_loader)
+            plugin = REXML::Element.new("plugin")
+            plugin.attributes["filename"] = "rock_gazebo"
+            plugin.attributes["name"] = "rock_gazebo::RockSystem"
+            world.xml.unshift(plugin)
+
             needed_typekits = Set.new
             REXML::XPath.each(world.xml, "//plugin") do |plugin_xml|
                 needed_typekits.merge(
@@ -189,10 +199,7 @@ module Rock
         # @return [Set<String>] the set of typekits that are needed by the tasks
         #   within this plugin need
         def self.process_gazebo_plugin(world, plugin_xml, loader:)
-            scope = resolve_plugin_full_name(world.xml, plugin_xml)
-            typekits = normalize_rock_components(scope, plugin_xml, loader)
-            plugin_xml.attributes["name"] = scope.gsub(/[^\w]/, "_")
-            typekits
+            normalize_rock_components(plugin_xml, loader)
         rescue OroGen::NotFound => e
             plugin_name = plugin_xml.attributes["name"]
             raise e, "while processing the <task ..> elements of the #{plugin_name} "\
@@ -214,12 +221,9 @@ module Rock
             (["gazebo", world_xml.attributes["name"]] + parts.reverse).join("::")
         end
 
-        def self.normalize_rock_components(scope, plugin_xml, loader)
+        def self.normalize_rock_components(plugin_xml, loader)
             needed_typekits = Set.new
             plugin_xml.elements.each("task") do |task_xml|
-                full_name = task_xml.attributes["name"] || scope
-
-                task_xml.attributes["name"] = full_name
                 model_name = task_xml.attributes["model"]
                 task_model = loader.task_model_from_name(model_name)
                 task_xml.attributes["filename"] =
@@ -232,12 +236,9 @@ module Rock
         end
 
         def self.create_or_update_rock_components(world_xml)
-            existing = REXML::XPath.first(world_xml, "plugin[@name='rock_components']")
-            return existing if existing
-
             plugin = REXML::Element.new("plugin")
-            plugin.attributes["name"] = "rock_components"
-            plugin.attributes["filename"] = "__default__"
+            plugin.attributes["name"] = "rock_gazebo::PluginTask"
+            plugin.attributes["filename"] = "rock_gazebo"
             world_xml.elements << plugin
             plugin
         end
@@ -282,8 +283,8 @@ module Rock
             @download_path = File.expand_path(path)
         end
 
-        def self.download_missing_models(world_path)
-            SDF::Root.load(world_path)
+        def self.download_missing_models(world_path, loader: default_sdf_loader)
+            SDF::Root.load(world_path, loader: loader)
         rescue SDF::XML::NoSuchModel => missing_model
             model_name = missing_model.model_name
             if !SDF::XML.model_path.include?(download_path)
@@ -327,14 +328,15 @@ module Rock
             end
         end
 
-        def self.spawn(cmd, *cmdline, **options)
-            prepare_spawn(cmd, *cmdline) do |args|
+        def self.spawn(cmd, *cmdline, env: {}, **options)
+            prepare_spawn(cmd, *cmdline, env: env) do |args|
+                Rock::Gazebo.debug "Running: #{args.join(" ")}"
                 Process.spawn(*args, **options)
             end
         end
 
-        def self.exec(cmd, *cmdline, download_missing_models: true, **options)
-            prepare_spawn(cmd, *cmdline, download_missing_models: download_missing_models) do |args|
+        def self.exec(cmd, *cmdline, download_missing_models: true, env: {}, **options)
+            prepare_spawn(cmd, *cmdline, env: env, download_missing_models: download_missing_models) do |args|
                 Process.exec(*args, **options)
             end
         end

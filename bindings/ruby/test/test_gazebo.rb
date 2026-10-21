@@ -1,7 +1,9 @@
 # frozen_string_literal: true
 
+require "orogen"
 require "rock_gazebo/test"
 require "rock/gazebo"
+require 'minitest/autorun'
 
 module Rock
     describe Gazebo do
@@ -23,20 +25,6 @@ module Rock
                 assert_equal "some::Task_project_path", task.attributes["filename"]
             end
 
-            it "resolve the 'name' argument of a <plugin> element of a model inside a model "\
-                "in <plugin ...>" do
-                sdf = ::SDF::Root.from_string(
-                    <<~SDF
-                    <sdf><world name="world"><model name= "model_A"><model name= "model_B"><plugin name="plugin_A">
-                    </plugin></model></model></world></sdf>
-                    SDF
-                )
-                xml = Gazebo.process_sdf_world(sdf)
-                plugin = REXML::XPath.first(xml, "//plugin")
-                assert_equal "gazebo__world__model_A__model_B__plugin_A",
-                                plugin.attributes["name"]
-            end
-
             it "auto-loads a task's dependent typekits" do
                 loader = flexmock
                 tk_a = create_typekit_mock(loader, "tk_a")
@@ -48,7 +36,8 @@ module Rock
 
                 sdf = ::SDF::Root.from_string(
                     <<~SDF
-                    <sdf><world><plugin>
+                    <sdf><world>
+                    <plugin name="rock::gz::PluginTask">
                         <task model="some::Task" />
                     </plugin></world></sdf>
                     SDF
@@ -67,9 +56,10 @@ module Rock
             def assert_world_loads_libraries(xml, expected)
                 loads =
                     REXML::XPath
-                    .each(xml, "/sdf/world/plugin[@name='rock_components']/load")
+                    .each(xml, "/sdf/world/plugin[@name='rock_gazebo::PluginTask']/load")
                     .map { |xml| xml.attributes["path"] }
-                assert_equal expected.to_set, loads.to_set
+                assert_equal expected.to_set, loads.to_set,
+                    "expected #{xml.to_s} to have load statements"
             end
 
             def create_task_model_mock(
@@ -113,7 +103,7 @@ module Rock
                 file.flush
 
                 spawn_args = nil
-                Gazebo.prepare_spawn("gserver", file.path) do |args|
+                Gazebo.prepare_spawn("gz", "sim", file.path) do |args|
                     spawn_args = args
                 end
 

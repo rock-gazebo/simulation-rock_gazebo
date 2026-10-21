@@ -1,12 +1,22 @@
-<sdf version="1.6">
+<sdf version="1.8">
 <world name="w">
+    <plugin name="gz::sim::systems::Imu" filename="gz-sim-imu-system"></plugin>
+
     <model name="m">
         <link name="l">
-            <sensor name="i" type="imu" />
+            <sensor name="i" type="imu">
+                <imu>
+                    <orientation_reference_frame>
+                        <localization>ENU</localization>
+                    </orientation_reference_frame>
+                </imu>
+                <plugin name="rock_gazebo::PluginTask" filename="rock_gazebo">
+                    <task model="rock_gazebo::ImuTask" />
+                </plugin>
+            </sensor>
             <pose>0 0 0 0.1 0.1 0.1</pose>
         </link>
         <static>true</static>
     </model>
 </world>
 </sdf>
-

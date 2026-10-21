@@ -1,0 +1,38 @@
+<sdf version="1.8">
+<world name="w">
+    <model name="m">
+        <link name="root">
+            <inertial>
+                <mass>2</mass>
+            </inertial>
+        </link>
+
+        <link name="l">
+            <inertial>
+                <mass>0.01</mass>
+            </inertial>
+        </link>
+
+        <joint name="l2root" type="fixed">
+            <parent>root</parent>
+            <child>l</child>
+        </joint>
+
+        <link name="rotated_link">
+            <pose>0 0 0 0 1.5708 0</pose>
+            <inertial>
+                <mass>0.01</mass>
+            </inertial>
+        </link>
+
+        <joint name="rotated2root" type="fixed">
+            <parent>root</parent>
+            <child>rotated_link</child>
+        </joint>
+
+        <plugin filename="rock_gazebo" name="rock_gazebo::PluginTask">
+            <task model="rock_gazebo::ModelTask" />
+        </plugin>
+    </model>
+</world>
+</sdf>

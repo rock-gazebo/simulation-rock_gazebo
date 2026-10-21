@@ -44,8 +44,8 @@ module Helpers
         raise '@gazebo_output is nil, have you overriden #setup ?' unless @gazebo_output
 
         @gazebo_pid = Rock::Gazebo.spawn(
-            'gzserver', expand_fixture_world(world_file), '--verbose',
-            '--model-dir', File.join(__dir__, 'models'),
+            'gz', "sim", "-s", expand_fixture_world(world_file), '--verbose',
+            "-r", "--model-dir", File.join(__dir__, 'models'),
             out: @gazebo_output,
             err: @gazebo_output
         )
@@ -76,7 +76,6 @@ module Helpers
 
     def gazebo_flunk(message)
         @gazebo_output.rewind
-        puts @gazebo_output.read
         flunk(message)
     end
 
@@ -92,6 +91,11 @@ module Helpers
                 "element #{i} differs by more than #{delta}"
             )
         end
+    end
+
+    def assert_eigen_approx(expected, actual, tol = 1e-6)
+        assert expected.approx?(actual, tol),
+               "expected #{expected} to be approximately equal to #{actual}"
     end
 
     def poll_until(
@@ -114,9 +118,13 @@ module Helpers
         reader
     end
 
-    def configure_start_and_read_one_new_sample(port_name)
+    def configure_start_and_read_one_new_sample(port_name, timeout: 5, &block)
         reader = create_active_reader(port_name)
-        assert_has_one_new_sample(reader)
+        if block
+            assert_has_one_new_sample_matching(reader, timeout, &block)
+        else
+            assert_has_one_new_sample(reader, timeout)
+        end
     ensure
         reader&.disconnect
     end
@@ -186,7 +194,9 @@ module Helpers
     def self.common_sensor_behavior(
         ctx, world_basename:, task_name:, port_name:, model_name:
     )
-        ctx.send(:describe, "common sensor behavior for #{model_name}") do
+        ctx.send(
+            :describe, "common sensor behavior for #{model_name} (#{world_basename})"
+        ) do
             it "exports the sensor using #{model_name}" do
                 task = gzserver "#{world_basename}.world", task_name
                 assert_equal model_name, task.model.name

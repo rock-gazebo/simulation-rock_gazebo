@@ -1,7 +1,11 @@
 <sdf version="1.6">
     <model name="m">
         <link name="l">
-            <sensor name="g" type="gps" />
+            <sensor name="g" type="navsat">
+                <plugin name="rock_gazebo::PluginTask" filename="rock_gazebo">
+                    <task model="rock_gazebo::GPSTask" />
+                </plugin>
+            </sensor>
         </link>
     </model>
 </sdf>

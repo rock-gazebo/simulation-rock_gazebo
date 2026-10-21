@@ -15,6 +15,30 @@ module RockGazebo
                 Conf.sdf = SDF.new
             end
 
+            describe '#use_gazebo_world_plugin_tasks' do
+                it "does nothing if there are no plugins at the world level" do
+                    world = sdf_from_string("<sdf><world /></sdf>").each_world.first
+                    Conf.sdf.use_sdf_world world
+                    @profile.use_gazebo_world_plugin_tasks
+                end
+
+                it "defines devices related to the plugin tasks it finds" do
+                    xml = <<~XML
+                        <sdf><world name="w">
+                            <plugin filename="rock_gazebo" name="rock_gazebo::PluginTask">
+                                <task name="test" model="rock_gazebo::LaserScanTask" />
+                            </plugin>
+                        </world></sdf>
+                    XML
+                    world = sdf_from_string(xml).each_world.first
+                    Conf.sdf.use_sdf_world world
+                    @profile.use_gazebo_world_plugin_tasks
+
+                    assert_equal OroGen.rock_gazebo.LaserScanTask.sensor_srv,
+                                 @profile.test_dev.model
+                end
+            end
+
             describe '#use_sdf_model' do
                 it 'raises if the path does not resolve to a SDF file' do
                     e = assert_raises(ArgumentError) do
@@ -203,6 +227,11 @@ module RockGazebo
                     )
                     @profile.use_gazebo_world
                 end
+            end
+
+            def sdf_from_string(string)
+                xml = REXML::Document.new(string).root
+                world = ::SDF::Root.new(xml)
             end
         end
     end

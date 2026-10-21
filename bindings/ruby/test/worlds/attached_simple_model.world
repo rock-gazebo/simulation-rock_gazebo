@@ -1,6 +1,10 @@
 <sdf version="1.6">
     <world name="test">
         <model name="attachment">
+            <plugin name="rock_gazebo::PluginTask" filename="rock_gazebo">
+                <task model="rock_gazebo::ModelTask" />
+            </plugin>
+
             <link name="in_attachment" />
             <include>
                 <pose>1 0 0 0 0 0</pose>
@@ -22,4 +26,3 @@
         </model>
     </world>
 </sdf>
-

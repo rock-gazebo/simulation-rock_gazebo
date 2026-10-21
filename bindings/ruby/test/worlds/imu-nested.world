@@ -1,5 +1,7 @@
-<sdf version="1.6">
+<sdf version="1.8">
 <world name="w">
+    <plugin name="gz::sim::systems::Imu" filename="gz-sim-imu-system"></plugin>
+
     <model name="m">
         <include>
             <name>nested</name>
