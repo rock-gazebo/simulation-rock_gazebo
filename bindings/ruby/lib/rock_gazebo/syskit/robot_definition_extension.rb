@@ -667,20 +667,23 @@ module RockGazebo
                 model_name: sdf_model.name, prefix_device_with_name:,
                 deployment_prefix: ""
             )
-                name_scope = nil
+                name_scope = ""
                 model_path = sdf_relative_path(sdf_model, plugin.parent)
                 if prefix_device_with_name
                     if Syskit.scope_device_name_with_links_and_submodels
-                        name_scope = normalize_name(model_path) unless model_path.empty?
+                        path_scope = normalize_name(model_path) unless model_path.empty?
                     end
 
                     name_scope = [
                         (normalize_name(model_name) if model_name),
-                        name_scope
+                        path_scope
                     ].compact.join("_")
                 end
 
                 deployment_hint = "#{deployment_prefix}#{model_path}"
+                unless deployment_hint.empty? || deployment_hint.end_with?("::")
+                    deployment_hint += "::"
+                end
                 plugin.xml.elements.to_a("task").map do |task_element|
                     task_model_name = task_element.attributes["model"]
                     # ModelTask is supported directly, ignore here
