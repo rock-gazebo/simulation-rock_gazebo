@@ -47,8 +47,6 @@ options = OptionParser.new do |opt|
     end
 end
 
-gzserver_args << "-r" unless paused
-
 args = options.parse(ARGV)
 if args.empty?
     if update_models
@@ -63,6 +61,8 @@ elsif args.size > 1
     gzserver_args.concat(args[1..-1])
     args = args[0, 1]
 end
+
+gzserver_args << "-r" unless paused
 
 require 'rock/bundles'
 # Workaround: default_loader calls Orocos.load unconditionally :(
